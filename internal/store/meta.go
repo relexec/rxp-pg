@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -18,6 +17,7 @@ import (
 	"github.com/relexec/rxp/meta/read"
 	readoption "github.com/relexec/rxp/meta/read/option"
 	"github.com/relexec/rxp/meta/read/selector"
+	"github.com/relexec/rxp/meta/schema"
 	"github.com/relexec/rxp/meta/write"
 	writeoption "github.com/relexec/rxp/meta/write/option"
 	"github.com/relexec/rxp/metrics"
@@ -243,7 +243,7 @@ func (s *Store) metaDBRead(
 	}
 	var namescope rxptypes.Namescope
 	var schemaBytes sql.NullString
-	var schema jsonschema.Schema
+	var schema schema.Schema
 	fn := func(tx pgx.Tx) error {
 		qs := "SELECT id, namescope, schema FROM metas WHERE system = $1 AND kind = $2 AND version = $3"
 		err := tx.QueryRow(ctx, qs, systemEntry.RowID, kind, ver).Scan(

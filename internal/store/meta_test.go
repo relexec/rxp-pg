@@ -75,8 +75,11 @@ func TestMetaRead(t *testing.T) {
 				require.Nil(err)
 				require.Equal(c.exp.KindVersion(), got.KindVersion())
 				require.Equal(c.exp.Namescope(), got.Namescope())
-				// TODO(jaypipes): Add Schema equality checks when wrapping of
-				// jsonschema.Schema in Differ interface is done.
+				expSchema := c.exp.Schema()
+				gotSchema := got.Schema()
+				delta, err := expSchema.Diff(gotSchema)
+				require.Nil(err)
+				require.False(delta.Different())
 			}
 		})
 	}

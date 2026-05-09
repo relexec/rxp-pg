@@ -34,9 +34,13 @@ TEST_PG_DB ?= rxptest
 .PHONY: test
 test: test-unit ## Run all tests.
 
+.PHONY: test-unit-race
+test-unit-race: ## Run all unit tests with race condition detection.
+	@go test -count=1 -race -v ./...
+
 .PHONY: test-unit
 test-unit: ## Run all unit tests.
-	@go test -race -count=1 -v ./...
+	@go test -count=1 -v ./...
 
 .PHONY: test-cluster-status
 test-cluster-status: ## Show status of test cluster.
