@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"context"
+	"sync"
 
 	domainselector "github.com/relexec/rxp/domain/read/selector"
 	"github.com/relexec/rxp/errors"
@@ -19,20 +20,29 @@ const (
 	DSN = "host=localhost port=5432 user=postgres password=postgres dbname=rxptest"
 )
 
+var (
+	once      sync.Once
+	testStore *store.Store
+)
+
 // Store returns a Store that is connected to the local testing database.
 func Store(ctx context.Context) (*store.Store, error) {
-	metrics, err := Metrics(ctx)
-	if err != nil {
-		return nil, err
-	}
-	cfg := config.New(config.WithConnect(DSN))
-	return store.New(
-		ctx,
-		store.WithHostSystemUUID(fixtures.SystemUUID),
-		store.WithHostSystemName(fixtures.SystemName),
-		store.WithMetrics(metrics),
-		store.WithConfig(cfg),
-	)
+	var err error
+	once.Do(func() {
+		metrics, err := Metrics(ctx)
+		if err != nil {
+			return
+		}
+		cfg := config.New(config.WithConnect(DSN))
+		testStore, err = store.New(
+			ctx,
+			store.WithHostSystemUUID(fixtures.SystemUUID),
+			store.WithHostSystemName(fixtures.SystemName),
+			store.WithMetrics(metrics),
+			store.WithConfig(cfg),
+		)
+	})
+	return testStore, err
 }
 
 // EnsureDomain ensures that the supplied Domain exists in the database.
