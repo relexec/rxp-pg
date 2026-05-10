@@ -29,6 +29,44 @@ func (s *Store) init(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	if err = s.ensureHostSystem(); err != nil {
+		return err
+	}
+
+	if err = s.initSystemCache(ctx); err != nil {
+		return err
+	}
+
+	if err = s.initDBPool(ctx); err != nil {
+		return err
+	}
+
+	if err = s.initHostSystemRecord(ctx); err != nil {
+		return err
+	}
+
+	if err = s.initMetrics(ctx); err != nil {
+		return err
+	}
+
+	if err = s.initDomainCache(ctx); err != nil {
+		return err
+	}
+
+	if err = s.initNamespaceCache(ctx); err != nil {
+		return err
+	}
+
+	if err = s.initMetaCache(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ensureHostSystem ensures that we know our host system identifier and
+// optional host system name.
+func (s *Store) ensureHostSystem() error {
 	if s.hostSystemUUID == "" {
 		// try to find the system identifier by looking at the configuration
 		// and environment variables.
@@ -60,7 +98,12 @@ func (s *Store) init(ctx context.Context) error {
 	if s.hostSystemName != "" {
 		s.log.Info("host system name: %s", s.hostSystemName)
 	}
+	return nil
+}
 
+// initSystemCache initializes the system cache if it is enabled in our
+// configuration.
+func (s *Store) initSystemCache(ctx context.Context) error {
 	if s.cfg.Cache.System.Enabled {
 		s.log.V(4).Info("initializing system cache")
 		cacheCfg := s.cfg.Cache.System
@@ -77,7 +120,11 @@ func (s *Store) init(ctx context.Context) error {
 	} else {
 		s.log.V(4).Info("system cache disabled")
 	}
+	return nil
+}
 
+// initDBPool initializates the pgx pool connections.
+func (s *Store) initDBPool(ctx context.Context) error {
 	s.log.V(4).Info("initializing pgxpool connections")
 	poolConfig, err := s.cfg.PGXPoolConfig()
 	if err != nil {
@@ -89,7 +136,12 @@ func (s *Store) init(ctx context.Context) error {
 	}
 	s.log.Info("initialized pgxpool connections")
 	s.pool = pool
+	return nil
+}
 
+// initHostSystemRecord ensures that we have our System record for the host
+// system available.
+func (s *Store) initHostSystemRecord(ctx context.Context) error {
 	s.log.V(4).Info("initializing host system record")
 	if s.hostSystem == nil {
 		entry, err := s.systemDBRead(ctx, s.hostSystemUUID)
@@ -118,7 +170,11 @@ func (s *Store) init(ctx context.Context) error {
 		s.hostSystem = entry
 	}
 	s.log.Info("host system record initialized")
+	return nil
+}
 
+// initMetrics initializes the store's metrics handler.
+func (s *Store) initMetrics(ctx context.Context) error {
 	s.log.V(4).Info("initializing metrics")
 	if s.metrics == nil {
 		metrics, err := metrics.New(ctx)
@@ -128,12 +184,17 @@ func (s *Store) init(ctx context.Context) error {
 		s.metrics = metrics
 	}
 	s.onClose = append(s.onClose, s.metrics.MeterProvider().Shutdown)
-	err = metrics.Init(s.metrics)
+	err := metrics.Init(s.metrics)
 	if err != nil {
 		return fmt.Errorf("failed initializing metrics: %w", err)
 	}
 	s.log.Info("initialized metrics")
+	return nil
+}
 
+// initDomainCache initializes the domain cache if it is enabled in our
+// configuration.
+func (s *Store) initDomainCache(ctx context.Context) error {
 	if s.cfg.Cache.Domain.Enabled {
 		s.log.V(4).Info("initializing domain cache")
 		cacheCfg := s.cfg.Cache.Domain
@@ -150,7 +211,12 @@ func (s *Store) init(ctx context.Context) error {
 	} else {
 		s.log.V(4).Info("domain cache disabled")
 	}
+	return nil
+}
 
+// initNamespaceCache initializes the namespace cache if it is enabled in our
+// configuration.
+func (s *Store) initNamespaceCache(ctx context.Context) error {
 	if s.cfg.Cache.Namespace.Enabled {
 		s.log.V(4).Info("initializing namespace cache")
 		cacheCfg := s.cfg.Cache.Namespace
@@ -167,7 +233,12 @@ func (s *Store) init(ctx context.Context) error {
 	} else {
 		s.log.V(4).Info("namespace cache disabled")
 	}
+	return nil
+}
 
+// initMetaCache initializes the metacache if it is enabled in our
+// configuration.
+func (s *Store) initMetaCache(ctx context.Context) error {
 	if s.cfg.Cache.Meta.Enabled {
 		s.log.V(4).Info("initializing meta cache")
 		cacheCfg := s.cfg.Cache.Meta
