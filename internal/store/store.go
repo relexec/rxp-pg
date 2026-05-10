@@ -11,7 +11,6 @@ import (
 
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/cache"
-	"github.com/relexec/rxp-pg/internal/typemap"
 )
 
 // Store implements a backend rxp persistence store using PostgreSQL.
@@ -30,8 +29,6 @@ type Store struct {
 	pool *pgxpool.Pool
 	// metrics is the metrics handler for the Store.
 	metrics rxptypes.Metrics
-	// typeMap stores reverse lookups for different types.
-	typeMap typemap.TypeMap
 	// domainCache stores known Domains, keyed by Domain Name.
 	domainCache *cache.Cache[domainCacheKey, *domainEntry]
 	// namespaceCache stores known Namespaces, keyed by Namespace Name.
