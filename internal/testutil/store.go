@@ -28,7 +28,8 @@ func Store(ctx context.Context) (*store.Store, error) {
 	cfg := config.New(config.WithConnect(DSN))
 	return store.New(
 		ctx,
-		store.WithHostSystemUUID(fixtures.System.UUID()),
+		store.WithHostSystemUUID(fixtures.SystemUUID),
+		store.WithHostSystemName(fixtures.SystemName),
 		store.WithMetrics(metrics),
 		store.WithConfig(cfg),
 	)

@@ -32,19 +32,34 @@ func (s *Store) init(ctx context.Context) error {
 	if s.hostSystemUUID == "" {
 		// try to find the system identifier by looking at the configuration
 		// and environment variables.
-		if s.cfg.SystemID != "" {
-			s.hostSystemUUID = s.cfg.SystemID
+		if s.cfg.SystemUUID != "" {
+			s.hostSystemUUID = s.cfg.SystemUUID
 		} else {
-			v := os.Getenv("RXP_SYSTEM_ID")
+			v := os.Getenv("RXP_SYSTEM_UUID")
 			if v == "" {
 				return fmt.Errorf(
-					"Unable to determine rxp host system identifier",
+					"Unable to determine rxp host system uuid",
 				)
 			}
 			s.hostSystemUUID = v
 		}
 	}
-	s.log.Info("host system identifier: %s", s.hostSystemUUID)
+	s.log.Info("host system uuid: %s", s.hostSystemUUID)
+	if s.hostSystemName == "" {
+		// try to find the system identifier by looking at the configuration
+		// and environment variables.
+		if s.cfg.SystemName != "" {
+			s.hostSystemName = s.cfg.SystemName
+		} else {
+			v := os.Getenv("RXP_SYSTEM_NAME")
+			if v != "" {
+				s.hostSystemName = v
+			}
+		}
+	}
+	if s.hostSystemName != "" {
+		s.log.Info("host system name: %s", s.hostSystemName)
+	}
 
 	if s.cfg.Cache.System.Enabled {
 		s.log.V(4).Info("initializing system cache")
@@ -85,7 +100,10 @@ func (s *Store) init(ctx context.Context) error {
 			s.log.V(4).Info("creating host system record")
 			err = s.systemDBWrite(
 				ctx,
-				system.New(system.WithUUID(s.hostSystemUUID)),
+				system.New(
+					system.WithUUID(s.hostSystemUUID),
+					system.WithName(s.hostSystemName),
+				),
 			)
 			if err != nil {
 				return err

@@ -17,6 +17,8 @@ import (
 type Store struct {
 	// hostSystemUUID is the UUID of the host System managed by this Store.
 	hostSystemUUID string
+	// hostSystemName is the name of the host System managed by this Store, if any.
+	hostSystemName string
 	// hostSystem is the host System managed by this Store.
 	hostSystem *systemEntry
 	// systemCache stores known Systems, keyed by system identifier.

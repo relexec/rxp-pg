@@ -2,10 +2,13 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/metrics"
 	"github.com/relexec/rxp/system"
@@ -191,8 +194,9 @@ func (s *Store) systemDBRead(
 		),
 	}
 	fn := func(tx pgx.Tx) error {
-		qs := "SELECT id FROM systems WHERE uuid = $1"
-		err := tx.QueryRow(ctx, qs, uuid).Scan(&out.RowID)
+		var name sql.NullString
+		qs := "SELECT id, name FROM systems WHERE uuid = $1"
+		err := tx.QueryRow(ctx, qs, uuid).Scan(&out.RowID, &name)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -201,6 +205,9 @@ func (s *Store) systemDBRead(
 				"failed reading systems record",
 				errors.WithWrap(err),
 			)
+		}
+		if name.Valid {
+			out.System.SetName(name.String)
 		}
 		return nil
 	}
@@ -215,10 +222,22 @@ func (s *Store) systemDBWrite(
 	ctx context.Context,
 	system rxptypes.System,
 ) error {
+	var name *string
 	uuid := system.UUID()
+	sysName := system.Name()
+	if sysName != "" {
+		name = &sysName
+	}
 	fn := func(tx pgx.Tx) error {
-		qs := "INSERT INTO systems (uuid) VALUES ($1)"
-		_, err := tx.Exec(ctx, qs, uuid)
+		qs := "INSERT INTO systems (uuid, name) VALUES ($1, $2)"
+		_, err := tx.Exec(ctx, qs, uuid, name)
+		if err != nil {
+			if pgErr, ok := err.(*pgconn.PgError); ok {
+				if pgErr.Code == pgerrcode.UniqueViolation {
+					return errors.DuplicateKey("system", "uuid", system.UUID())
+				}
+			}
+		}
 		return err
 	}
 	if err := s.dbExec(ctx, fn); err != nil {

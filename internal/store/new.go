@@ -33,6 +33,13 @@ func WithHostSystemUUID(uuid string) WithOption {
 	}
 }
 
+// WithHostSystemName sets the Store's host system name.
+func WithHostSystemName(name string) WithOption {
+	return func(s *Store) {
+		s.hostSystemName = name
+	}
+}
+
 // WithConfig sets the Store's Config to the supplied value.
 func WithConfig(cfg *config.Config) WithOption {
 	return func(s *Store) {
