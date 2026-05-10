@@ -6,7 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/metrics"
@@ -268,6 +270,13 @@ func (s *Store) namespaceDBWrite(
 	fn := func(tx pgx.Tx) error {
 		qs := "INSERT INTO namespaces (domain, name, last_modified_on, last_modified_by) VALUES ($1, $2, $3, $4)"
 		_, err := tx.Exec(ctx, qs, domainEntry.RowID, namespace.Name(), createdOn, createdBy)
+		if err != nil {
+			if pgErr, ok := err.(*pgconn.PgError); ok {
+				if pgErr.Code == pgerrcode.UniqueViolation {
+					return errors.DuplicateName("namespace", namespace.Name())
+				}
+			}
+		}
 		return err
 	}
 	if err := s.dbExec(ctx, fn); err != nil {
