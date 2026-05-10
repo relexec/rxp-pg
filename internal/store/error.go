@@ -5,6 +5,5 @@ import (
 )
 
 var (
-	ErrPoolNotInitialized    = errors.Internal("connection pool not initialized")
-	ErrTypeMapNotInitialized = errors.Internal("typemap not initialized")
+	ErrPoolNotInitialized = errors.Internal("connection pool not initialized")
 )
