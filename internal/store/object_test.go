@@ -12,6 +12,7 @@ import (
 	writeoption "github.com/relexec/rxp/object/write/option"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/testing/fixtures/book"
+	bookv1 "github.com/relexec/rxp/testing/fixtures/book/v1"
 	rxptypes "github.com/relexec/rxp/types"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +22,7 @@ func TestObjectRead(t *testing.T) {
 	s, err := testutil.Store(ctx)
 	require.Nil(t, err)
 
-	err = testutil.EnsureMeta(ctx, s, book.LatestMeta())
+	err = testutil.EnsureMeta(ctx, s, bookv1.Meta_V1_0_0)
 	require.Nil(t, err)
 
 	ctxMissingIdent := context.TODO()
@@ -31,6 +32,7 @@ func TestObjectRead(t *testing.T) {
 
 	booker := func(name string) rxptypes.Object {
 		return book.New(
+			object.WithKindVersion(bookv1.KindVersion_V1_0_0),
 			object.WithUUID(uuid.NewString()),
 			object.WithDomain(domain),
 			object.WithNamespace(ns),
@@ -95,7 +97,7 @@ func TestObjectRead(t *testing.T) {
 			"unknown generation",
 			ctx,
 			selector.New(
-				selector.WithKindVersion(book.LatestKindVersion()),
+				selector.WithKindVersion(bookv1.KindVersion_V1_0_0),
 				selector.WithUUID(book1.UUID()),
 				selector.WithGeneration(42),
 			),
@@ -107,7 +109,7 @@ func TestObjectRead(t *testing.T) {
 			"happy path",
 			ctx,
 			selector.New(
-				selector.WithKindVersion(book.LatestKindVersion()),
+				selector.WithKindVersion(bookv1.KindVersion_V1_0_0),
 				selector.WithUUID(book1.UUID()),
 			),
 			nil,
@@ -139,7 +141,7 @@ func TestObjectWrite(t *testing.T) {
 	s, err := testutil.Store(ctx)
 	require.Nil(t, err)
 
-	err = testutil.EnsureMeta(ctx, s, book.LatestMeta())
+	err = testutil.EnsureMeta(ctx, s, bookv1.Meta_V1_0_0)
 	require.Nil(t, err)
 
 	ctxMissingIdent := context.TODO()
@@ -148,18 +150,21 @@ func TestObjectWrite(t *testing.T) {
 	ns := fixtures.Namespace
 
 	bookMissingUUID := book.New(
+		object.WithKindVersion(bookv1.KindVersion_V1_0_0),
 		object.WithDomain(domain),
 		object.WithNamespace(ns),
 		object.WithName("book1"),
 	)
 
 	bookMissingName := book.New(
+		object.WithKindVersion(bookv1.KindVersion_V1_0_0),
 		object.WithUUID(uuid.NewString()),
 		object.WithDomain(domain),
 		object.WithNamespace(ns),
 	)
 
 	book1 := book.New(
+		object.WithKindVersion(bookv1.KindVersion_V1_0_0),
 		object.WithUUID(uuid.NewString()),
 		object.WithDomain(domain),
 		object.WithNamespace(ns),

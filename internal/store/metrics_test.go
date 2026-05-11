@@ -10,6 +10,7 @@ import (
 	"github.com/relexec/rxp/object/read/selector"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/testing/fixtures/book"
+	bookv1 "github.com/relexec/rxp/testing/fixtures/book/v1"
 	metricstesting "github.com/relexec/rxp/testing/metrics"
 	rxptypes "github.com/relexec/rxp/types"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +23,7 @@ func TestMetrics(t *testing.T) {
 	s, err := testutil.Store(ctx)
 	require.Nil(t, err)
 
-	err = testutil.EnsureMeta(ctx, s, book.LatestMeta())
+	err = testutil.EnsureMeta(ctx, s, bookv1.Meta_V1_0_0)
 	require.Nil(t, err)
 
 	m := s.Metrics()
@@ -38,6 +39,7 @@ func TestMetrics(t *testing.T) {
 
 	booker := func(name string) rxptypes.Object {
 		return book.New(
+			object.WithKindVersion(bookv1.KindVersion_V1_0_0),
 			object.WithUUID(uuid.NewString()),
 			object.WithDomain(domain),
 			object.WithNamespace(ns),

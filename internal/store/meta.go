@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -22,6 +23,7 @@ import (
 	writeoption "github.com/relexec/rxp/meta/write/option"
 	"github.com/relexec/rxp/metrics"
 	rxptypes "github.com/relexec/rxp/types"
+	"github.com/relexec/rxp/version"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -289,6 +291,7 @@ func (s *Store) metaDBWrite(
 	meta rxptypes.Meta,
 ) error {
 	kv := meta.KindVersion()
+	ver, _ := kv.Version()
 	createdOn := time.Now().UnixNano()
 	createdBy := rxpcontext.Identity(ctx)
 	schemaJSON, err := meta.SchemaJSON()
@@ -296,8 +299,26 @@ func (s *Store) metaDBWrite(
 		return err
 	}
 	fn := func(tx pgx.Tx) error {
+		versions, err := s.metaDBVersionsForKind(ctx, systemEntry, kv)
+		if err != nil {
+			return err
+		}
+		if len(versions) == 0 {
+			// ensure we were given the first version in the version series OR
+			// there was a force override option.
+			if ver.Minor() != 0 || ver.Patch() != 0 {
+				return errors.ExpectedFirstVersionInSeries(kv)
+			}
+		} else {
+			// If the supplied version already exists, return a precondition
+			// failed unless there was a force override option.
+			if versions.Contains(*ver) {
+				return errors.ExpectedNotToExist(kv)
+			}
+		}
+
 		qs := "INSERT INTO metas (system, kind, version, namescope, schema, last_modified_on, last_modified_by) VALUES ($1, $2, $3, $4, $5, $6, $7)"
-		_, err := tx.Exec(
+		_, err = tx.Exec(
 			ctx, qs,
 			systemEntry.RowID,
 			kv.Kind(),
@@ -321,6 +342,54 @@ func (s *Store) metaDBWrite(
 		return nil
 	}
 	return s.dbExec(ctx, fn)
+}
+
+// metaDBVersionsForKind returns a version.Set representing all the semantic
+// versions known for the supplied Kind.
+func (s *Store) metaDBVersionsForKind(
+	ctx context.Context,
+	systemEntry *systemEntry,
+	kv rxptypes.KindVersion,
+) (version.Set, error) {
+	kind := kv.Kind()
+	var versionStrs []string
+	fn := func(tx pgx.Tx) error {
+		qs := "SELECT version FROM metas WHERE system = $1 AND kind = $2"
+		rows, err := tx.Query(ctx, qs, systemEntry.RowID, kind)
+		if err != nil {
+			return errors.Internal(
+				"failed reading meta records",
+				errors.WithWrap(err),
+			)
+		}
+		defer rows.Close()
+		versionStrs, err = pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
+			return errors.Internal(
+				"failed collecting meta.versions",
+				errors.WithWrap(err),
+			)
+		}
+
+		return nil
+	}
+	if err := s.dbExec(ctx, fn); err != nil {
+		return nil, err
+	}
+	versions := []semver.Version{}
+	for _, verStr := range versionStrs {
+		v, err := semver.NewVersion(verStr)
+		if err != nil {
+			return nil, errors.Internal(
+				"failed parsing semver",
+				errors.WithWrap(err),
+			)
+		}
+		versions = append(versions, *v)
+	}
+	vs := version.Set{}
+	vs.Add(versions...)
+	return vs, nil
 }
 
 /*

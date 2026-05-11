@@ -9,7 +9,8 @@ import (
 	"github.com/relexec/rxp/meta/read/selector"
 	writeoption "github.com/relexec/rxp/meta/write/option"
 	"github.com/relexec/rxp/testing/fixtures"
-	"github.com/relexec/rxp/testing/fixtures/book"
+	"github.com/relexec/rxp/testing/fixtures/author"
+	bookv1 "github.com/relexec/rxp/testing/fixtures/book/v1"
 	rxptypes "github.com/relexec/rxp/types"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +20,7 @@ func TestMetaRead(t *testing.T) {
 	s, err := testutil.Store(ctx)
 	require.Nil(t, err)
 
-	err = testutil.EnsureMeta(ctx, s, book.LatestMeta())
+	err = testutil.EnsureMeta(ctx, s, bookv1.Meta_V1_0_0)
 	require.Nil(t, err)
 
 	ctxMissingIdent := context.TODO()
@@ -59,9 +60,9 @@ func TestMetaRead(t *testing.T) {
 		{
 			"happy path",
 			ctx,
-			selector.New(selector.WithKindVersion(book.LatestKindVersion())),
+			selector.New(selector.WithKindVersion(bookv1.KindVersion_V1_0_0)),
 			nil,
-			book.LatestMeta(),
+			bookv1.Meta_V1_0_0,
 			"",
 		},
 	}
@@ -90,7 +91,7 @@ func TestMetaWrite(t *testing.T) {
 	s, err := testutil.Store(ctx)
 	require.Nil(t, err)
 
-	err = testutil.EnsureMeta(ctx, s, book.LatestMeta())
+	err = testutil.EnsureMeta(ctx, s, bookv1.Meta_V1_0_0)
 	require.Nil(t, err)
 
 	ctxMissingIdent := context.TODO()
@@ -119,9 +120,16 @@ func TestMetaWrite(t *testing.T) {
 		{
 			"duplicate meta",
 			ctx,
-			book.LatestMeta(),
+			bookv1.Meta_V1_0_0,
 			nil,
-			"precondition failed: expected \"book.testing.rxp@1.0.1\" not to exist",
+			"precondition failed: expected \"book.testing.rxp@1.0.0\" not to exist",
+		},
+		{
+			"expected first version in series",
+			ctx,
+			author.LatestMeta(),
+			nil,
+			"precondition failed: expected \"author.testing.rxp@1.0.1\" to have minor and patch version of 0",
 		},
 	}
 	for _, c := range cases {
