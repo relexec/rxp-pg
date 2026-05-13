@@ -301,15 +301,15 @@ func (s *Store) objectWriteValidate(
 ) error {
 	kv := obj.KindVersion()
 	if kv == "" {
-		return errors.ErrObjectMissingKindVersion
+		return errors.ErrObjectKindVersionRequired
 	}
 	uuid := obj.UUID()
 	if uuid == "" {
-		return errors.ObjectMissingUUID(kv)
+		return errors.ErrObjectUUIDRequired
 	}
 	name := obj.Name()
 	if name == "" {
-		return errors.ObjectMissingName(kv, uuid)
+		return errors.ErrObjectNameRequired
 	}
 	return nil
 }
@@ -533,6 +533,7 @@ INSERT INTO domain_qualified_object_names (
 , $4
 , $5
 , $6
+, $7
 )`
 			_, err = tx.Exec(
 				ctx, qs,

@@ -48,10 +48,15 @@ func TestObjectRead(t *testing.T) {
 	err = testutil.EnsureMeta(ctx, s, book.FirstMeta())
 	require.Nil(t, err)
 
-	ctxMissingIdent := context.TODO()
-
 	domain := fixtures.Domain
+	err = testutil.EnsureDomain(ctx, s, domain)
+	require.Nil(t, err)
+
 	ns := fixtures.Namespace
+	err = testutil.EnsureNamespace(ctx, s, ns)
+	require.Nil(t, err)
+
+	ctxMissingIdent := context.TODO()
 
 	book1 := object.New(
 		object.WithKindVersion(book.FirstKindVersion()),
@@ -224,51 +229,104 @@ func TestObjectWrite(t *testing.T) {
 	s, err := testutil.Store(ctx)
 	require.Nil(t, err)
 
-	err = testutil.EnsureKind(ctx, s, book.Kind)
+	err = testutil.EnsureKind(ctx, s, platform.Kind)
 	require.Nil(t, err)
 
-	err = testutil.EnsureMeta(ctx, s, book.FirstMeta())
+	err = testutil.EnsureMeta(ctx, s, platform.FirstMeta())
 	require.Nil(t, err)
+
+	// NOTE: Platform is NamescopeSystem which allows us to test the
+	// system-qualified name constraints.
+	plat1 := object.New(
+		object.WithKindVersion(platform.FirstKindVersion()),
+		object.WithUUID(uuid.NewString()),
+		object.WithName(testutil.RandomName()),
+	)
+	plat1Name := plat1.Name()
+	platDuplicateName := object.New(
+		object.WithKindVersion(platform.FirstKindVersion()),
+		object.WithUUID(uuid.NewString()),
+		object.WithName(plat1Name),
+	)
+
+	domain := fixtures.Domain
+	err = testutil.EnsureDomain(ctx, s, domain)
+	require.Nil(t, err)
+
+	ns := fixtures.Namespace
+	err = testutil.EnsureNamespace(ctx, s, ns)
+	require.Nil(t, err)
+
+	err = testutil.EnsureKind(ctx, s, application.Kind)
+	require.Nil(t, err)
+
+	err = testutil.EnsureMeta(ctx, s, application.FirstMeta())
+	require.Nil(t, err)
+
+	// NOTE: Application is NamescopeDomain which allows us to test the
+	// domain-qualified name constraints.
+	appMissingDomain := object.New(
+		object.WithKindVersion(application.FirstKindVersion()),
+		object.WithUUID(uuid.NewString()),
+		object.WithName(testutil.RandomName()),
+	)
+	app1 := object.New(
+		object.WithKindVersion(application.FirstKindVersion()),
+		object.WithUUID(uuid.NewString()),
+		object.WithDomain(domain),
+		object.WithName(testutil.RandomName()),
+	)
+	app1Name := app1.Name()
+	appDuplicateName := object.New(
+		object.WithKindVersion(application.FirstKindVersion()),
+		object.WithUUID(uuid.NewString()),
+		object.WithDomain(domain),
+		object.WithName(app1Name),
+	)
+
+	err = testutil.EnsureKind(ctx, s, service.Kind)
+	require.Nil(t, err)
+
+	err = testutil.EnsureMeta(ctx, s, service.FirstMeta())
+	require.Nil(t, err)
+
+	// NOTE: Service is NamescopeNamespace which allows us to test the
+	// namespace-qualified name constraints.
+	svc1 := object.New(
+		object.WithKindVersion(service.FirstKindVersion()),
+		object.WithUUID(uuid.NewString()),
+		object.WithDomain(domain),
+		object.WithNamespace(ns),
+		object.WithName(testutil.RandomName()),
+	)
+	svc1Name := svc1.Name()
+	svcDuplicateName := object.New(
+		object.WithKindVersion(service.FirstKindVersion()),
+		object.WithUUID(uuid.NewString()),
+		object.WithDomain(domain),
+		object.WithNamespace(ns),
+		object.WithName(svc1Name),
+	)
 
 	ctxMissingIdent := context.TODO()
 
-	domain := fixtures.Domain
-	ns := fixtures.Namespace
-
-	bookMissingUUID := object.New(
+	svcMissingUUID := object.New(
 		object.WithKindVersion(book.FirstKindVersion()),
-		object.WithDomain(domain),
-		object.WithNamespace(ns),
-		object.WithName("book1"),
-	)
-
-	bookMissingName := object.New(
-		object.WithKindVersion(book.FirstKindVersion()),
-		object.WithUUID(uuid.NewString()),
-		object.WithDomain(domain),
-		object.WithNamespace(ns),
-	)
-
-	bookMissingNamespace := object.New(
-		object.WithKindVersion(book.FirstKindVersion()),
-		object.WithUUID(uuid.NewString()),
-		object.WithName(testutil.RandomName()),
-	)
-
-	book1 := object.New(
-		object.WithKindVersion(book.FirstKindVersion()),
-		object.WithUUID(uuid.NewString()),
 		object.WithDomain(domain),
 		object.WithNamespace(ns),
 		object.WithName(testutil.RandomName()),
 	)
-	book1Name := book1.Name()
-	bookDuplicateName := object.New(
-		object.WithKindVersion(book.FirstKindVersion()),
+	svcMissingName := object.New(
+		object.WithKindVersion(service.FirstKindVersion()),
 		object.WithUUID(uuid.NewString()),
 		object.WithDomain(domain),
 		object.WithNamespace(ns),
-		object.WithName(book1Name),
+	)
+	svcMissingNamespace := object.New(
+		object.WithKindVersion(service.FirstKindVersion()),
+		object.WithUUID(uuid.NewString()),
+		object.WithName(testutil.RandomName()),
+		object.WithDomain(domain),
 	)
 
 	cases := []struct {
@@ -290,23 +348,31 @@ func TestObjectWrite(t *testing.T) {
 		{
 			"missing uuid",
 			ctx,
-			bookMissingUUID,
+			svcMissingUUID,
 			nil,
 			nil,
-			"invalid object: missing uuid",
+			"invalid object: uuid required",
 		},
 		{
 			"missing name",
 			ctx,
-			bookMissingName,
+			svcMissingName,
 			nil,
 			nil,
-			"invalid object: missing name",
+			"invalid object: name required",
+		},
+		{
+			"domain required",
+			ctx,
+			appMissingDomain,
+			nil,
+			nil,
+			"invalid object: domain required",
 		},
 		{
 			"namespace required",
 			ctx,
-			bookMissingNamespace,
+			svcMissingNamespace,
 			nil,
 			nil,
 			"invalid object: namespace required",
@@ -320,29 +386,61 @@ func TestObjectWrite(t *testing.T) {
 			"unknown kind version",
 		},
 		{
-			"happy path",
+			"happy path system-scoped object",
 			ctx,
-			book1,
+			plat1,
 			nil,
-			book1,
+			plat1,
+			"",
+		},
+		{
+			"system-qualified name collision",
+			ctx,
+			platDuplicateName,
+			nil,
+			nil,
+			"conflict: \"platform.testing.rxp\" already exists with name",
+		},
+		{
+			"happy path domain-scoped object",
+			ctx,
+			app1,
+			nil,
+			app1,
+			"",
+		},
+		{
+			"domain-qualified name collision",
+			ctx,
+			appDuplicateName,
+			nil,
+			nil,
+			"conflict: \"application.testing.rxp\" already exists with name",
+		},
+		{
+			"happy path namespace-scoped object",
+			ctx,
+			svc1,
+			nil,
+			svc1,
 			"",
 		},
 		{
 			"namespace-qualified name collision",
 			ctx,
-			bookDuplicateName,
+			svcDuplicateName,
 			nil,
 			nil,
-			"conflict: \"book.testing.rxp\" already exists with name",
+			"conflict: \"service.testing.rxp\" already exists with name",
 		},
-		// Attempting to write the same object without specifying an expected
-		// generation should result in a precondition failed.
+		// Attempting to write the exact same object without specifying an
+		// expected generation should result in a precondition failed.
 		{
-			"object already exists",
+			"duplicate UUID",
 			ctx,
-			book1,
+			svc1,
 			nil,
-			book1,
+			svc1,
 			"not to exist",
 		},
 	}

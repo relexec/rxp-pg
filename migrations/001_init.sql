@@ -7,11 +7,9 @@ CREATE TABLE namescopes (
 
 INSERT INTO namescopes (id, name, description)
 VALUES
-  (1, 'namespace', 'The name is unique within the scope of the object kind, domain and namespace.')
-, (2, 'domain', 'The name is unique within the scope of the object kind and domain.')
-, (3, 'kind', 'The name is unique within the scope of the object kind.')
-, (4, 'system', 'The name is unique within the rxp system installation.')
-, (5, 'global', 'The name is globally-unique.')
+  (1, 'namespace', 'The name is unique within the scope of the object system, kind, domain and namespace.')
+, (2, 'domain', 'The name is unique within the scope of the object system, kind and domain.')
+, (3, 'system', 'The name is unique within the scope of the object system and kind.')
 ;
 
 CREATE TABLE systems (
