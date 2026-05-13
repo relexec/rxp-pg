@@ -44,7 +44,7 @@ func (s *Store) ObjectRead(
 	}
 	start := time.Now()
 
-	var kv rxptypes.KindVersion
+	kv := sel.KindVersion()
 
 	defer func() {
 		elapsed := time.Since(start).Seconds()
@@ -68,23 +68,76 @@ func (s *Store) ObjectRead(
 		return nil, err
 	}
 
-	var system rxptypes.System = s.hostSystem.System
-
-	kv = sel.KindVersion()
-	objGen := sel.Generation()
-	uuid := sel.UUID()
-	name := sel.Name()
+	system := sel.System()
 	domain := sel.Domain()
 	ns := sel.Namespace()
+
 	if ns != nil {
 		domain = ns.Domain()
 		if domain != nil && domain.System() != nil {
 			system = domain.System()
 		}
 	}
+	// Default the system to the host system if it hasn't been specified.
+	if system == nil {
+		system = s.hostSystem.System
+	}
+	systemEntry, err := s.systemRead(ctx, system.UUID())
+	if err != nil {
+		return nil, err
+	}
+
+	kindEntry, err := s.kindRead(ctx, systemEntry, kv.Kind())
+	if err != nil {
+		return nil, errors.ErrKindVersionUnknown
+	}
+
+	err = s.objectReadValidateNamescope(ctx, kindEntry, sel)
+	if err != nil {
+		return nil, err
+	}
+
+	metaEntry, err := s.metaRead(ctx, systemEntry, kindEntry, kv)
+	if err != nil {
+		return nil, errors.ErrKindVersionUnknown
+	}
+
+	var domainEntry *domainEntry
+	var nsEntry *namespaceEntry
+
+	if domain == nil && ns != nil {
+		domain = ns.Domain()
+	}
+	if domain != nil {
+		domainEntry, err = s.domainRead(ctx, systemEntry, domain.Name())
+		if err != nil {
+			return nil, err
+		}
+	}
+	if ns != nil {
+		if domainEntry == nil {
+			return nil, errors.Internal(
+				fmt.Sprintf(
+					"expected to have domain entry for namespace %q",
+					ns.Name(),
+				),
+			)
+		}
+		nsEntry, err = s.namespaceRead(ctx, systemEntry, domainEntry, ns.Name())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	objGen := sel.Generation()
+	uuid := sel.UUID()
+	name := sel.Name()
 
 	entry, err := s.objectRead(
-		ctx, system, kv, domain, ns, name, uuid, objGen,
+		ctx, kv,
+		systemEntry, kindEntry, metaEntry,
+		domainEntry, nsEntry,
+		name, uuid, objGen,
 	)
 	if err != nil {
 		return nil, err
@@ -134,14 +187,33 @@ func (s *Store) ObjectWrite(
 	// Before doing anything, we consult our cache of metas to determine if we
 	// have seen this type of object before. If not, return an error.
 
-	var systemEntry *systemEntry
-	var metaEntry *metaEntry
-	var domainEntry *domainEntry
-	var nsEntry *namespaceEntry
+	system := obj.System()
+	domain := obj.Domain()
+	ns := obj.Namespace()
 
-	var system rxptypes.System = s.hostSystem.System
+	if ns != nil {
+		domain = ns.Domain()
+		if domain != nil {
+			system = domain.System()
+		}
+	} else if domain != nil {
+		system = domain.System()
+	}
+	// Default the system to the host system if it hasn't been specified.
+	if system == nil {
+		system = s.hostSystem.System
+	}
+	systemEntry, err := s.systemRead(ctx, system.UUID())
+	if err != nil {
+		return err
+	}
 
-	metaEntry, err = s.metaRead(ctx, system, kv)
+	kindEntry, err := s.kindRead(ctx, systemEntry, kv.Kind())
+	if err != nil {
+		return errors.ErrKindVersionUnknown
+	}
+
+	metaEntry, err := s.metaRead(ctx, systemEntry, kindEntry, kv)
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return errors.ErrKindVersionUnknown
@@ -149,33 +221,39 @@ func (s *Store) ObjectWrite(
 		return err
 	}
 
-	domain := obj.Domain()
-	ns := obj.Namespace()
-	if ns != nil {
-		domain = ns.Domain()
-		if domain != nil && domain.System() != nil {
-			system = domain.System()
-		}
+	err = s.objectWriteValidateNamescope(ctx, kindEntry, obj)
+	if err != nil {
+		return err
+	}
 
-		nsEntry, err = s.namespaceRead(ctx, system, domain, ns.Name())
-		if err != nil {
-			return err
-		}
+	var domainEntry *domainEntry
+	var nsEntry *namespaceEntry
+
+	if domain == nil && ns != nil {
+		domain = ns.Domain()
 	}
 	if domain != nil {
-		domainEntry, err = s.domainRead(ctx, system, domain.Name())
+		domainEntry, err = s.domainRead(ctx, systemEntry, domain.Name())
 		if err != nil {
 			return err
 		}
 	}
-	if system != nil {
-		systemEntry, err = s.systemRead(ctx, system.UUID())
+	if ns != nil {
+		if domainEntry == nil {
+			return errors.Internal(
+				fmt.Sprintf(
+					"expected to have domain entry for namespace %q",
+					ns.Name(),
+				),
+			)
+		}
+		nsEntry, err = s.namespaceRead(ctx, systemEntry, domainEntry, ns.Name())
 		if err != nil {
 			return err
 		}
 	}
 
-	return s.objectWrite(ctx, wopts, systemEntry, metaEntry, domainEntry, nsEntry, obj)
+	return s.objectWrite(ctx, wopts, systemEntry, kindEntry, metaEntry, domainEntry, nsEntry, obj)
 }
 
 // objectReadValidate returns an error if the supplied selector and read
@@ -186,6 +264,32 @@ func (s *Store) objectReadValidate(
 	opts readoption.Options,
 ) error {
 	return sel.Validate()
+}
+
+// objectReadValidateNamescope verifies that the object being read has the
+// required namespace and domain in the selector if the namescope of metas is
+// either NamescopeNamespace or NamescopeDomain.
+func (s *Store) objectReadValidateNamescope(
+	ctx context.Context,
+	kindEntry *kindEntry,
+	sel selector.Selector,
+) error {
+	namescope := kindEntry.Kind.Namescope()
+	switch namescope {
+	case rxptypes.NamescopeNamespace:
+		ns := sel.Namespace()
+		if ns == nil {
+			return errors.ErrSelectorNamespaceRequired
+		}
+		return ns.Validate()
+	case rxptypes.NamescopeDomain:
+		domain := sel.Domain()
+		if domain == nil {
+			return errors.ErrSelectorDomainRequired
+		}
+		return domain.Validate()
+	}
+	return nil
 }
 
 // objectWriteValidate returns an error if the supplied object and write
@@ -210,11 +314,38 @@ func (s *Store) objectWriteValidate(
 	return nil
 }
 
+// objectWriteValidateNamescope verifies that the object being written has the
+// required namespace and domain qualification if the namescope of metas is
+// either NamescopeNamespace or NamescopeDomain.
+func (s *Store) objectWriteValidateNamescope(
+	ctx context.Context,
+	kindEntry *kindEntry,
+	obj rxptypes.Object,
+) error {
+	namescope := kindEntry.Kind.Namescope()
+	switch namescope {
+	case rxptypes.NamescopeNamespace:
+		ns := obj.Namespace()
+		if ns == nil {
+			return errors.ErrObjectNamespaceRequired
+		}
+		return ns.Validate()
+	case rxptypes.NamescopeDomain:
+		domain := obj.Domain()
+		if domain == nil {
+			return errors.ErrObjectDomainRequired
+		}
+		return domain.Validate()
+	}
+	return nil
+}
+
 // objectWrite atomically writes the supplied Object to persistent storage,
 func (s *Store) objectWrite(
 	ctx context.Context,
 	opts writeoption.Options,
 	systemEntry *systemEntry,
+	kindEntry *kindEntry,
 	metaEntry *metaEntry,
 	domainEntry *domainEntry,
 	nsEntry *namespaceEntry,
@@ -228,7 +359,7 @@ func (s *Store) objectWrite(
 		// contraint violation will indicate another caller tried to create the
 		// exact same object concurrently.
 		return s.objectWriteFirst(
-			ctx, systemEntry, metaEntry, domainEntry, nsEntry, obj,
+			ctx, systemEntry, kindEntry, metaEntry, domainEntry, nsEntry, obj,
 		)
 	}
 	// Otherwise, the caller expects that there is an existing object with this
@@ -240,7 +371,7 @@ func (s *Store) objectWrite(
 	// updated desired state changes and we need to either retry the write or
 	// fail.
 	return s.objectWriteGeneration(
-		ctx, systemEntry, metaEntry, domainEntry, nsEntry,
+		ctx, systemEntry, kindEntry, metaEntry, domainEntry, nsEntry,
 		obj, expectGeneration,
 	)
 }
@@ -250,11 +381,13 @@ func (s *Store) objectWrite(
 func (s *Store) objectWriteFirst(
 	ctx context.Context,
 	systemEntry *systemEntry,
+	kindEntry *kindEntry,
 	metaEntry *metaEntry,
 	domainEntry *domainEntry,
 	nsEntry *namespaceEntry,
 	obj rxptypes.Object,
 ) error {
+	kind := kindEntry.Kind
 	kv := obj.KindVersion()
 	uuid := obj.UUID()
 	name := obj.Name()
@@ -292,7 +425,6 @@ INSERT INTO objects (
 , generation
 , domain
 , namespace
-, name
 , spec
 , last_modified_on
 , last_modified_by
@@ -306,7 +438,6 @@ INSERT INTO objects (
 , $7
 , $8
 , $9
-, $10
 ) RETURNING id`
 		err = tx.QueryRow(
 			ctx, qs,
@@ -316,7 +447,6 @@ INSERT INTO objects (
 			1, /* we expect we are the first generation */
 			domainRowID,
 			nsRowID,
-			name,
 			specJSON,
 			createdOn,
 			createdBy,
@@ -324,6 +454,12 @@ INSERT INTO objects (
 		if err != nil {
 			if pgErr, ok := err.(*pgconn.PgError); ok {
 				if pgErr.Code == pgerrcode.UniqueViolation {
+					// This will be the UUID column uniqueness constraint
+					// violation. Since we have different uniqueness
+					// constraints for the domain, namespace and name
+					// combinations depending on namescope, we check for
+					// name-based collisions before attempting to INSERT a
+					// record in the objects table.
 					return errors.ExpectedNotToExist(fmt.Sprintf("%s (%s)", kv, uuid))
 				}
 			}
@@ -331,6 +467,136 @@ INSERT INTO objects (
 				"failed inserting objects record",
 				errors.WithWrap(err),
 			)
+		}
+		namescope := kindEntry.Kind.Namescope()
+		switch namescope {
+		case rxptypes.NamescopeNamespace:
+			qs = `
+INSERT INTO namespace_qualified_object_names (
+  object
+, system
+, kind
+, namespace
+, name
+, last_modified_on
+, last_modified_by
+) VALUES (
+  $1
+, $2
+, $3
+, $4
+, $5
+, $6
+, $7
+)`
+			_, err = tx.Exec(
+				ctx, qs,
+				objRowID,
+				systemEntry.RowID,
+				kindEntry.RowID,
+				nsEntry.RowID,
+				name,
+				createdOn,
+				createdBy,
+			)
+			if err != nil {
+				if pgErr, ok := err.(*pgconn.PgError); ok {
+					if pgErr.Code == pgerrcode.UniqueViolation {
+						qn := fmt.Sprintf(
+							"%s:%s:%s",
+							nsEntry.Namespace.Name(),
+							nsEntry.Namespace.Domain().Name(),
+							name,
+						)
+						return errors.DuplicateName(kind.Name(), qn)
+					}
+				}
+				return errors.Internal(
+					"failed inserting namespace_qualified_object_names record",
+					errors.WithWrap(err),
+				)
+			}
+		case rxptypes.NamescopeDomain:
+			qs = `
+INSERT INTO domain_qualified_object_names (
+  object
+, system
+, kind
+, domain
+, name
+, last_modified_on
+, last_modified_by
+) VALUES (
+  $1
+, $2
+, $3
+, $4
+, $5
+, $6
+)`
+			_, err = tx.Exec(
+				ctx, qs,
+				objRowID,
+				systemEntry.RowID,
+				kindEntry.RowID,
+				domainEntry.RowID,
+				name,
+				createdOn,
+				createdBy,
+			)
+			if err != nil {
+				if pgErr, ok := err.(*pgconn.PgError); ok {
+					if pgErr.Code == pgerrcode.UniqueViolation {
+						qn := fmt.Sprintf(
+							"%s:%s",
+							domainEntry.Domain.Name(),
+							name,
+						)
+						return errors.DuplicateName(kind.Name(), qn)
+					}
+				}
+				return errors.Internal(
+					"failed inserting domain_qualified_object_names record",
+					errors.WithWrap(err),
+				)
+			}
+		default:
+			qs = `
+INSERT INTO system_qualified_object_names (
+  object
+, system
+, kind
+, name
+, last_modified_on
+, last_modified_by
+) VALUES (
+  $1
+, $2
+, $3
+, $4
+, $5
+, $6
+)`
+			_, err = tx.Exec(
+				ctx, qs,
+				objRowID,
+				systemEntry.RowID,
+				kindEntry.RowID,
+				name,
+				createdOn,
+				createdBy,
+			)
+			if err != nil {
+				if pgErr, ok := err.(*pgconn.PgError); ok {
+					if pgErr.Code == pgerrcode.UniqueViolation {
+						return errors.DuplicateName(kind.Name(), name)
+					}
+				}
+				return errors.Internal(
+					"failed inserting system_qualified_object_names record",
+					errors.WithWrap(err),
+				)
+			}
 		}
 		qs = `
 INSERT INTO object_generations (
@@ -358,6 +624,11 @@ INSERT INTO object_generations (
 			createdBy,
 		)
 		if err != nil {
+			if pgErr, ok := err.(*pgconn.PgError); ok {
+				if pgErr.Code == pgerrcode.UniqueViolation {
+					return errors.ErrConflict
+				}
+			}
 			return errors.Internal(
 				"failed inserting object_generations record",
 				errors.WithWrap(err),
@@ -373,6 +644,7 @@ INSERT INTO object_generations (
 func (s *Store) objectWriteGeneration(
 	ctx context.Context,
 	systemEntry *systemEntry,
+	kindEntry *kindEntry,
 	metaEntry *metaEntry,
 	domainEntry *domainEntry,
 	nsEntry *namespaceEntry,
@@ -666,10 +938,12 @@ AND generation = $6`
 // lookup/selector properties.
 func (s *Store) objectRead(
 	ctx context.Context,
-	system rxptypes.System,
 	kv rxptypes.KindVersion,
-	domain rxptypes.Domain,
-	ns rxptypes.Namespace,
+	systemEntry *systemEntry,
+	kindEntry *kindEntry,
+	metaEntry *metaEntry,
+	domainEntry *domainEntry,
+	nsEntry *namespaceEntry,
 	name string,
 	uuid string,
 	generation rxptypes.Generation,
@@ -680,57 +954,43 @@ func (s *Store) objectRead(
 	// return early.
 
 	var err error
-	var systemEntry *systemEntry
-	var metaEntry *metaEntry
 
-	metaEntry, err = s.metaRead(ctx, system, kv)
-	if err != nil {
-		return nil, errors.ErrKindVersionUnknown
-	}
-
-	if ns != nil {
-		domain = ns.Domain()
-		if domain != nil && domain.System() != nil {
-			system = domain.System()
-		}
-
-		_, err = s.namespaceRead(ctx, system, domain, ns.Name())
-		if err != nil {
-			return nil, err
-		}
-	}
-	if domain != nil {
-		_, err = s.domainRead(ctx, system, domain.Name())
-		if err != nil {
-			return nil, err
-		}
-	}
-	if system != nil {
-		systemEntry, err = s.systemRead(ctx, system.UUID())
-		if err != nil {
-			return nil, err
-		}
-	}
+	kind := kindEntry.Kind
 
 	var entry *objectEntry
 	if uuid != "" {
 		entry, err = s.objectDBReadByUUID(
-			ctx, systemEntry, metaEntry, uuid,
-		)
-	} else if ns != nil {
-		entry, err = s.objectDBReadByNameInNamespace(
-			ctx, systemEntry, metaEntry,
-			domain, ns, name,
-		)
-	} else if domain != nil {
-		entry, err = s.objectDBReadByNameInDomain(
-			ctx, systemEntry, metaEntry,
-			domain, name,
+			ctx, systemEntry, kindEntry, metaEntry,
+			domainEntry, nsEntry,
+			uuid,
 		)
 	} else {
-		entry, err = s.objectDBReadByName(
-			ctx, systemEntry, metaEntry, name,
-		)
+		// We are not looking up based on UUID. Check that the name we were
+		// given is appropriately qualified based on the namescope associated
+		// with the meta.
+		namescope := kind.Namescope()
+		switch namescope {
+		case rxptypes.NamescopeNamespace:
+			if nsEntry == nil {
+				return nil, errors.ErrSelectorNamespaceRequired
+			}
+			entry, err = s.objectDBReadByNamespaceQualifiedName(
+				ctx, systemEntry, kindEntry, metaEntry,
+				domainEntry, nsEntry, name,
+			)
+		case rxptypes.NamescopeDomain:
+			if domainEntry == nil {
+				return nil, errors.ErrSelectorDomainRequired
+			}
+			entry, err = s.objectDBReadByDomainQualifiedName(
+				ctx, systemEntry, kindEntry, metaEntry,
+				domainEntry, name,
+			)
+		default:
+			entry, err = s.objectDBReadBySystemQualifiedName(
+				ctx, systemEntry, kindEntry, metaEntry, name,
+			)
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -747,18 +1007,21 @@ func (s *Store) objectRead(
 	return entry, nil
 }
 
-// objectDBReadByUUID grabs object data by its globally-unique string identifier.
+// objectDBReadByUUID grabs object data by its globally-unique string
+// identifier while still validating that the supplied optional domain and
+// namespace entries point to the correct domain and namespace.
 func (s *Store) objectDBReadByUUID(
 	ctx context.Context,
 	systemEntry *systemEntry,
+	kindEntry *kindEntry,
 	metaEntry *metaEntry,
+	domainEntry *domainEntry,
+	nsEntry *namespaceEntry,
 	uuid string,
 ) (*objectEntry, error) {
 	var name string
 	var latestGen rxptypes.Generation
 	var spec sql.NullString
-	var domainName sql.NullString
-	var nsName sql.NullString
 	out := objectEntry{
 		Object: object.New(
 			object.WithSystem(systemEntry.System),
@@ -766,31 +1029,81 @@ func (s *Store) objectDBReadByUUID(
 			object.WithUUID(uuid),
 		),
 	}
+	qargs := []any{
+		systemEntry.RowID,
+		metaEntry.RowID,
+		kindEntry.RowID,
+		uuid,
+	}
+	namescope := kindEntry.Kind.Namescope()
+
 	fn := func(tx pgx.Tx) error {
-		qs := `
+		var qs string
+		switch namescope {
+		case rxptypes.NamescopeNamespace:
+			qs = `
 SELECT
   o.id AS object_rowid
 , o.generation AS object_generation
-, o.name AS object_name
+, n.name AS object_name
 , o.spec AS object_spec
-, d.name AS domain_name
-, ns.name AS namespace_name
 FROM objects AS o
- LEFT JOIN domains AS d ON o.domain = d.id
- LEFT JOIN namespaces AS ns ON o.namespace = ns.id
+INNER JOIN namespace_qualified_object_names AS n
+ ON o.id = n.object
+ AND o.system = n.system
+ AND n.namespace = o.namespace
 WHERE o.system = $1
 AND o.meta = $2
-AND o.uuid = $3
-`
+AND n.kind = $3
+AND o.uuid = $4
+AND o.domain = $5
+AND o.namespace = $6`
+			qargs = append(qargs, nsEntry.DomainRowID)
+			qargs = append(qargs, nsEntry.RowID)
+		case rxptypes.NamescopeDomain:
+			qs = `
+SELECT
+  o.id AS object_rowid
+, o.generation AS object_generation
+, n.name AS object_name
+, o.spec AS object_spec
+FROM objects AS o
+INNER JOIN domain_qualified_object_names AS n
+ ON o.id = n.object
+ AND o.system = n.system
+ AND n.domain = o.domain
+WHERE o.system = $1
+AND o.meta = $2
+AND n.kind = $3
+AND o.uuid = $4
+AND o.domain = $5
+AND o.namespace IS NULL`
+			qargs = append(qargs, domainEntry.RowID)
+		default:
+			qs = `
+SELECT
+  o.id AS object_rowid
+, o.generation AS object_generation
+, n.name AS object_name
+, o.spec AS object_spec
+FROM objects AS o
+INNER JOIN system_qualified_object_names AS n
+ ON o.id = n.object
+ AND o.system = n.system
+WHERE o.system = $1
+AND o.meta = $2
+AND n.kind = $3
+AND o.uuid = $4
+AND o.domain IS NULL
+AND o.namespace IS NULL`
+		}
 		err := tx.QueryRow(
-			ctx, qs, systemEntry.RowID, metaEntry.RowID, uuid,
+			ctx, qs, qargs...,
 		).Scan(
 			&out.RowID,
 			&latestGen,
 			&name,
 			&spec,
-			&domainName,
-			&nsName,
 		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
@@ -809,35 +1122,10 @@ AND o.uuid = $3
 			out.Object.SetSpec(spec.String)
 		}
 
-		var domainEntry *domainEntry
-		if domainName.Valid {
-			domainEntry, err = s.domainRead(
-				ctx, systemEntry.System, rxptypes.DomainName(domainName.String),
-			)
-			if err != nil {
-				return err
-			}
+		if domainEntry != nil {
 			out.Object.SetDomain(domainEntry.Domain)
 		}
-		if nsName.Valid {
-			if domainEntry == nil {
-				return errors.Internal(
-					fmt.Sprintf(
-						"nil domain entry when looking up namespace name %q",
-						nsName.String,
-					),
-					errors.WithWrap(err),
-				)
-			}
-			nsEntry, err := s.namespaceRead(
-				ctx,
-				systemEntry.System,
-				domainEntry.Domain,
-				rxptypes.NamespaceName(nsName.String),
-			)
-			if err != nil {
-				return err
-			}
+		if nsEntry != nil {
 			out.Object.SetNamespace(nsEntry.Namespace)
 		}
 		return nil
@@ -848,12 +1136,13 @@ AND o.uuid = $3
 	return &out, nil
 }
 
-// objectDBReadByNameInDomain grabs object data by its name and domain.
-func (s *Store) objectDBReadByNameInDomain(
+// objectDBReadByDomainQualifiedName grabs object data by its name and domain.
+func (s *Store) objectDBReadByDomainQualifiedName(
 	ctx context.Context,
 	systemEntry *systemEntry,
+	kindEntry *kindEntry,
 	metaEntry *metaEntry,
-	domain rxptypes.Domain,
+	domainEntry *domainEntry,
 	name string,
 ) (*objectEntry, error) {
 
@@ -865,7 +1154,7 @@ func (s *Store) objectDBReadByNameInDomain(
 			object.WithSystem(systemEntry.System),
 			object.WithKindVersion(metaEntry.Meta.KindVersion()),
 			object.WithName(name),
-			object.WithDomain(domain),
+			object.WithDomain(domainEntry.Domain),
 		),
 	}
 	fn := func(tx pgx.Tx) error {
@@ -876,19 +1165,27 @@ SELECT
 , o.uuid AS object_uuid
 , o.spec AS object_spec
 FROM objects AS o
- INNER JOIN domains AS d ON o.domain = d.id
+INNER JOIN domain_qualified_object_names AS n
+ ON o.id = n.object
+ AND o.system = n.system
+ AND n.domain = o.domain
 WHERE o.system = $1
 AND o.meta = $2
-AND d.name = $3
-AND o.name = $4
+AND n.kind = $3
+AND o.domain = $4
+AND o.namespace IS NULL
+AND n.name = $5
 `
 		err := tx.QueryRow(
-			ctx, qs, systemEntry.RowID, metaEntry.RowID, domain.Name(), name,
+			ctx, qs,
+			systemEntry.RowID, metaEntry.RowID, kindEntry.RowID,
+			domainEntry.RowID, name,
 		).Scan(
 			&out.RowID,
 			&latestGen,
 			&uuid,
-			&spec)
+			&spec,
+		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -913,13 +1210,15 @@ AND o.name = $4
 	return &out, nil
 }
 
-// objectDBReadByNameInNamespace grabs object data by its name and domain/namespace.
-func (s *Store) objectDBReadByNameInNamespace(
+// objectDBReadByNamespaceQualifiedName grabs object data by its name and
+// domain/namespace.
+func (s *Store) objectDBReadByNamespaceQualifiedName(
 	ctx context.Context,
 	systemEntry *systemEntry,
+	kindEntry *kindEntry,
 	metaEntry *metaEntry,
-	domain rxptypes.Domain,
-	ns rxptypes.Namespace,
+	domainEntry *domainEntry,
+	nsEntry *namespaceEntry,
 	name string,
 ) (*objectEntry, error) {
 	var uuid string
@@ -929,8 +1228,8 @@ func (s *Store) objectDBReadByNameInNamespace(
 		Object: object.New(
 			object.WithSystem(systemEntry.System),
 			object.WithKindVersion(metaEntry.Meta.KindVersion()),
-			object.WithDomain(domain),
-			object.WithNamespace(ns),
+			object.WithDomain(domainEntry.Domain),
+			object.WithNamespace(nsEntry.Namespace),
 			object.WithName(name),
 		),
 	}
@@ -942,27 +1241,26 @@ SELECT
 , o.uuid AS object_uuid
 , o.spec AS object_spec
 FROM objects AS o
- INNER JOIN domains AS d
-  ON o.domain = d.id
- INNER JOIN namespaces AS ns
-  ON o.namespace = ns.id
-  AND ns.domain = o.domain
+INNER JOIN namespace_qualified_object_names AS n
+ ON o.id = n.object
+ AND o.system = n.system
+ AND n.namespace = o.namespace
 WHERE o.system = $1
 AND o.meta = $2
-AND d.name = $3
-AND n.name = $4
-AND o.name = $5
+AND n.kind = $3
+AND o.domain = $4
+AND o.namespace = $5
+AND n.name = $6
 `
 		err := tx.QueryRow(
-			ctx, qs, systemEntry.RowID, metaEntry.RowID,
-			domain.Name(),
-			ns.Name(),
-			name,
+			ctx, qs, systemEntry.RowID, metaEntry.RowID, kindEntry.RowID,
+			domainEntry.RowID, nsEntry.RowID, name,
 		).Scan(
 			&out.RowID,
 			&latestGen,
 			&uuid,
-			&spec)
+			&spec,
+		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -973,7 +1271,7 @@ AND o.name = $5
 			)
 		}
 
-		out.Object.SetName(name)
+		out.Object.SetUUID(uuid)
 		out.Object.SetGeneration(latestGen)
 
 		if spec.Valid {
@@ -987,11 +1285,11 @@ AND o.name = $5
 	return &out, nil
 }
 
-// objectDBReadByName grabs object data by its name and optional
-// domain/namespace.
-func (s *Store) objectDBReadByName(
+// objectDBReadBySystemQualifiedName grabs object data by its name.
+func (s *Store) objectDBReadBySystemQualifiedName(
 	ctx context.Context,
 	systemEntry *systemEntry,
+	kindEntry *kindEntry,
 	metaEntry *metaEntry,
 	name string,
 ) (*objectEntry, error) {
@@ -1014,14 +1312,19 @@ SELECT
 , o.uuid AS object_uuid
 , o.spec AS object_spec
 FROM objects AS o
+INNER JOIN system_qualified_object_names AS n
+ ON o.id = n.object
+ AND o.system = n.system
 WHERE o.system = $1
 AND o.meta = $2
-AND o.uuid = $3
+AND n.kind = $3
+AND o.name = $4
 AND o.domain IS NULL
 AND o.namespace IS NULL
 `
 		err := tx.QueryRow(
-			ctx, qs, systemEntry.RowID, metaEntry.RowID, uuid,
+			ctx, qs, systemEntry.RowID, metaEntry.RowID, kindEntry.RowID,
+			name,
 		).Scan(
 			&out.RowID,
 			&latestGen,

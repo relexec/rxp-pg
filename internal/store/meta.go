@@ -47,6 +47,9 @@ type metaEntry struct {
 	// SystemRowID is the internal database SERIAL for the meta's associated
 	// system record.
 	SystemRowID int64
+	// KindRowID is the internal database SERIAL for the meta's associated kind
+	// record.
+	KindRowID int64
 	// Meta is the publicly-exposed Meta object.
 	Meta *meta.Meta
 }
@@ -94,13 +97,23 @@ func (s *Store) MetaRead(
 		return nil, err
 	}
 
-	kv = sel.KindVersion()
 	system := sel.System()
+	// Default the system to the host system if it hasn't been specified.
 	if system == nil {
 		system = s.hostSystem.System
 	}
+	systemEntry, err := s.systemRead(ctx, system.UUID())
+	if err != nil {
+		return nil, err
+	}
 
-	entry, err := s.metaRead(ctx, system, kv)
+	kv = sel.KindVersion()
+	kindEntry, err := s.kindRead(ctx, systemEntry, kv.Kind())
+	if err != nil {
+		return nil, errors.ErrKindVersionUnknown
+	}
+
+	entry, err := s.metaRead(ctx, systemEntry, kindEntry, kv)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +163,14 @@ func (s *Store) MetaWrite(
 	if err != nil {
 		return err
 	}
-	return s.metaDBWrite(ctx, systemEntry, meta)
+
+	kv := meta.KindVersion()
+	kindName := kv.Kind()
+	kindEntry, err := s.kindRead(ctx, systemEntry, kindName)
+	if err != nil {
+		return err
+	}
+	return s.metaDBWrite(ctx, systemEntry, kindEntry, meta)
 }
 
 // metaReadValidate returns an error if the supplied selector and read options
@@ -173,25 +193,23 @@ func (s *Store) metaWriteValidate(
 	return meta.Validate()
 }
 
-// metaRead returns a metaEntry for the supplied pre-validated system and
-// kindversion.  This method will populate any caches with any read records.
+// metaRead returns a metaEntry for the supplied pre-validated system entry,
+// kind entry and kindversion.  This method will populate any caches with any
+// read records.
 func (s *Store) metaRead(
 	ctx context.Context,
-	system rxptypes.System,
+	systemEntry *systemEntry,
+	kindEntry *kindEntry,
 	kv rxptypes.KindVersion,
 ) (*metaEntry, error) {
+	system := systemEntry.System
 	cacheKey := newMetaCacheKey(system, kv)
 	cached, found := s.metaCacheRead(ctx, cacheKey)
 	if found {
 		return cached, nil
 	}
 
-	systemEntry, err := s.systemRead(ctx, system.UUID())
-	if err != nil {
-		return nil, err
-	}
-
-	entry, err := s.metaDBRead(ctx, systemEntry, kv)
+	entry, err := s.metaDBRead(ctx, systemEntry, kindEntry, kv)
 	if err != nil {
 		return nil, err
 	}
@@ -236,21 +254,20 @@ func (s *Store) metaCacheWrite(
 func (s *Store) metaDBRead(
 	ctx context.Context,
 	systemEntry *systemEntry,
+	kindEntry *kindEntry,
 	kv rxptypes.KindVersion,
 ) (*metaEntry, error) {
-	kind := kv.Kind()
-	ver := kv.VersionString()
+	sv, _ := kv.Version()
+	verStr := kv.VersionString()
 	out := metaEntry{
 		SystemRowID: systemEntry.RowID,
 	}
-	var namescope rxptypes.Namescope
 	var schemaBytes sql.NullString
 	var schema schema.Schema
 	fn := func(tx pgx.Tx) error {
-		qs := "SELECT id, namescope, schema FROM metas WHERE system = $1 AND kind = $2 AND version = $3"
-		err := tx.QueryRow(ctx, qs, systemEntry.RowID, kind, ver).Scan(
+		qs := "SELECT id, schema FROM metas WHERE system = $1 AND kind = $2 AND version = $3"
+		err := tx.QueryRow(ctx, qs, systemEntry.RowID, kindEntry.RowID, verStr).Scan(
 			&out.RowID,
-			&namescope,
 			&schemaBytes,
 		)
 		if err != nil {
@@ -272,8 +289,8 @@ func (s *Store) metaDBRead(
 			}
 		}
 		out.Meta = meta.New(
-			meta.WithKindVersion(kv),
-			meta.WithNamescope(namescope),
+			meta.WithKind(kindEntry.Kind),
+			meta.WithVersion(*sv),
 			meta.WithSchema(&schema),
 		)
 		return nil
@@ -288,6 +305,7 @@ func (s *Store) metaDBRead(
 func (s *Store) metaDBWrite(
 	ctx context.Context,
 	systemEntry *systemEntry,
+	kindEntry *kindEntry,
 	meta rxptypes.Meta,
 ) error {
 	kv := meta.KindVersion()
@@ -299,7 +317,7 @@ func (s *Store) metaDBWrite(
 		return err
 	}
 	fn := func(tx pgx.Tx) error {
-		versions, err := s.metaDBVersionsForKind(ctx, systemEntry, kv)
+		versions, err := s.metaDBVersionsForKind(ctx, systemEntry, kindEntry)
 		if err != nil {
 			return err
 		}
@@ -317,13 +335,12 @@ func (s *Store) metaDBWrite(
 			}
 		}
 
-		qs := "INSERT INTO metas (system, kind, version, namescope, schema, last_modified_on, last_modified_by) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+		qs := "INSERT INTO metas (system, kind, version, schema, last_modified_on, last_modified_by) VALUES ($1, $2, $3, $4, $5, $6)"
 		_, err = tx.Exec(
 			ctx, qs,
 			systemEntry.RowID,
-			kv.Kind(),
+			kindEntry.RowID,
 			kv.VersionString(),
-			meta.Namescope(),
 			schemaJSON,
 			createdOn,
 			createdBy,
@@ -349,13 +366,12 @@ func (s *Store) metaDBWrite(
 func (s *Store) metaDBVersionsForKind(
 	ctx context.Context,
 	systemEntry *systemEntry,
-	kv rxptypes.KindVersion,
+	kindEntry *kindEntry,
 ) (version.Set, error) {
-	kind := kv.Kind()
 	var versionStrs []string
 	fn := func(tx pgx.Tx) error {
 		qs := "SELECT version FROM metas WHERE system = $1 AND kind = $2"
-		rows, err := tx.Query(ctx, qs, systemEntry.RowID, kind)
+		rows, err := tx.Query(ctx, qs, systemEntry.RowID, kindEntry.RowID)
 		if err != nil {
 			return errors.Internal(
 				"failed reading meta records",

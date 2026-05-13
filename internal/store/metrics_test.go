@@ -10,7 +10,6 @@ import (
 	"github.com/relexec/rxp/object/read/selector"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/testing/fixtures/book"
-	bookv1 "github.com/relexec/rxp/testing/fixtures/book/v1"
 	metricstesting "github.com/relexec/rxp/testing/metrics"
 	rxptypes "github.com/relexec/rxp/types"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +22,10 @@ func TestMetrics(t *testing.T) {
 	s, err := testutil.Store(ctx)
 	require.Nil(t, err)
 
-	err = testutil.EnsureMeta(ctx, s, bookv1.Meta_V1_0_0)
+	err = testutil.EnsureKind(ctx, s, book.Kind)
+	require.Nil(t, err)
+
+	err = testutil.EnsureMeta(ctx, s, book.FirstMeta())
 	require.Nil(t, err)
 
 	m := s.Metrics()
@@ -37,17 +39,17 @@ func TestMetrics(t *testing.T) {
 	err = testutil.EnsureNamespace(ctx, s, ns)
 	require.Nil(t, err)
 
-	booker := func(name string) rxptypes.Object {
+	booker := func() rxptypes.Object {
 		return book.New(
-			object.WithKindVersion(bookv1.KindVersion_V1_0_0),
+			object.WithKindVersion(book.FirstKindVersion()),
 			object.WithUUID(uuid.NewString()),
 			object.WithDomain(domain),
 			object.WithNamespace(ns),
-			object.WithName(name),
+			object.WithName(testutil.RandomName()),
 		)
 	}
-	book1 := booker("book1")
-	book2 := booker("book2")
+	book1 := booker()
+	book2 := booker()
 
 	before := &metricdata.ResourceMetrics{}
 	mr.Collect(ctx, before)
@@ -81,7 +83,7 @@ func TestMetrics(t *testing.T) {
 	// expected errors thrown in for good measure and verify that the Store's
 	// metrics handler collects the appropriate metrics.
 	err = s.ObjectWrite(ctx, book2)
-	require.Nil(t, err)
+	require.Nil(t, err, err)
 	numWrite++
 
 	err = s.ObjectWrite(ctx, book1)
@@ -92,6 +94,7 @@ func TestMetrics(t *testing.T) {
 		ctx,
 		selector.New(
 			selector.WithKindVersion(book1.KindVersion()),
+			selector.WithNamespace(book1.Namespace()),
 			selector.WithUUID(book1.UUID()),
 		),
 	)

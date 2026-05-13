@@ -88,13 +88,24 @@ func (s *Store) NamespaceRead(
 	}
 
 	domain := sel.Domain()
-	name := sel.Name()
 	system := domain.System()
+	// Default the system to the host system if it hasn't been specified.
 	if system == nil {
 		system = s.hostSystem.System
 	}
+	systemEntry, err := s.systemRead(ctx, system.UUID())
+	if err != nil {
+		return nil, err
+	}
 
-	entry, err := s.namespaceRead(ctx, system, domain, name)
+	domainEntry, err := s.domainRead(ctx, systemEntry, domain.Name())
+	if err != nil {
+		return nil, err
+	}
+
+	name := sel.Name()
+
+	entry, err := s.namespaceRead(ctx, systemEntry, domainEntry, name)
 	if err != nil {
 		return nil, err
 	}
@@ -136,13 +147,20 @@ func (s *Store) NamespaceWrite(
 
 	domain := namespace.Domain()
 	system := domain.System()
+	// Default the system to the host system if it hasn't been specified.
 	if system == nil {
 		system = s.hostSystem.System
 	}
-	domainEntry, err := s.domainRead(ctx, system, domain.Name())
+	systemEntry, err := s.systemRead(ctx, system.UUID())
 	if err != nil {
 		return err
 	}
+
+	domainEntry, err := s.domainRead(ctx, systemEntry, domain.Name())
+	if err != nil {
+		return err
+	}
+
 	return s.namespaceDBWrite(ctx, domainEntry, namespace)
 }
 
@@ -171,18 +189,15 @@ func (s *Store) namespaceWriteValidate(
 // read records.
 func (s *Store) namespaceRead(
 	ctx context.Context,
-	system rxptypes.System,
-	domain rxptypes.Domain,
+	systemEntry *systemEntry,
+	domainEntry *domainEntry,
 	name rxptypes.NamespaceName,
 ) (*namespaceEntry, error) {
+	domain := domainEntry.Domain
 	cacheKey := newNamespaceCacheKey(domain, name)
 	cached, found := s.namespaceCacheRead(ctx, cacheKey)
 	if found {
 		return cached, nil
-	}
-	domainEntry, err := s.domainRead(ctx, system, domain.Name())
-	if err != nil {
-		return nil, err
 	}
 	entry, err := s.namespaceDBRead(ctx, domainEntry, name)
 	if err != nil {

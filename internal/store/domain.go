@@ -87,13 +87,19 @@ func (s *Store) DomainRead(
 		return nil, err
 	}
 
-	name := sel.Name()
 	system := sel.System()
+	// Default the system to the host system if it hasn't been specified.
 	if system == nil {
 		system = s.hostSystem.System
 	}
+	systemEntry, err := s.systemRead(ctx, system.UUID())
+	if err != nil {
+		return nil, err
+	}
 
-	entry, err := s.domainRead(ctx, system, name)
+	name := sel.Name()
+
+	entry, err := s.domainRead(ctx, systemEntry, name)
 	if err != nil {
 		return nil, err
 	}
@@ -134,10 +140,10 @@ func (s *Store) DomainWrite(
 	}
 
 	system := domain.System()
+	// Default the system to the host system if it hasn't been specified.
 	if system == nil {
 		system = s.hostSystem.System
 	}
-
 	systemEntry, err := s.systemRead(ctx, system.UUID())
 	if err != nil {
 		return err
@@ -165,22 +171,18 @@ func (s *Store) domainWriteValidate(
 	return domain.Validate()
 }
 
-// domainRead returns a domainEntry for the supplied pre-validated system
+// domainRead returns a domainEntry for the supplied pre-validated system entry
 // and domain name. This method will populate any caches with any read records.
 func (s *Store) domainRead(
 	ctx context.Context,
-	system rxptypes.System,
+	systemEntry *systemEntry,
 	name rxptypes.DomainName,
 ) (*domainEntry, error) {
+	system := systemEntry.System
 	cacheKey := newDomainCacheKey(system, name)
 	cached, found := s.domainCacheRead(ctx, cacheKey)
 	if found {
 		return cached, nil
-	}
-
-	systemEntry, err := s.systemRead(ctx, system.UUID())
-	if err != nil {
-		return nil, err
 	}
 
 	entry, err := s.domainDBRead(ctx, systemEntry, name)

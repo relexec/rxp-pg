@@ -22,102 +22,129 @@ CREATE TABLE systems (
 , UNIQUE (uuid)
 );
 
-CREATE TABLE domains (
+CREATE TABLE kinds (
   id SERIAL NOT NULL
 , system INT NOT NULL
 , name TEXT NOT NULL
+, namescope SMALLINT NOT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
 , PRIMARY KEY (id)
 , UNIQUE (system, name)
 );
 
+CREATE TABLE domains (
+  id SERIAL NOT NULL PRIMARY KEY
+, system INT NOT NULL
+, name TEXT NOT NULL
+, last_modified_on BIGINT NOT NULL
+, last_modified_by TEXT NOT NULL
+, UNIQUE (system, name)
+);
+
 CREATE TABLE domains_archived (
-  id INT NOT NULL
+  domain INT NOT NULL PRIMARY KEY
 , system INT NOT NULL
 , name TEXT NOT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
 , archived_on BIGINT NULL
 , archived_by TEXT NULL
-, PRIMARY KEY (id)
 );
 
 CREATE TABLE namespaces (
-  id SERIAL NOT NULL
+  id SERIAL NOT NULL PRIMARY KEY
 , domain INT NOT NULL
 , name TEXT NOT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
-, PRIMARY KEY (id)
 , UNIQUE (domain, name)
 );
 
 CREATE TABLE namespaces_archived (
-  id INT NOT NULL
+  namespace INT NOT NULL PRIMARY KEY
 , domain INT NOT NULL
 , name TEXT NOT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
 , archived_on BIGINT NULL
 , archived_by TEXT NULL
-, PRIMARY KEY (id)
 );
 
 CREATE TABLE metas (
-  id SERIAL NOT NULL
+  id SERIAL NOT NULL PRIMARY KEY
 , system INT NOT NULL
-, kind TEXT NOT NULL
+, kind INT NOT NULL
 , version TEXT NOT NULL
-, namescope SMALLINT NOT NULL
 , schema TEXT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
-, PRIMARY KEY (id)
 , UNIQUE (system, kind, version)
 );
 
 CREATE TABLE metas_archived (
-  id INT NOT NULL
+  meta INT NOT NULL PRIMARY KEY
 , system INT NOT NULL
-, kind TEXT NOT NULL
+, kind INT NOT NULL
 , version TEXT NOT NULL
-, namescope SMALLINT NOT NULL
 , schema TEXT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
 , archived_on BIGINT NULL
 , archived_by TEXT NULL
-, PRIMARY KEY (id)
 );
 
 CREATE TABLE objects (
-  id BIGSERIAL NOT NULL
+  id BIGSERIAL NOT NULL PRIMARY KEY
 , system INT NOT NULL
 , meta INT NOT NULL
 , uuid UUID NOT NULL
 , generation INT NOT NULL
 , domain INT NULL
 , namespace INT NULL
-, name TEXT NOT NULL
 , spec TEXT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
-, PRIMARY KEY (id)
 , UNIQUE (uuid)
 );
 
-CREATE INDEX ix_objects_fqdn
-ON objects (system, meta, domain, namespace, name);
+CREATE INDEX ix_objects_divisions
+ON objects (system, meta, domain, namespace);
 
-CREATE INDEX ix_objects_meta_domain_name
-ON objects (system, meta, domain, name);
+CREATE TABLE system_qualified_object_names (
+  object BIGINT NOT NULL PRIMARY KEY
+, system INT NOT NULL
+, kind INT NOT NULL
+, name TEXT NOT NULL
+, last_modified_on BIGINT NOT NULL
+, last_modified_by TEXT NOT NULL
+, UNIQUE (system, kind, name)
+);
 
-CREATE INDEX ix_objects_meta_name
-ON objects (system, meta, name);
+CREATE TABLE domain_qualified_object_names (
+  object BIGINT NOT NULL PRIMARY KEY
+, system INT NOT NULL
+, kind INT NOT NULL
+, domain INT NOT NULL
+, name TEXT NOT NULL
+, last_modified_on BIGINT NOT NULL
+, last_modified_by TEXT NOT NULL
+, UNIQUE (system, kind, domain, name)
+);
+
+CREATE TABLE namespace_qualified_object_names (
+  object BIGINT NOT NULL PRIMARY KEY
+, system INT NOT NULL
+, kind INT NOT NULL
+, namespace INT NOT NULL
+, name TEXT NOT NULL
+, last_modified_on BIGINT NOT NULL
+, last_modified_by TEXT NOT NULL
+, UNIQUE (system, kind, namespace, name)
+);
 
 CREATE TABLE objects_archived (
-  id BIGINT NOT NULL
+  object BIGINT NOT NULL PRIMARY KEY
 , system INT NOT NULL
 , meta INT NOT NULL
 , uuid UUID NOT NULL
@@ -129,7 +156,6 @@ CREATE TABLE objects_archived (
 , last_modified_by TEXT NOT NULL
 , archived_on BIGINT NOT NULL
 , archived_by TEXT NOT NULL
-, PRIMARY KEY (id)
 , UNIQUE (uuid)
 );
 
@@ -167,6 +193,9 @@ CREATE TABLE object_labels (
 
 -- +goose down
 DROP TABLE object_labels;
+DROP TABLE system_qualified_object_names;
+DROP TABLE domain_qualified_object_names;
+DROP TABLE namespace_qualified_object_names;
 DROP TABLE object_generations_archived;
 DROP TABLE object_generations;
 DROP TABLE objects_archived;
@@ -177,6 +206,6 @@ DROP TABLE namespaces_archived;
 DROP TABLE namespaces;
 DROP TABLE domains_archived;
 DROP TABLE domains;
-DROP TABLE namescopes;
+DROP TABLE kinds;
 DROP TABLE systems;
-DROP TABLE system;
+DROP TABLE namescopes;

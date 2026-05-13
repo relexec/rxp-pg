@@ -50,6 +50,10 @@ func (s *Store) init(ctx context.Context) error {
 		return err
 	}
 
+	if err = s.initKindCache(ctx); err != nil {
+		return err
+	}
+
 	if err = s.initDomainCache(ctx); err != nil {
 		return err
 	}
@@ -119,6 +123,28 @@ func (s *Store) initSystemCache(ctx context.Context) error {
 		s.log.Info("initialized system cache")
 	} else {
 		s.log.V(4).Info("system cache disabled")
+	}
+	return nil
+}
+
+// initKindCache initializes the kind cache if it is enabled in our
+// configuration.
+func (s *Store) initKindCache(ctx context.Context) error {
+	if s.cfg.Cache.Kind.Enabled {
+		s.log.V(4).Info("initializing kind cache")
+		cacheCfg := s.cfg.Cache.Kind
+		sc, err := cache.New[kindCacheKey, *kindEntry](
+			ctx,
+			cache.WithConfig[kindCacheKey, *kindEntry](cacheCfg),
+		)
+		if err != nil {
+			return err
+		}
+		s.kindCache = sc
+		s.onClose = append(s.onClose, s.kindCache.Close)
+		s.log.Info("initialized kind cache")
+	} else {
+		s.log.V(4).Info("kind cache disabled")
 	}
 	return nil
 }

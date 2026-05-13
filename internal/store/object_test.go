@@ -11,8 +11,10 @@ import (
 	"github.com/relexec/rxp/object/read/selector"
 	writeoption "github.com/relexec/rxp/object/write/option"
 	"github.com/relexec/rxp/testing/fixtures"
+	"github.com/relexec/rxp/testing/fixtures/application"
 	"github.com/relexec/rxp/testing/fixtures/book"
-	bookv1 "github.com/relexec/rxp/testing/fixtures/book/v1"
+	"github.com/relexec/rxp/testing/fixtures/platform"
+	"github.com/relexec/rxp/testing/fixtures/service"
 	rxptypes "github.com/relexec/rxp/types"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +24,28 @@ func TestObjectRead(t *testing.T) {
 	s, err := testutil.Store(ctx)
 	require.Nil(t, err)
 
-	err = testutil.EnsureMeta(ctx, s, bookv1.Meta_V1_0_0)
+	err = testutil.EnsureKind(ctx, s, platform.Kind)
+	require.Nil(t, err)
+
+	err = testutil.EnsureMeta(ctx, s, platform.FirstMeta())
+	require.Nil(t, err)
+
+	err = testutil.EnsureKind(ctx, s, application.Kind)
+	require.Nil(t, err)
+
+	err = testutil.EnsureMeta(ctx, s, application.FirstMeta())
+	require.Nil(t, err)
+
+	err = testutil.EnsureKind(ctx, s, service.Kind)
+	require.Nil(t, err)
+
+	err = testutil.EnsureMeta(ctx, s, service.FirstMeta())
+	require.Nil(t, err)
+
+	err = testutil.EnsureKind(ctx, s, book.Kind)
+	require.Nil(t, err)
+
+	err = testutil.EnsureMeta(ctx, s, book.FirstMeta())
 	require.Nil(t, err)
 
 	ctxMissingIdent := context.TODO()
@@ -30,16 +53,13 @@ func TestObjectRead(t *testing.T) {
 	domain := fixtures.Domain
 	ns := fixtures.Namespace
 
-	booker := func(name string) rxptypes.Object {
-		return book.New(
-			object.WithKindVersion(bookv1.KindVersion_V1_0_0),
-			object.WithUUID(uuid.NewString()),
-			object.WithDomain(domain),
-			object.WithNamespace(ns),
-			object.WithName(name),
-		)
-	}
-	book1 := booker("book1")
+	book1 := object.New(
+		object.WithKindVersion(book.FirstKindVersion()),
+		object.WithUUID(uuid.NewString()),
+		object.WithDomain(domain),
+		object.WithNamespace(ns),
+		object.WithName(testutil.RandomName()),
+	)
 
 	err = testutil.EnsureObject(ctx, s, book1)
 	require.Nil(t, err)
@@ -57,6 +77,7 @@ func TestObjectRead(t *testing.T) {
 			ctxMissingIdent,
 			selector.New(
 				selector.WithKindVersion(fixtures.UnknownKindVersion),
+				selector.WithNamespace(book1.Namespace()),
 				selector.WithUUID(book1.UUID()),
 			),
 			nil,
@@ -68,6 +89,7 @@ func TestObjectRead(t *testing.T) {
 			ctx,
 			selector.New(
 				selector.WithKindVersion(fixtures.UnknownKindVersion),
+				selector.WithNamespace(book1.Namespace()),
 				selector.WithUUID(book1.UUID()),
 			),
 			nil,
@@ -79,11 +101,12 @@ func TestObjectRead(t *testing.T) {
 			ctx,
 			selector.New(
 				selector.WithKindVersion(fixtures.InvalidKindVersion),
+				selector.WithNamespace(book1.Namespace()),
 				selector.WithUUID(book1.UUID()),
 			),
 			nil,
 			nil,
-			"invalid kind: invalid characters",
+			"invalid kind name: invalid characters",
 		},
 		{
 			"kind version required in selector",
@@ -94,10 +117,45 @@ func TestObjectRead(t *testing.T) {
 			"invalid selector: kindversion required",
 		},
 		{
+			"missing domain with name",
+			ctx,
+			selector.New(
+				selector.WithKindVersion(application.FirstKindVersion()),
+				selector.WithName(testutil.RandomName()),
+			),
+			nil,
+			nil,
+			"invalid selector: domain required",
+		},
+		{
+			"missing namespace with name",
+			ctx,
+			selector.New(
+				selector.WithKindVersion(service.FirstKindVersion()),
+				selector.WithName(testutil.RandomName()),
+			),
+			nil,
+			nil,
+			"invalid selector: namespace required",
+		},
+		{
+			"mismatched kind",
+			ctx,
+			selector.New(
+				selector.WithKindVersion(application.FirstKindVersion()),
+				selector.WithDomain(book1.Domain()),
+				selector.WithUUID(book1.UUID()),
+			),
+			nil,
+			nil,
+			"not found",
+		},
+		{
 			"unknown generation",
 			ctx,
 			selector.New(
-				selector.WithKindVersion(bookv1.KindVersion_V1_0_0),
+				selector.WithKindVersion(book.FirstKindVersion()),
+				selector.WithNamespace(book1.Namespace()),
 				selector.WithUUID(book1.UUID()),
 				selector.WithGeneration(42),
 			),
@@ -106,11 +164,24 @@ func TestObjectRead(t *testing.T) {
 			"not found",
 		},
 		{
-			"happy path",
+			"happy path by uuid",
 			ctx,
 			selector.New(
-				selector.WithKindVersion(bookv1.KindVersion_V1_0_0),
+				selector.WithKindVersion(book.FirstKindVersion()),
+				selector.WithNamespace(book1.Namespace()),
 				selector.WithUUID(book1.UUID()),
+			),
+			nil,
+			book1,
+			"",
+		},
+		{
+			"happy path by namespace-qualified name",
+			ctx,
+			selector.New(
+				selector.WithKindVersion(book.FirstKindVersion()),
+				selector.WithNamespace(book1.Namespace()),
+				selector.WithName(book1.Name()),
 			),
 			nil,
 			book1,
@@ -124,11 +195,23 @@ func TestObjectRead(t *testing.T) {
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {
-				require.Nil(err)
+				require.Nil(err, err)
 				require.NotNil(got)
 				require.Equal(c.exp.KindVersion(), got.KindVersion())
-				require.Equal(c.exp.UUID(), got.UUID())
+				if c.exp.Domain() != nil {
+					require.NotNil(got.Domain())
+					require.Equal(c.exp.Domain().Name(), got.Domain().Name())
+				} else {
+					require.Nil(got.Domain())
+				}
+				if c.exp.Namespace() != nil {
+					require.NotNil(got.Namespace())
+					require.Equal(c.exp.Namespace().Name(), got.Namespace().Name())
+				} else {
+					require.Nil(got.Namespace())
+				}
 				require.Equal(c.exp.Name(), got.Name())
+				require.Equal(c.exp.UUID(), got.UUID())
 				// TODO(jaypipes): finish coding Object.Diff
 				//require.Equal(got, c.exp)
 			}
@@ -141,7 +224,10 @@ func TestObjectWrite(t *testing.T) {
 	s, err := testutil.Store(ctx)
 	require.Nil(t, err)
 
-	err = testutil.EnsureMeta(ctx, s, bookv1.Meta_V1_0_0)
+	err = testutil.EnsureKind(ctx, s, book.Kind)
+	require.Nil(t, err)
+
+	err = testutil.EnsureMeta(ctx, s, book.FirstMeta())
 	require.Nil(t, err)
 
 	ctxMissingIdent := context.TODO()
@@ -149,26 +235,40 @@ func TestObjectWrite(t *testing.T) {
 	domain := fixtures.Domain
 	ns := fixtures.Namespace
 
-	bookMissingUUID := book.New(
-		object.WithKindVersion(bookv1.KindVersion_V1_0_0),
+	bookMissingUUID := object.New(
+		object.WithKindVersion(book.FirstKindVersion()),
 		object.WithDomain(domain),
 		object.WithNamespace(ns),
 		object.WithName("book1"),
 	)
 
-	bookMissingName := book.New(
-		object.WithKindVersion(bookv1.KindVersion_V1_0_0),
+	bookMissingName := object.New(
+		object.WithKindVersion(book.FirstKindVersion()),
 		object.WithUUID(uuid.NewString()),
 		object.WithDomain(domain),
 		object.WithNamespace(ns),
 	)
 
-	book1 := book.New(
-		object.WithKindVersion(bookv1.KindVersion_V1_0_0),
+	bookMissingNamespace := object.New(
+		object.WithKindVersion(book.FirstKindVersion()),
+		object.WithUUID(uuid.NewString()),
+		object.WithName(testutil.RandomName()),
+	)
+
+	book1 := object.New(
+		object.WithKindVersion(book.FirstKindVersion()),
 		object.WithUUID(uuid.NewString()),
 		object.WithDomain(domain),
 		object.WithNamespace(ns),
-		object.WithName("book1"),
+		object.WithName(testutil.RandomName()),
+	)
+	book1Name := book1.Name()
+	bookDuplicateName := object.New(
+		object.WithKindVersion(book.FirstKindVersion()),
+		object.WithUUID(uuid.NewString()),
+		object.WithDomain(domain),
+		object.WithNamespace(ns),
+		object.WithName(book1Name),
 	)
 
 	cases := []struct {
@@ -204,6 +304,14 @@ func TestObjectWrite(t *testing.T) {
 			"invalid object: missing name",
 		},
 		{
+			"namespace required",
+			ctx,
+			bookMissingNamespace,
+			nil,
+			nil,
+			"invalid object: namespace required",
+		},
+		{
 			"unknown kind version",
 			ctx,
 			fixtures.UnknownObject,
@@ -212,12 +320,20 @@ func TestObjectWrite(t *testing.T) {
 			"unknown kind version",
 		},
 		{
-			"no write opts",
+			"happy path",
 			ctx,
 			book1,
 			nil,
 			book1,
 			"",
+		},
+		{
+			"namespace-qualified name collision",
+			ctx,
+			bookDuplicateName,
+			nil,
+			nil,
+			"conflict: \"book.testing.rxp\" already exists with name",
 		},
 		// Attempting to write the same object without specifying an expected
 		// generation should result in a precondition failed.

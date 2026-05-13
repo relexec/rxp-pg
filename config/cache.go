@@ -16,6 +16,13 @@ const (
 	flagCacheSystemMaxSize     = "rxp-cache-system-max-size"
 	flagCacheSystemMaxSizeDesc = "Maximum size (in bytes) for the System cache. Specify with common size strings, e.g. '1MB' or '10Gb'"
 
+	DefaultCacheKindEnabled  = true
+	flagCacheKindEnabled     = "rxp-cache-kind-enabled"
+	flagCacheKindEnabledDesc = "Enable the Kind cache."
+	DefaultCacheKindMaxSize  = "2Mb"
+	flagCacheKindMaxSize     = "rxp-cache-kind-max-size"
+	flagCacheKindMaxSizeDesc = "Maximum size (in bytes) for the Kind cache. Specify with common size strings, e.g. '1MB' or '10Gb'"
+
 	DefaultCacheDomainEnabled  = true
 	flagCacheDomainEnabled     = "rxp-cache-domain-enabled"
 	flagCacheDomainEnabledDesc = "Enable the Domain cache."
@@ -43,6 +50,9 @@ type CacheConfigs struct {
 	// System contains the configuration options for the rxp-pg library's
 	// system cache.
 	System CacheConfig `json:"system"`
+	// Kind contains the configuration options for the rxp-pg library's
+	// kind cache.
+	Kind CacheConfig `json:"kind"`
 	// Domain contains the configuration options for the rxp-pg library's
 	// domain cache.
 	Domain CacheConfig `json:"domain"`
@@ -103,6 +113,18 @@ func (c *CacheConfigs) BindFlags(fs *pflag.FlagSet) {
 		flagCacheSystemMaxSize,
 		DefaultCacheSystemMaxSize,
 		flagCacheSystemMaxSizeDesc,
+	)
+	pflag.BoolVar(
+		&c.Kind.Enabled,
+		flagCacheKindEnabled,
+		DefaultCacheKindEnabled,
+		flagCacheKindEnabledDesc,
+	)
+	pflag.StringVar(
+		&c.Kind.MaxSize,
+		flagCacheKindMaxSize,
+		DefaultCacheKindMaxSize,
+		flagCacheKindMaxSizeDesc,
 	)
 	pflag.BoolVar(
 		&c.Domain.Enabled,

@@ -6,6 +6,7 @@ import (
 
 	domainselector "github.com/relexec/rxp/domain/read/selector"
 	"github.com/relexec/rxp/errors"
+	kindselector "github.com/relexec/rxp/kind/read/selector"
 	metaselector "github.com/relexec/rxp/meta/read/selector"
 	namespaceselector "github.com/relexec/rxp/namespace/read/selector"
 	objectselector "github.com/relexec/rxp/object/read/selector"
@@ -43,6 +44,27 @@ func Store(ctx context.Context) (*store.Store, error) {
 		)
 	})
 	return testStore, err
+}
+
+// EnsureKind ensures that the supplied Kind exists in the database.
+func EnsureKind(
+	ctx context.Context,
+	s *store.Store,
+	k rxptypes.Kind,
+) error {
+	_, err := s.KindRead(
+		ctx,
+		kindselector.New(
+			kindselector.WithName(k.Name()),
+		),
+	)
+	if err != nil {
+		if err != errors.ErrNotFound {
+			return err
+		}
+		return s.KindWrite(ctx, k)
+	}
+	return nil
 }
 
 // EnsureDomain ensures that the supplied Domain exists in the database.
@@ -119,6 +141,7 @@ func EnsureObject(
 		ctx,
 		objectselector.New(
 			objectselector.WithKindVersion(o.KindVersion()),
+			objectselector.WithNamespace(o.Namespace()),
 			objectselector.WithUUID(o.UUID()),
 		),
 	)

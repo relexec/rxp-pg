@@ -31,6 +31,8 @@ type Store struct {
 	pool *pgxpool.Pool
 	// metrics is the metrics handler for the Store.
 	metrics rxptypes.Metrics
+	// kindCache stores known Kinds, keyed by kind name.
+	kindCache *cache.Cache[kindCacheKey, *kindEntry]
 	// domainCache stores known Domains, keyed by Domain Name.
 	domainCache *cache.Cache[domainCacheKey, *domainEntry]
 	// namespaceCache stores known Namespaces, keyed by Namespace Name.
