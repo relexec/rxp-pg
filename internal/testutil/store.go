@@ -137,14 +137,21 @@ func EnsureObject(
 	s *store.Store,
 	o rxptypes.Object,
 ) error {
-	_, err := s.ObjectRead(
-		ctx,
-		objectselector.New(
-			objectselector.WithKindVersion(o.KindVersion()),
-			objectselector.WithNamespace(o.Namespace()),
-			objectselector.WithUUID(o.UUID()),
-		),
-	)
+	selOpts := []objectselector.Option{
+		objectselector.WithKindVersion(o.KindVersion()),
+		objectselector.WithUUID(o.UUID()),
+	}
+	if o.Namespace() != nil {
+		selOpts = append(
+			selOpts, objectselector.WithNamespace(o.Namespace()),
+		)
+	}
+	if o.Domain() != nil {
+		selOpts = append(
+			selOpts, objectselector.WithDomain(o.Domain()),
+		)
+	}
+	_, err := s.ObjectRead(ctx, objectselector.New(selOpts...))
 	if err != nil {
 		if err != errors.ErrNotFound {
 			return err
