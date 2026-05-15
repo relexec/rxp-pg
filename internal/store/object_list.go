@@ -16,7 +16,6 @@ import (
 	"github.com/relexec/rxp/namespace"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/object/list"
-	listexpr "github.com/relexec/rxp/object/list/expression"
 	"github.com/relexec/rxp/object/list/option"
 	"github.com/relexec/rxp/object/list/result"
 	"github.com/relexec/rxp/system"
@@ -101,22 +100,7 @@ func (s *Store) objectListValidate(
 	if expr == nil {
 		return errors.ErrListExpressionRequired
 	}
-	kindSpecified := false
-	switch expr := expr.(type) {
-	case expression.UnaryExpression:
-		pred := expr.Predicate
-		err := pred.Validate()
-		if err != nil {
-			return err
-		}
-		switch pred.(type) {
-		case listexpr.KindPredicate:
-			kindSpecified = true
-		}
-	case expression.OrExpression:
-	case expression.AndExpression:
-	}
-	if !kindSpecified {
+	if !expression.ContainsKindPredicate(expr) {
 		return errors.ErrInvalidListExpressionKindRequired
 	}
 	return nil
@@ -159,7 +143,7 @@ func (s *Store) objectList(
 	case expression.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case listexpr.KindPredicate:
+		case expression.KindNamePredicate:
 			v := pred.Values()[0]
 			kn := v.(rxptypes.KindName)
 			kindEntry, err := s.kindRead(ctx, systemEntry, kn)
@@ -273,7 +257,6 @@ func (s *Store) objectList(
 	}
 
 	if len(out) > opts.Limit() {
-		fmt.Println("XXXX", len(out))
 		// We may have more than the limit because we read
 		// differently-qualified object records with the same limit.
 		slices.SortFunc(out, func(a, b *objectEntry) int {
@@ -322,7 +305,7 @@ func (s *Store) objectListNamespaceQualified(
 	case expression.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case listexpr.KindPredicate:
+		case expression.KindNamePredicate:
 			v := pred.Values()[0]
 			kn := v.(rxptypes.KindName)
 			kindEntry, err := s.kindRead(ctx, systemEntry, kn)
@@ -432,7 +415,7 @@ func (s *Store) objectListDomainQualified(
 	case expression.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case listexpr.KindPredicate:
+		case expression.KindNamePredicate:
 			v := pred.Values()[0]
 			kn := v.(rxptypes.KindName)
 			kindEntry, err := s.kindRead(ctx, systemEntry, kn)
@@ -535,7 +518,7 @@ func (s *Store) objectListSystemQualified(
 	case expression.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case listexpr.KindPredicate:
+		case expression.KindNamePredicate:
 			v := pred.Values()[0]
 			kn := v.(rxptypes.KindName)
 			kindEntry, err := s.kindRead(ctx, systemEntry, kn)

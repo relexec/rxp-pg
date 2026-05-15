@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 	testutil "github.com/relexec/rxp-pg/internal/testutil"
+	"github.com/relexec/rxp/expression"
 	"github.com/relexec/rxp/object"
-	"github.com/relexec/rxp/object/list/expression"
 	listoption "github.com/relexec/rxp/object/list/option"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/testing/fixtures/application"
@@ -98,7 +98,7 @@ func TestObjectList(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			expression.KindEqual(platform.KindName),
+			expression.KindNameEqual(platform.KindName),
 			nil,
 			0,
 			nil,
@@ -120,7 +120,7 @@ func TestObjectList(t *testing.T) {
 		{
 			"at least one kind is required",
 			ctx,
-			expression.DomainEqual(domain.Name()),
+			expression.DomainNameEqual(domain.Name()),
 			nil,
 			0,
 			nil,
@@ -131,7 +131,7 @@ func TestObjectList(t *testing.T) {
 		{
 			"list system-qualified objects limit of 1",
 			ctx,
-			expression.KindEqual(platform.KindName),
+			expression.KindNameEqual(platform.KindName),
 			[]listoption.Option{
 				listoption.WithLimit(1),
 			},
@@ -146,7 +146,7 @@ func TestObjectList(t *testing.T) {
 		{
 			"list domain-qualified objects limit of 1",
 			ctx,
-			expression.KindEqual(application.KindName),
+			expression.KindNameEqual(application.KindName),
 			[]listoption.Option{
 				listoption.WithLimit(1),
 			},
@@ -161,7 +161,7 @@ func TestObjectList(t *testing.T) {
 		{
 			"list namespace-qualified objects limit of 1",
 			ctx,
-			expression.KindEqual(service.KindName),
+			expression.KindNameEqual(service.KindName),
 			[]listoption.Option{
 				listoption.WithLimit(1),
 			},
