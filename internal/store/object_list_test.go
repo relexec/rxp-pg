@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/uuid"
 	testutil "github.com/relexec/rxp-pg/internal/testutil"
-	"github.com/relexec/rxp/expression"
+	"github.com/relexec/rxp/list/expression"
+	"github.com/relexec/rxp/list/option"
 	"github.com/relexec/rxp/object"
-	listoption "github.com/relexec/rxp/object/list/option"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/testing/fixtures/application"
 	"github.com/relexec/rxp/testing/fixtures/platform"
@@ -88,10 +88,10 @@ func TestObjectList(t *testing.T) {
 		name             string
 		ctx              context.Context
 		expr             rxptypes.Expression
-		opts             []listoption.Option
+		opts             []option.Option
 		expNumObjs       int
 		expOnlyKindNames []rxptypes.KindName
-		expOptions       listoption.Options
+		expOptions       option.Options
 		expMarker        string
 		expErr           string
 	}{
@@ -102,7 +102,7 @@ func TestObjectList(t *testing.T) {
 			nil,
 			0,
 			nil,
-			listoption.New(),
+			option.New(),
 			"",
 			"missing identity",
 		},
@@ -113,7 +113,7 @@ func TestObjectList(t *testing.T) {
 			nil,
 			0,
 			nil,
-			listoption.New(),
+			option.New(),
 			"",
 			"expression required",
 		},
@@ -124,7 +124,7 @@ func TestObjectList(t *testing.T) {
 			nil,
 			0,
 			nil,
-			listoption.New(),
+			option.New(),
 			"",
 			"invalid list expression: at least one kind required",
 		},
@@ -132,14 +132,14 @@ func TestObjectList(t *testing.T) {
 			"list system-qualified objects limit of 1",
 			ctx,
 			expression.KindNameEqual(platform.KindName),
-			[]listoption.Option{
-				listoption.WithLimit(1),
+			[]option.Option{
+				option.WithLimit(1),
 			},
 			1,
 			[]rxptypes.KindName{
 				platform.KindName,
 			},
-			listoption.New(listoption.WithLimit(1)),
+			option.New(option.WithLimit(1)),
 			"",
 			"",
 		},
@@ -147,14 +147,14 @@ func TestObjectList(t *testing.T) {
 			"list domain-qualified objects limit of 1",
 			ctx,
 			expression.KindNameEqual(application.KindName),
-			[]listoption.Option{
-				listoption.WithLimit(1),
+			[]option.Option{
+				option.WithLimit(1),
 			},
 			1,
 			[]rxptypes.KindName{
 				application.KindName,
 			},
-			listoption.New(listoption.WithLimit(1)),
+			option.New(option.WithLimit(1)),
 			"",
 			"",
 		},
@@ -162,14 +162,14 @@ func TestObjectList(t *testing.T) {
 			"list namespace-qualified objects limit of 1",
 			ctx,
 			expression.KindNameEqual(service.KindName),
-			[]listoption.Option{
-				listoption.WithLimit(1),
+			[]option.Option{
+				option.WithLimit(1),
 			},
 			1,
 			[]rxptypes.KindName{
 				service.KindName,
 			},
-			listoption.New(listoption.WithLimit(1)),
+			option.New(option.WithLimit(1)),
 			"",
 			"",
 		},
@@ -183,7 +183,7 @@ func TestObjectList(t *testing.T) {
 			} else {
 				require.Nil(err, err)
 				require.NotNil(got)
-				gotObjs := got.Objects()
+				gotObjs := got.Items()
 				gotOptions := got.Options()
 				gotMarker := got.Marker()
 				require.Equal(c.expOptions, gotOptions)

@@ -11,13 +11,14 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/expression"
+	"github.com/relexec/rxp/list"
+	"github.com/relexec/rxp/list/expression"
+	"github.com/relexec/rxp/list/option"
+	"github.com/relexec/rxp/list/result"
 	"github.com/relexec/rxp/metrics"
 	"github.com/relexec/rxp/namespace"
 	"github.com/relexec/rxp/object"
-	"github.com/relexec/rxp/object/list"
-	"github.com/relexec/rxp/object/list/option"
-	"github.com/relexec/rxp/object/list/result"
+	objlist "github.com/relexec/rxp/object/list"
 	"github.com/relexec/rxp/system"
 	rxptypes "github.com/relexec/rxp/types"
 	"go.opentelemetry.io/otel/attribute"
@@ -34,7 +35,7 @@ func (s *Store) ObjectList(
 	ctx context.Context,
 	expr rxptypes.Expression,
 	opts ...option.Option,
-) (list.Result, error) {
+) (list.Result[rxptypes.Object], error) {
 	err := s.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -83,11 +84,11 @@ func (s *Store) ObjectList(
 			option.WithLimit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []result.Option{
-		result.WithObjects(objs),
-		result.WithOptions(resOpts),
+	resNewOpts := []result.Option[rxptypes.Object]{
+		result.WithItems(objs),
+		result.WithOptions[rxptypes.Object](resOpts),
 	}
-	return result.New(resNewOpts...), nil
+	return result.New[rxptypes.Object](resNewOpts...), nil
 }
 
 // objectListValidate returns an error if the supplied expression and list
@@ -583,4 +584,4 @@ FROM objects AS o
 	return recs, nil
 }
 
-var _ list.ObjectLister = (*Store)(nil)
+var _ objlist.Lister = (*Store)(nil)
