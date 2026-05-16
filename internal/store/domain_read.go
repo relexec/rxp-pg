@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/relexec/rxp/domain"
+	"github.com/relexec/rxp/domain/read"
 	readoption "github.com/relexec/rxp/domain/read/option"
 	"github.com/relexec/rxp/domain/read/selector"
 	"github.com/relexec/rxp/errors"
@@ -180,3 +181,5 @@ func (s *Store) domainDBRead(
 	}
 	return &out, nil
 }
+
+var _ read.DomainReader = (*Store)(nil)

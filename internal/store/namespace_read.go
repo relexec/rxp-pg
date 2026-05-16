@@ -9,6 +9,7 @@ import (
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/metrics"
 	"github.com/relexec/rxp/namespace"
+	"github.com/relexec/rxp/namespace/read"
 	readoption "github.com/relexec/rxp/namespace/read/option"
 	"github.com/relexec/rxp/namespace/read/selector"
 	rxptypes "github.com/relexec/rxp/types"
@@ -187,3 +188,5 @@ func (s *Store) namespaceDBRead(
 	}
 	return &out, nil
 }
+
+var _ read.NamespaceReader = (*Store)(nil)

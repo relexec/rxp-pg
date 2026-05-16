@@ -11,6 +11,7 @@ import (
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/metrics"
+	"github.com/relexec/rxp/namespace/write"
 	writeoption "github.com/relexec/rxp/namespace/write/option"
 	rxptypes "github.com/relexec/rxp/types"
 	"go.opentelemetry.io/otel/attribute"
@@ -126,3 +127,5 @@ func (s *Store) namespaceDBWrite(
 	}
 	return nil
 }
+
+var _ write.NamespaceWriter = (*Store)(nil)

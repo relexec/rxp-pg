@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/metrics"
+	"github.com/relexec/rxp/system/write"
 	writeoption "github.com/relexec/rxp/system/write/option"
 	rxptypes "github.com/relexec/rxp/types"
 	"go.opentelemetry.io/otel/attribute"
@@ -111,3 +112,5 @@ func (s *Store) systemDBWrite(
 	}
 	return nil
 }
+
+var _ write.SystemWriter = (*Store)(nil)

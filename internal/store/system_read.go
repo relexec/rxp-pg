@@ -9,6 +9,7 @@ import (
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/metrics"
 	"github.com/relexec/rxp/system"
+	"github.com/relexec/rxp/system/read"
 	readoption "github.com/relexec/rxp/system/read/option"
 	"github.com/relexec/rxp/system/read/selector"
 	rxptypes "github.com/relexec/rxp/types"
@@ -148,3 +149,5 @@ func (s *Store) systemDBRead(
 	}
 	return &out, nil
 }
+
+var _ read.SystemReader = (*Store)(nil)

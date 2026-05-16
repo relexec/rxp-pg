@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	rxpcontext "github.com/relexec/rxp/context"
+	"github.com/relexec/rxp/domain/write"
 	writeoption "github.com/relexec/rxp/domain/write/option"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/metrics"
@@ -119,3 +120,5 @@ func (s *Store) domainDBWrite(
 	}
 	return nil
 }
+
+var _ write.DomainWriter = (*Store)(nil)
