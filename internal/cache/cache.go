@@ -77,8 +77,8 @@ func (c *Cache[K, V]) init(ctx context.Context) error {
 	return nil
 }
 
-// numCounters calculates the recommended NumCounters setting for the Kind
-// cache, which is 10x the number of entries that will fit in the cache.
+// numCounters calculates the recommended NumCounters setting for the cache,
+// which is 10x the number of entries that will fit in the cache.
 //
 // Ref: https://github.com/dgraph-io/ristretto/blob/402101df6c698ed1253bb305ce9cda71bc83ad1d/cache.go#L93-L94
 func numCounters(maxSize int, entrySize uintptr) int64 {

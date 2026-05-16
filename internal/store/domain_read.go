@@ -163,8 +163,11 @@ func (s *Store) domainDBRead(
 		SystemRowID: system.RowID,
 	}
 	fn := func(tx pgx.Tx) error {
-		qs := "SELECT id FROM domains WHERE system = $1 AND name = $2"
-		err := tx.QueryRow(ctx, qs, system.RowID, name).Scan(&out.RowID)
+		var uuid string
+		qs := "SELECT id, uuid FROM domains WHERE system = $1 AND name = $2"
+		err := tx.QueryRow(
+			ctx, qs, system.RowID, name,
+		).Scan(&out.RowID, &uuid)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -174,6 +177,7 @@ func (s *Store) domainDBRead(
 				errors.WithWrap(err),
 			)
 		}
+		out.Domain.SetUUID(uuid)
 		return nil
 	}
 	if err := s.dbExec(ctx, fn); err != nil {

@@ -15,14 +15,6 @@ import (
 
 // Store implements a backend rxp persistence store using PostgreSQL.
 type Store struct {
-	// hostSystemUUID is the UUID of the host System managed by this Store.
-	hostSystemUUID string
-	// hostSystemName is the name of the host System managed by this Store, if any.
-	hostSystemName string
-	// hostSystem is the host System managed by this Store.
-	hostSystem *systemEntry
-	// systemCache stores known Systems, keyed by system identifier.
-	systemCache *cache.Cache[systemCacheKey, *systemEntry]
 	// log is the top-level logger for the Store.
 	log *logr.Logger
 	// cfg contains the configuration options for the Store.
@@ -31,6 +23,15 @@ type Store struct {
 	pool *pgxpool.Pool
 	// metrics is the metrics handler for the Store.
 	metrics rxptypes.Metrics
+
+	// hostSystemUUID is the UUID of the host System managed by this Store.
+	hostSystemUUID string
+	// hostSystemName is the name of the host System managed by this Store, if any.
+	hostSystemName string
+	// hostSystem is the host System managed by this Store.
+	hostSystem *systemEntry
+	// systemCache stores known Systems, keyed by system identifier.
+	systemCache *cache.Cache[systemCacheKey, *systemEntry]
 	// kindCache stores known Kinds, keyed by kind name.
 	kindCache *cache.Cache[kindCacheKey, *kindEntry]
 	// domainCache stores known Domains, keyed by Domain Name.

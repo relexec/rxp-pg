@@ -78,6 +78,7 @@ func TestDomainRead(t *testing.T) {
 					delta.DifferentExcept(
 						fieldpath.FromString("system"),
 					),
+					delta.Differences(),
 				)
 			}
 		})
