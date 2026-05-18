@@ -4,7 +4,11 @@ import (
 	"context"
 	"sync"
 
+	"github.com/relexec/rxp/errors"
+	"github.com/relexec/rxp/name"
+	"github.com/relexec/rxp/read/selector"
 	"github.com/relexec/rxp/testing/fixtures"
+	"github.com/relexec/rxp/types"
 
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/driver"
@@ -33,4 +37,28 @@ func Driver(ctx context.Context) (*driver.Driver, error) {
 		)
 	})
 	return testDriver, err
+}
+
+// DomainCreateIfNotExists ensures that the supplied Domain exists in the
+// database.
+func DomainCreateIfNotExists(
+	ctx context.Context,
+	d *driver.Driver,
+	dom types.Domain,
+) error {
+	_, err := d.DomainRead(
+		ctx,
+		selector.New(
+			selector.WithName(
+				name.New(string(dom.Name())),
+			),
+		),
+	)
+	if err != nil {
+		if err != errors.ErrNotFound {
+			return err
+		}
+		return d.DomainWrite(ctx, dom)
+	}
+	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/relexec/rxp/types"
 
 	"github.com/relexec/rxp-pg/config"
+	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
@@ -35,6 +36,8 @@ type Driver struct {
 
 	// systemStore contains the Store for reading and writing System data.
 	systemStore *storesystem.Store
+	// domainStore contains the Store for reading and writing Domain data.
+	domainStore *storedomain.Store
 
 	// onClose are a set of callbacks that will be executed in reverse
 	// order when the Driver is closed.

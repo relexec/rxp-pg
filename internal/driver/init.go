@@ -12,6 +12,7 @@ import (
 	"github.com/relexec/rxp/system"
 
 	"github.com/relexec/rxp-pg/config"
+	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
@@ -34,6 +35,10 @@ func (d *Driver) init(ctx context.Context) error {
 		return err
 	}
 
+	if err = d.initMetrics(ctx); err != nil {
+		return err
+	}
+
 	if err = d.initDBPool(ctx); err != nil {
 		return err
 	}
@@ -46,7 +51,7 @@ func (d *Driver) init(ctx context.Context) error {
 		return err
 	}
 
-	if err = d.initMetrics(ctx); err != nil {
+	if err = d.initDomainStore(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -86,6 +91,25 @@ func (d *Driver) ensureHostSystem() error {
 	if d.hostSystemName != "" {
 		d.log.Info("host system name: %s", d.hostSystemName)
 	}
+	return nil
+}
+
+// initMetrics initializes the store's metrics handler.
+func (d *Driver) initMetrics(ctx context.Context) error {
+	d.log.V(4).Info("initializing metrics")
+	if d.metrics == nil {
+		metrics, err := metrics.New(ctx)
+		if err != nil {
+			return err
+		}
+		d.metrics = metrics
+	}
+	d.onClose = append(d.onClose, d.metrics.MeterProvider().Shutdown)
+	err := metrics.Init(d.metrics)
+	if err != nil {
+		return fmt.Errorf("failed initializing metrics: %w", err)
+	}
+	d.log.Info("initialized metrics")
 	return nil
 }
 
@@ -155,21 +179,21 @@ func (d *Driver) initHostSystemRecord(ctx context.Context) error {
 	return nil
 }
 
-// initMetrics initializes the store's metrics handler.
-func (d *Driver) initMetrics(ctx context.Context) error {
-	d.log.V(4).Info("initializing metrics")
-	if d.metrics == nil {
-		metrics, err := metrics.New(ctx)
-		if err != nil {
-			return err
-		}
-		d.metrics = metrics
-	}
-	d.onClose = append(d.onClose, d.metrics.MeterProvider().Shutdown)
-	err := metrics.Init(d.metrics)
+// initDomainStore initializes the domain store.
+func (d *Driver) initDomainStore(ctx context.Context) error {
+	d.log.V(4).Info("initializing domain store")
+	s, err := storedomain.New(
+		ctx,
+		storedomain.WithConfig(d.cfg),
+		storedomain.WithPool(d.pool),
+		storedomain.WithSystemStore(d.systemStore),
+		storedomain.WithHostSystemRecord(*d.hostSystemRecord),
+	)
 	if err != nil {
-		return fmt.Errorf("failed initializing metrics: %w", err)
+		return err
 	}
-	d.log.Info("initialized metrics")
+	d.domainStore = s
+	d.onClose = append(d.onClose, d.domainStore.Close)
+	d.log.Info("initialized domain store")
 	return nil
 }
