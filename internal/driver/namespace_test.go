@@ -6,22 +6,22 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/relexec/rxp-pg/internal/testutil"
-	"github.com/relexec/rxp/cmp/fieldpath"
-	"github.com/relexec/rxp/domain"
-	writeoption "github.com/relexec/rxp/domain/write/option"
+	"github.com/relexec/rxp/namespace"
+	writeoption "github.com/relexec/rxp/namespace/write/option"
 	readoption "github.com/relexec/rxp/read/option"
-	selector "github.com/relexec/rxp/read/selector/domain"
+	selector "github.com/relexec/rxp/read/selector/namespace"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/types"
+	rxptypes "github.com/relexec/rxp/types"
 	"github.com/stretchr/testify/require"
 )
 
-func TestDomainRead(t *testing.T) {
+func TestNamespaceRead(t *testing.T) {
 	ctx := testutil.Context(testutil.UserIdentity)
 	rxp, err := testutil.Driver(ctx)
 	require.Nil(t, err)
 
-	err = testutil.DomainCreateIfNotExists(ctx, rxp, fixtures.Domain)
+	err = testutil.NamespaceCreateIfNotExists(ctx, rxp, fixtures.Namespace)
 	require.Nil(t, err, err)
 
 	ctxMissingIdent := context.TODO()
@@ -29,16 +29,17 @@ func TestDomainRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		sel    types.Selector
+		sel    selector.Selector
 		opts   []readoption.Option
-		exp    types.Domain
+		exp    rxptypes.Namespace
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
 			selector.New(
-				selector.WithName(fixtures.InvalidDomainName),
+				selector.WithDomain(fixtures.Domain),
+				selector.WithName(fixtures.NamespaceName),
 			),
 			nil,
 			nil,
@@ -53,73 +54,61 @@ func TestDomainRead(t *testing.T) {
 			"uuid or name required",
 		},
 		{
-			"unknown domain",
+			"unknown namespace",
 			ctx,
 			selector.New(
-				selector.WithName(fixtures.UnknownDomainName),
+				selector.WithDomain(fixtures.Domain),
+				selector.WithName(fixtures.UnknownNamespaceName),
 			),
 			nil,
 			nil,
 			"not found",
 		},
 		{
-			"invalid domain",
+			"invalid namespace",
 			ctx,
 			selector.New(
-				selector.WithName(fixtures.InvalidDomainName),
+				selector.WithDomain(fixtures.Domain),
+				selector.WithName(fixtures.InvalidNamespaceName),
 			),
 			nil,
 			nil,
-			"invalid domain name: invalid characters",
+			"invalid namespace name: invalid characters",
 		},
 		{
-			"happy path by uuid",
+			"happy path",
 			ctx,
 			selector.New(
-				selector.WithUUID(fixtures.Domain.UUID()),
+				selector.WithDomain(fixtures.Domain),
+				selector.WithName(fixtures.NamespaceName),
 			),
 			nil,
-			fixtures.Domain,
-			"",
-		},
-		{
-			"happy path by name",
-			ctx,
-			selector.New(
-				selector.WithName(fixtures.Domain.Name()),
-			),
-			nil,
-			fixtures.Domain,
+			fixtures.Namespace,
 			"",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			got, err := rxp.DomainRead(c.ctx, c.sel, c.opts...)
+			got, err := rxp.NamespaceRead(c.ctx, c.sel, c.opts...)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {
 				require.Nil(err)
 				delta, err := c.exp.Diff(got)
 				require.Nil(err)
-				require.False(
-					delta.DifferentExcept(
-						fieldpath.FromString("system"),
-					),
-					delta.Differences(),
-				)
+				require.False(delta.Different(), delta.Differences())
 			}
 		})
 	}
 }
 
-func TestDomainWrite(t *testing.T) {
+func TestNamespaceWrite(t *testing.T) {
 	ctx := testutil.Context(testutil.UserIdentity)
 	rxp, err := testutil.Driver(ctx)
 	require.Nil(t, err)
 
-	err = testutil.DomainCreateIfNotExists(ctx, rxp, fixtures.Domain)
+	err = testutil.NamespaceCreateIfNotExists(ctx, rxp, fixtures.Namespace)
 	require.Nil(t, err, err)
 
 	ctxMissingIdent := context.TODO()
@@ -127,63 +116,65 @@ func TestDomainWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject types.Domain
+		subject types.Namespace
 		opts    []writeoption.Option
 		expErr  string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			fixtures.UnknownDomain,
+			fixtures.UnknownNamespace,
 			nil,
 			"missing identity",
 		},
 		{
 			"missing uuid",
 			ctx,
-			domain.New(),
+			namespace.New(
+				namespace.WithDomain(fixtures.Domain),
+			),
 			nil,
-			"invalid domain: uuid required",
+			"invalid namespace: uuid required",
 		},
 		{
 			"missing name",
 			ctx,
-			domain.New(domain.WithUUID(uuid.NewString())),
-			nil,
-			"invalid domain: name required",
-		},
-		{
-			"invalid domain",
-			ctx,
-			fixtures.InvalidDomain,
-			nil,
-			"invalid domain name: invalid characters",
-		},
-		{
-			"duplicate domain UUID",
-			ctx,
-			domain.New(
-				domain.WithUUID(fixtures.Domain.UUID()),
-				domain.WithName("othername"),
+			namespace.New(
+				namespace.WithDomain(fixtures.Domain),
+				namespace.WithUUID(uuid.NewString()),
 			),
 			nil,
-			"conflict: \"domain\" already exists",
+			"invalid namespace: name required",
 		},
 		{
-			"duplicate domain name",
+			"missing domain",
 			ctx,
-			domain.New(
-				domain.WithUUID(uuid.NewString()),
-				domain.WithName(fixtures.Domain.Name()),
+			namespace.New(
+				namespace.WithUUID(uuid.NewString()),
+				namespace.WithName(types.NamespaceName("mynamespace")),
 			),
 			nil,
-			"conflict: \"domain\" already exists",
+			"invalid namespace: domain required",
+		},
+		{
+			"invalid namespace",
+			ctx,
+			fixtures.InvalidNamespace,
+			nil,
+			"invalid namespace name: invalid characters",
+		},
+		{
+			"duplicate namespace",
+			ctx,
+			fixtures.Namespace,
+			nil,
+			"conflict: \"namespace\" already exists",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			err := rxp.DomainWrite(c.ctx, c.subject, c.opts...)
+			err := rxp.NamespaceWrite(c.ctx, c.subject, c.opts...)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {

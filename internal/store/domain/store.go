@@ -23,9 +23,12 @@ type Store struct {
 	pool *pgxpool.Pool
 	// byUUID is a cache that stores known Domains keyed by domain UUID.
 	byUUID *cache.Cache[byUUIDCacheKey, *Record]
-	// byName is a cache that stores known Domains keyed by system UUID and
-	// domain name.
-	byName *cache.Cache[byNameCacheKey, *Record]
+	// byName is a cache that stores a lookup map of System UUID+DomainName to
+	// Domain UUID.
+	byName *cache.Cache[byNameCacheKey, byUUIDCacheKey]
+	// byRowID is a cache that stores a lookup map of Domain UUID to internal
+	// DB Row ID.
+	byRowID *cache.Cache[byRowIDCacheKey, byUUIDCacheKey]
 
 	// hostSystemRecord is the host System managed by the Driver.
 	hostSystemRecord storesystem.Record

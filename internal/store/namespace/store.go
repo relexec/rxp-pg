@@ -10,9 +10,11 @@ import (
 
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/cache"
+	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
+	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
-// Store facilitates reading and writing System data.
+// Store facilitates reading and writing Namespace data.
 type Store struct {
 	// log is the top-level logger for the Store.
 	log *logr.Logger
@@ -20,11 +22,16 @@ type Store struct {
 	cfg *config.Config
 	// pool holds the underlying pgx connection pool.
 	pool *pgxpool.Pool
-	// byUUID is a cache that stores known Systems, keyed by system identifier.
+	// byUUID is a cache that stores known Namespaces keyed by namespace UUID.
 	byUUID *cache.Cache[byUUIDCacheKey, *Record]
-	// byRowID is a cache that stores a lookup map of System UUID to internal
-	// DB Row ID.
-	byRowID *cache.Cache[byRowIDCacheKey, byUUIDCacheKey]
+	// byName is a cache that stores known Namespaces keyed by domain UUID and
+	// namespace name.
+	byName *cache.Cache[byNameCacheKey, *Record]
+
+	// hostSystemRecord is the host System managed by the Driver.
+	hostSystemRecord storesystem.Record
+	// domainStore contains the Store for reading and writing Domain data.
+	domainStore *storedomain.Store
 
 	// onClose are a set of callbacks that will be executed in reverse
 	// order when the Store is closed.

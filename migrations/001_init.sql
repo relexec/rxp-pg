@@ -55,15 +55,18 @@ CREATE TABLE domains_archived (
 CREATE TABLE namespaces (
   id SERIAL NOT NULL PRIMARY KEY
 , domain INT NOT NULL
+, uuid UUID NOT NULL
 , name TEXT NOT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
+, UNIQUE (uuid)
 , UNIQUE (domain, name)
 );
 
 CREATE TABLE namespaces_archived (
   namespace INT NOT NULL PRIMARY KEY
 , domain INT NOT NULL
+, uuid UUID NOT NULL
 , name TEXT NOT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL

@@ -108,8 +108,8 @@ func (s *Store) namespaceDBWrite(
 	createdOn := time.Now().UnixNano()
 	createdBy := rxpcontext.Identity(ctx)
 	fn := func(tx pgx.Tx) error {
-		qs := "INSERT INTO namespaces (domain, name, last_modified_on, last_modified_by) VALUES ($1, $2, $3, $4)"
-		_, err := tx.Exec(ctx, qs, domainEntry.RowID, namespace.Name(), createdOn, createdBy)
+		qs := "INSERT INTO namespaces (domain, uuid, name, last_modified_on, last_modified_by) VALUES ($1, $2, $3, $4, $5)"
+		_, err := tx.Exec(ctx, qs, domainEntry.RowID, namespace.UUID(), namespace.Name(), createdOn, createdBy)
 		if err != nil {
 			if pgErr, ok := err.(*pgconn.PgError); ok {
 				if pgErr.Code == pgerrcode.UniqueViolation {

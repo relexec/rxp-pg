@@ -62,3 +62,30 @@ func DomainCreateIfNotExists(
 	}
 	return nil
 }
+
+// NamespaceCreateIfNotExists ensures that the supplied Namespace exists in the
+// database.
+func NamespaceCreateIfNotExists(
+	ctx context.Context,
+	d *driver.Driver,
+	ns types.Namespace,
+) error {
+	_, err := d.NamespaceRead(
+		ctx,
+		selector.New(
+			selector.WithName(
+				name.New(
+					string(ns.Name()),
+					name.WithDomain(ns.Domain()),
+				),
+			),
+		),
+	)
+	if err != nil {
+		if err != errors.ErrNotFound {
+			return err
+		}
+		return d.NamespaceWrite(ctx, ns)
+	}
+	return nil
+}

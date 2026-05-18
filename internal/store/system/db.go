@@ -68,6 +68,41 @@ func (s *Store) dbExec(
 	return nil
 }
 
+// dbReadByRowID performs a SELECT query to return the stored system record
+// having the supplied internal DB RowID.
+func (s *Store) dbReadByRowID(
+	ctx context.Context,
+	rowID int64,
+) (*Record, error) {
+	out := Record{
+		RowID: rowID,
+	}
+	fn := func(tx pgx.Tx) error {
+		var uuid string
+		var name string
+		qs := "SELECT uuid, name FROM systems WHERE id = $1"
+		err := tx.QueryRow(ctx, qs, rowID).Scan(&uuid, &name)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				return errors.ErrNotFound
+			}
+			return errors.Internal(
+				"failed reading systems record",
+				errors.WithWrap(err),
+			)
+		}
+		out.System = system.New(
+			system.WithUUID(uuid),
+			system.WithName(name),
+		)
+		return nil
+	}
+	if err := s.dbExec(ctx, fn); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // dbReadByUUID performs a SELECT query to return the stored system record
 // having the supplied UUID.
 func (s *Store) dbReadByUUID(

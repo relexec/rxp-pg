@@ -13,6 +13,7 @@ import (
 
 	"github.com/relexec/rxp-pg/config"
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
+	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
@@ -52,6 +53,10 @@ func (d *Driver) init(ctx context.Context) error {
 	}
 
 	if err = d.initDomainStore(ctx); err != nil {
+		return err
+	}
+
+	if err = d.initNamespaceStore(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -195,5 +200,24 @@ func (d *Driver) initDomainStore(ctx context.Context) error {
 	d.domainStore = s
 	d.onClose = append(d.onClose, d.domainStore.Close)
 	d.log.Info("initialized domain store")
+	return nil
+}
+
+// initNamespaceStore initializes the namespace store.
+func (d *Driver) initNamespaceStore(ctx context.Context) error {
+	d.log.V(4).Info("initializing namespace store")
+	s, err := storenamespace.New(
+		ctx,
+		storenamespace.WithConfig(d.cfg),
+		storenamespace.WithPool(d.pool),
+		storenamespace.WithDomainStore(d.domainStore),
+		storenamespace.WithHostSystemRecord(*d.hostSystemRecord),
+	)
+	if err != nil {
+		return err
+	}
+	d.namespaceStore = s
+	d.onClose = append(d.onClose, d.namespaceStore.Close)
+	d.log.Info("initialized namespace store")
 	return nil
 }

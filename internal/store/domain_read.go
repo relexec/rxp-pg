@@ -84,13 +84,15 @@ func (s *Store) DomainRead(
 	}
 
 	system := sel.System()
+	var systemEntry *systemEntry
 	// Default the system to the host system if it hasn't been specified.
 	if system == nil {
-		system = s.hostSystem.System
-	}
-	systemEntry, err := s.systemRead(ctx, system.UUID())
-	if err != nil {
-		return nil, err
+		systemEntry = s.hostSystem
+	} else {
+		systemEntry, err = s.systemRead(ctx, system.UUID())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	name := sel.Name()

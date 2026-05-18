@@ -7,7 +7,24 @@ import (
 	"github.com/relexec/rxp/errors"
 )
 
-type byUUIDCacheKey string // System.UUID is the cache key
+type byRowIDCacheKey int64
+type byUUIDCacheKey string
+
+// cacheReadByRowID looks up a cached System by RowID, returning the cached
+// Record and whether or not the entry was found.
+func (s *Store) cacheReadByRowID(
+	ctx context.Context,
+	key byRowIDCacheKey,
+) (*Record, bool) {
+	if s.byRowID == nil {
+		return nil, false
+	}
+	uuid, found := s.byRowID.Get(key)
+	if !found {
+		return nil, false
+	}
+	return s.cacheReadByUUID(ctx, uuid)
+}
 
 // cacheReadByUUID looks up a cached System by UUID, returning the cached
 // Record and whether or not the entry  was found.

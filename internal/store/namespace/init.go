@@ -17,7 +17,7 @@ func (s *Store) init(ctx context.Context) error {
 		lc := logr.FromContextOrDiscard(ctx)
 		s.log = &lc
 	}
-	s.log.WithName("rxp.pg.store.system")
+	s.log.WithName("rxp.pg.store.namespace")
 
 	err := s.cfg.Validate()
 	if err != nil {
@@ -33,9 +33,9 @@ func (s *Store) init(ctx context.Context) error {
 // initCache initializes the lookup caches if they are enabled in our
 // configuration.
 func (s *Store) initCache(ctx context.Context) error {
-	if s.cfg.Cache.System.Enabled {
-		s.log.V(4).Info("initializing system cache")
-		cacheCfg := s.cfg.Cache.System
+	if s.cfg.Cache.Namespace.Enabled {
+		s.log.V(4).Info("initializing namespace cache")
+		cacheCfg := s.cfg.Cache.Namespace
 		byUUID, err := cache.New[byUUIDCacheKey, *Record](
 			ctx,
 			cache.WithConfig[byUUIDCacheKey, *Record](cacheCfg),
@@ -46,18 +46,18 @@ func (s *Store) initCache(ctx context.Context) error {
 		s.byUUID = byUUID
 		s.onClose = append(s.onClose, s.byUUID.Close)
 
-		byRowID, err := cache.New[byRowIDCacheKey, byUUIDCacheKey](
+		byName, err := cache.New[byNameCacheKey, *Record](
 			ctx,
-			cache.WithConfig[byRowIDCacheKey, byUUIDCacheKey](cacheCfg),
+			cache.WithConfig[byNameCacheKey, *Record](cacheCfg),
 		)
 		if err != nil {
 			return err
 		}
-		s.byRowID = byRowID
-		s.onClose = append(s.onClose, s.byRowID.Close)
-		s.log.Info("initialized system cache")
+		s.byName = byName
+		s.onClose = append(s.onClose, s.byName.Close)
+		s.log.Info("initialized namespace cache")
 	} else {
-		s.log.V(4).Info("system cache disabled")
+		s.log.V(4).Info("namespace cache disabled")
 	}
 	return nil
 }

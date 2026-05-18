@@ -170,8 +170,9 @@ func (s *Store) namespaceDBRead(
 		DomainRowID: domainEntry.RowID,
 	}
 	fn := func(tx pgx.Tx) error {
-		qs := "SELECT id FROM namespaces WHERE domain = $1 AND name = $2"
-		err := tx.QueryRow(ctx, qs, domainEntry.RowID, name).Scan(&out.RowID)
+		var uuid string
+		qs := "SELECT id, uuid FROM namespaces WHERE domain = $1 AND name = $2"
+		err := tx.QueryRow(ctx, qs, domainEntry.RowID, name).Scan(&out.RowID, &uuid)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -181,6 +182,7 @@ func (s *Store) namespaceDBRead(
 				errors.WithWrap(err),
 			)
 		}
+		out.Namespace.SetUUID(uuid)
 		return nil
 	}
 	if err := s.dbExec(ctx, fn); err != nil {

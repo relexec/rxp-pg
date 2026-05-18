@@ -7,7 +7,7 @@ import (
 	"github.com/relexec/rxp/types"
 )
 
-// Write atomically writes the pre-validate Domain to persistent storage.
+// Write atomically writes the pre-validated Domain to persistent storage.
 func (s *Store) Write(
 	ctx context.Context,
 	dom types.Domain,
