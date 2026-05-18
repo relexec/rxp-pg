@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/relexec/rxp-pg/internal/testutil"
-	readoption "github.com/relexec/rxp/system/read/option"
-	"github.com/relexec/rxp/system/read/selector"
+	readoption "github.com/relexec/rxp/read/option"
+	"github.com/relexec/rxp/read/selector"
 	"github.com/relexec/rxp/testing/fixtures"
 	rxptypes "github.com/relexec/rxp/types"
 	"github.com/stretchr/testify/require"
@@ -22,7 +22,7 @@ func TestSystemRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		sel    selector.Selector
+		sel    rxptypes.Selector
 		opts   []readoption.Option
 		exp    rxptypes.System
 		expErr string

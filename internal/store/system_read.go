@@ -8,10 +8,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/metrics"
+	readoption "github.com/relexec/rxp/read/option"
 	"github.com/relexec/rxp/system"
 	"github.com/relexec/rxp/system/read"
-	readoption "github.com/relexec/rxp/system/read/option"
-	"github.com/relexec/rxp/system/read/selector"
 	rxptypes "github.com/relexec/rxp/types"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -33,7 +32,7 @@ type systemEntry struct {
 // returned System in the cache.
 func (s *Store) SystemRead(
 	ctx context.Context,
-	sel selector.Selector,
+	sel rxptypes.Selector,
 	opts ...readoption.Option,
 ) (rxptypes.System, error) {
 	err := s.requestValidate(ctx)
@@ -76,7 +75,7 @@ func (s *Store) SystemRead(
 // options are not valid for reading a single System.
 func (s *Store) systemReadValidate(
 	ctx context.Context,
-	sel selector.Selector,
+	sel rxptypes.Selector,
 	opts readoption.Options,
 ) error {
 	return sel.Validate()

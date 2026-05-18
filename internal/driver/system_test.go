@@ -5,8 +5,9 @@ import (
 	"testing"
 
 	"github.com/relexec/rxp-pg/internal/testutil"
-	readoption "github.com/relexec/rxp/system/read/option"
-	"github.com/relexec/rxp/system/read/selector"
+	"github.com/relexec/rxp/name"
+	readoption "github.com/relexec/rxp/read/option"
+	"github.com/relexec/rxp/read/selector"
 	writeoption "github.com/relexec/rxp/system/write/option"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/types"
@@ -23,7 +24,7 @@ func TestSystemRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		sel    selector.Selector
+		sel    types.Selector
 		opts   []readoption.Option
 		exp    types.System
 		expErr string
@@ -35,6 +36,14 @@ func TestSystemRead(t *testing.T) {
 			nil,
 			nil,
 			"missing identity",
+		},
+		{
+			"uuid required",
+			ctx,
+			selector.New(selector.WithName(name.New(fixtures.SystemName))),
+			nil,
+			nil,
+			"uuid required",
 		},
 		{
 			"unknown system",

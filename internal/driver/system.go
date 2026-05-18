@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/metrics"
+	readoption "github.com/relexec/rxp/read/option"
 	"github.com/relexec/rxp/system/read"
-	readoption "github.com/relexec/rxp/system/read/option"
-	"github.com/relexec/rxp/system/read/selector"
 	"github.com/relexec/rxp/system/write"
 	writeoption "github.com/relexec/rxp/system/write/option"
 	"github.com/relexec/rxp/types"
@@ -18,7 +18,7 @@ import (
 // SystemRead reads a System from persistent storage.
 func (d *Driver) SystemRead(
 	ctx context.Context,
-	sel selector.Selector,
+	sel types.Selector,
 	opts ...readoption.Option,
 ) (types.System, error) {
 	err := d.requestValidate(ctx)
@@ -61,10 +61,14 @@ func (d *Driver) SystemRead(
 // options are not valid for reading a single System.
 func (d *Driver) systemReadValidate(
 	ctx context.Context,
-	sel selector.Selector,
+	sel types.Selector,
 	opts readoption.Options,
 ) error {
-	return sel.Validate()
+	// For System lookup, we require a UUID lookup.
+	if sel.UUID() == "" {
+		return errors.ErrSelectorUUIDRequired
+	}
+	return nil
 }
 
 // SystemWrite atomically writes the supplied System to persistent storage.
