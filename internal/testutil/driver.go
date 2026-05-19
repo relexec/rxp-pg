@@ -17,6 +17,10 @@ import (
 	"github.com/relexec/rxp-pg/internal/driver"
 )
 
+const (
+	DSN = "host=localhost port=5432 user=postgres password=postgres dbname=rxptest"
+)
+
 var (
 	driverOnce sync.Once
 	testDriver *driver.Driver
