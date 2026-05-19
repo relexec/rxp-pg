@@ -39,6 +39,30 @@ func Driver(ctx context.Context) (*driver.Driver, error) {
 	return testDriver, err
 }
 
+// KindCreateIfNotExists ensures that the supplied Kind exists in the
+// database.
+func KindCreateIfNotExists(
+	ctx context.Context,
+	d *driver.Driver,
+	k types.Kind,
+) error {
+	_, err := d.KindRead(
+		ctx,
+		selector.New(
+			selector.WithName(
+				name.New(string(k.Name())),
+			),
+		),
+	)
+	if err != nil {
+		if err != errors.ErrNotFound {
+			return err
+		}
+		return d.KindWrite(ctx, k)
+	}
+	return nil
+}
+
 // DomainCreateIfNotExists ensures that the supplied Domain exists in the
 // database.
 func DomainCreateIfNotExists(

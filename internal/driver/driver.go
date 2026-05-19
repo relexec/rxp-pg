@@ -11,6 +11,7 @@ import (
 
 	"github.com/relexec/rxp-pg/config"
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
+	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
@@ -37,6 +38,8 @@ type Driver struct {
 
 	// systemStore contains the Store for reading and writing System data.
 	systemStore *storesystem.Store
+	// kindStore contains the Store for reading and writing Kind data.
+	kindStore *storekind.Store
 	// domainStore contains the Store for reading and writing Domain data.
 	domainStore *storedomain.Store
 	// namespaceStore contains the Store for reading and writing Namespace

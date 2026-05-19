@@ -13,6 +13,7 @@ import (
 
 	"github.com/relexec/rxp-pg/config"
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
+	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
@@ -49,6 +50,10 @@ func (d *Driver) init(ctx context.Context) error {
 	}
 
 	if err = d.initHostSystemRecord(ctx); err != nil {
+		return err
+	}
+
+	if err = d.initKindStore(ctx); err != nil {
 		return err
 	}
 
@@ -148,6 +153,25 @@ func (d *Driver) initSystemStore(ctx context.Context) error {
 	d.systemStore = s
 	d.onClose = append(d.onClose, d.systemStore.Close)
 	d.log.Info("initialized system store")
+	return nil
+}
+
+// initKindStore initializes the kind store.
+func (d *Driver) initKindStore(ctx context.Context) error {
+	d.log.V(4).Info("initializing kind store")
+	s, err := storekind.New(
+		ctx,
+		storekind.WithConfig(d.cfg),
+		storekind.WithPool(d.pool),
+		storekind.WithSystemStore(d.systemStore),
+		storekind.WithHostSystemRecord(*d.hostSystemRecord),
+	)
+	if err != nil {
+		return err
+	}
+	d.kindStore = s
+	d.onClose = append(d.onClose, d.kindStore.Close)
+	d.log.Info("initialized kind store")
 	return nil
 }
 
