@@ -8,6 +8,7 @@ import (
 	ksel "github.com/relexec/rxp/kind/read/selector"
 	msel "github.com/relexec/rxp/meta/read/selector"
 	"github.com/relexec/rxp/name"
+	objectselector "github.com/relexec/rxp/object/read/selector"
 	"github.com/relexec/rxp/read/selector"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/types"
@@ -132,6 +133,37 @@ func NamespaceCreateIfNotExists(
 			return err
 		}
 		return d.NamespaceWrite(ctx, ns)
+	}
+	return nil
+}
+
+// ObjectCreateIfNotExists ensures that the supplied Object exists in the
+// database.
+func ObjectCreateIfNotExists(
+	ctx context.Context,
+	d *driver.Driver,
+	o types.Object,
+) error {
+	selOpts := []objectselector.Option{
+		objectselector.WithKindVersion(o.KindVersion()),
+		objectselector.WithUUID(o.UUID()),
+	}
+	if o.Namespace() != nil {
+		selOpts = append(
+			selOpts, objectselector.WithNamespace(o.Namespace()),
+		)
+	}
+	if o.Domain() != nil {
+		selOpts = append(
+			selOpts, objectselector.WithDomain(o.Domain()),
+		)
+	}
+	_, err := d.ObjectRead(ctx, objectselector.New(selOpts...))
+	if err != nil {
+		if err != errors.ErrNotFound {
+			return err
+		}
+		return d.ObjectWrite(ctx, o)
 	}
 	return nil
 }

@@ -14,6 +14,7 @@ import (
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storemeta "github.com/relexec/rxp-pg/internal/store/meta"
 	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
+	storeobject "github.com/relexec/rxp-pg/internal/store/object"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
@@ -49,6 +50,10 @@ type Driver struct {
 	// namespaceStore contains the Store for reading and writing Namespace
 	// data.
 	namespaceStore *storenamespace.Store
+
+	// objectStore contains the Store for reading and writing Namespace
+	// data.
+	objectStore *storeobject.Store
 
 	// onClose are a set of callbacks that will be executed in reverse
 	// order when the Driver is closed.
