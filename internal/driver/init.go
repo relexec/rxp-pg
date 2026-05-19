@@ -14,6 +14,7 @@ import (
 	"github.com/relexec/rxp-pg/config"
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
+	storemeta "github.com/relexec/rxp-pg/internal/store/meta"
 	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
@@ -54,6 +55,10 @@ func (d *Driver) init(ctx context.Context) error {
 	}
 
 	if err = d.initKindStore(ctx); err != nil {
+		return err
+	}
+
+	if err = d.initMetaStore(ctx); err != nil {
 		return err
 	}
 
@@ -172,6 +177,26 @@ func (d *Driver) initKindStore(ctx context.Context) error {
 	d.kindStore = s
 	d.onClose = append(d.onClose, d.kindStore.Close)
 	d.log.Info("initialized kind store")
+	return nil
+}
+
+// initMetaStore initializes the meta store.
+func (d *Driver) initMetaStore(ctx context.Context) error {
+	d.log.V(4).Info("initializing meta store")
+	s, err := storemeta.New(
+		ctx,
+		storemeta.WithConfig(d.cfg),
+		storemeta.WithPool(d.pool),
+		storemeta.WithSystemStore(d.systemStore),
+		storemeta.WithHostSystemRecord(*d.hostSystemRecord),
+		storemeta.WithKindStore(d.kindStore),
+	)
+	if err != nil {
+		return err
+	}
+	d.metaStore = s
+	d.onClose = append(d.onClose, d.metaStore.Close)
+	d.log.Info("initialized meta store")
 	return nil
 }
 

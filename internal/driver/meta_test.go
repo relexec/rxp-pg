@@ -5,23 +5,26 @@ import (
 	"testing"
 
 	"github.com/relexec/rxp-pg/internal/testutil"
-	"github.com/relexec/rxp/cmp/fieldpath"
-	"github.com/relexec/rxp/kind/read/selector"
-	writeoption "github.com/relexec/rxp/kind/write/option"
+	"github.com/relexec/rxp/meta/read/selector"
+	writeoption "github.com/relexec/rxp/meta/write/option"
 	readoption "github.com/relexec/rxp/read/option"
 	"github.com/relexec/rxp/testing/fixtures"
+	"github.com/relexec/rxp/testing/fixtures/author"
 	"github.com/relexec/rxp/testing/fixtures/book"
-	rxptypes "github.com/relexec/rxp/types"
+	"github.com/relexec/rxp/types"
 	"github.com/stretchr/testify/require"
 )
 
-func TestKindRead(t *testing.T) {
+func TestMetaRead(t *testing.T) {
 	ctx := testutil.Context(testutil.UserIdentity)
 	rxp, err := testutil.Driver(ctx)
 	require.Nil(t, err)
 
 	err = testutil.KindCreateIfNotExists(ctx, rxp, book.Kind)
 	require.Nil(t, err, err)
+
+	err = testutil.MetaCreateIfNotExists(ctx, rxp, book.FirstMeta())
+	require.Nil(t, err)
 
 	ctxMissingIdent := context.TODO()
 
@@ -30,29 +33,29 @@ func TestKindRead(t *testing.T) {
 		ctx    context.Context
 		sel    selector.Selector
 		opts   []readoption.Option
-		exp    rxptypes.Kind
+		exp    types.Meta
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			selector.New(selector.WithName(fixtures.InvalidKindName)),
+			selector.New(selector.WithKindVersion(fixtures.UnknownKindVersion)),
 			nil,
 			nil,
 			"missing identity",
 		},
 		{
-			"unknown kind",
+			"unknown kind version",
 			ctx,
-			selector.New(selector.WithName(fixtures.UnknownKindName)),
+			selector.New(selector.WithKindVersion(fixtures.UnknownKindVersion)),
 			nil,
 			nil,
-			"not found",
+			"unknown kind version",
 		},
 		{
-			"invalid kind",
+			"invalid kind version",
 			ctx,
-			selector.New(selector.WithName(fixtures.InvalidKindName)),
+			selector.New(selector.WithKindVersion(fixtures.InvalidKindVersion)),
 			nil,
 			nil,
 			"invalid kind name: invalid characters",
@@ -60,75 +63,90 @@ func TestKindRead(t *testing.T) {
 		{
 			"happy path",
 			ctx,
-			selector.New(selector.WithName(book.KindName)),
+			selector.New(selector.WithKindVersion(book.FirstKindVersion())),
 			nil,
-			book.Kind,
+			book.Meta_V1_0_0,
 			"",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			got, err := rxp.KindRead(c.ctx, c.sel, c.opts...)
+			got, err := rxp.MetaRead(c.ctx, c.sel, c.opts...)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {
 				require.Nil(err)
-				delta, err := c.exp.Diff(got)
+				require.Equal(c.exp.KindVersion(), got.KindVersion())
+				expSchema := c.exp.Schema()
+				gotSchema := got.Schema()
+				delta, err := expSchema.Diff(gotSchema)
 				require.Nil(err)
-				require.False(
-					delta.DifferentExcept(
-						fieldpath.FromString("system"),
-					),
-				)
+				require.False(delta.Different())
 			}
 		})
 	}
 }
 
-func TestKindWrite(t *testing.T) {
+func TestMetaWrite(t *testing.T) {
 	ctx := testutil.Context(testutil.UserIdentity)
 	rxp, err := testutil.Driver(ctx)
 	require.Nil(t, err)
 
+	// NOTE(jaypipes): We ensure the author Kind here but not any Metas
+	// (KindVersions) for it. This allows us to properly test the precondition
+	// failed for minor/patch version number of 0.
+	err = testutil.KindCreateIfNotExists(ctx, rxp, author.Kind)
+	require.Nil(t, err)
+
 	err = testutil.KindCreateIfNotExists(ctx, rxp, book.Kind)
 	require.Nil(t, err, err)
+
+	err = testutil.MetaCreateIfNotExists(ctx, rxp, book.FirstMeta())
+	require.Nil(t, err)
 
 	ctxMissingIdent := context.TODO()
 
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject rxptypes.Kind
+		subject types.Meta
 		opts    []writeoption.Option
 		expErr  string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			fixtures.UnknownKind,
+			fixtures.UnknownMeta,
 			nil,
 			"missing identity",
 		},
 		{
-			"invalid kind",
+			"invalid meta",
 			ctx,
-			fixtures.InvalidKind,
+			fixtures.InvalidMeta,
 			nil,
 			"invalid kind name: invalid characters",
 		},
 		{
-			"duplicate kind",
+			"duplicate meta",
 			ctx,
-			book.Kind,
+			book.FirstMeta(),
 			nil,
-			"conflict: \"kind\" already exists",
+			"precondition failed: expected \"book.testing.rxp@1.0.0\" not to exist",
+		},
+		{
+			"expected first version in series",
+			ctx,
+			author.LastMeta(),
+			nil,
+			"precondition failed: expected \"author.testing.rxp@1.0.1\" to have minor and patch version of 0",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			err := rxp.KindWrite(c.ctx, c.subject, c.opts...)
+			err := rxp.MetaWrite(c.ctx, c.subject, c.opts...)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {

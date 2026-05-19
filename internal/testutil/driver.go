@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	"github.com/relexec/rxp/errors"
+	ksel "github.com/relexec/rxp/kind/read/selector"
+	msel "github.com/relexec/rxp/meta/read/selector"
 	"github.com/relexec/rxp/name"
 	"github.com/relexec/rxp/read/selector"
 	"github.com/relexec/rxp/testing/fixtures"
@@ -41,6 +43,28 @@ func Driver(ctx context.Context) (*driver.Driver, error) {
 
 // KindCreateIfNotExists ensures that the supplied Kind exists in the
 // database.
+func MetaCreateIfNotExists(
+	ctx context.Context,
+	d *driver.Driver,
+	m types.Meta,
+) error {
+	_, err := d.MetaRead(
+		ctx,
+		msel.New(
+			msel.WithKindVersion(m.KindVersion()),
+		),
+	)
+	if err != nil {
+		if err != errors.ErrNotFound {
+			return err
+		}
+		return d.MetaWrite(ctx, m)
+	}
+	return nil
+}
+
+// KindCreateIfNotExists ensures that the supplied Kind exists in the
+// database.
 func KindCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
@@ -48,10 +72,8 @@ func KindCreateIfNotExists(
 ) error {
 	_, err := d.KindRead(
 		ctx,
-		selector.New(
-			selector.WithName(
-				name.New(string(k.Name())),
-			),
+		ksel.New(
+			ksel.WithName(k.Name()),
 		),
 	)
 	if err != nil {
