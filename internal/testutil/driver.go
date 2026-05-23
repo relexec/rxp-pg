@@ -54,7 +54,9 @@ func MetaCreateIfNotExists(
 ) error {
 	_, err := d.MetaRead(
 		ctx,
-		meta.ByKindVersion(m.KindVersion()),
+		meta.Select(
+			meta.ByKindVersion(m.KindVersion()),
+		),
 	)
 	if err != nil {
 		if err != errors.ErrNotFound {

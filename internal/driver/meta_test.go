@@ -34,28 +34,36 @@ func TestMetaRead(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			meta.ByKindVersion(fixtures.UnknownKindVersion),
+			meta.Select(
+				meta.ByKindVersion(fixtures.UnknownKindVersion),
+			),
 			nil,
 			"missing identity",
 		},
 		{
 			"unknown kind version",
 			ctx,
-			meta.ByKindVersion(fixtures.UnknownKindVersion),
+			meta.Select(
+				meta.ByKindVersion(fixtures.UnknownKindVersion),
+			),
 			nil,
 			"unknown kind version",
 		},
 		{
 			"invalid kind version",
 			ctx,
-			meta.ByKindVersion(fixtures.InvalidKindVersion),
+			meta.Select(
+				meta.ByKindVersion(fixtures.InvalidKindVersion),
+			),
 			nil,
 			"invalid kind name: invalid characters",
 		},
 		{
 			"happy path",
 			ctx,
-			meta.ByKindVersion(service.FirstKindVersion()),
+			meta.Select(
+				meta.ByKindVersion(service.FirstKindVersion()),
+			),
 			service.Meta_V1_0_0,
 			"",
 		},
