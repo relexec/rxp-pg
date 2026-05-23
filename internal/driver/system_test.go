@@ -27,7 +27,7 @@ func TestSystemRead(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			system.ByUUID(fixtures.SystemUUID),
+			system.Select(system.ByUUID(fixtures.SystemUUID)),
 			nil,
 			"missing identity",
 		},
@@ -41,14 +41,14 @@ func TestSystemRead(t *testing.T) {
 		{
 			"unknown system",
 			ctx,
-			system.ByUUID(fixtures.UnknownSystemUUID),
+			system.Select(system.ByUUID(fixtures.UnknownSystemUUID)),
 			nil,
 			"not found",
 		},
 		{
 			"happy path",
 			ctx,
-			system.ByUUID(fixtures.SystemUUID),
+			system.Select(system.ByUUID(fixtures.SystemUUID)),
 			fixtures.System,
 			"",
 		},
