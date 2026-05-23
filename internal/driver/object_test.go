@@ -7,14 +7,13 @@ import (
 	"github.com/google/uuid"
 	testutil "github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/list/expression"
-	"github.com/relexec/rxp/list/option"
 	"github.com/relexec/rxp/object"
+	"github.com/relexec/rxp/query"
+	"github.com/relexec/rxp/query/expression"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/testing/fixtures/application"
 	"github.com/relexec/rxp/testing/fixtures/platform"
 	"github.com/relexec/rxp/testing/fixtures/service"
-	"github.com/relexec/rxp/types"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )
@@ -438,7 +437,7 @@ func TestObjectWrite(t *testing.T) {
 	}
 }
 
-func TestObjectList(t *testing.T) {
+func TestObjectQuery(t *testing.T) {
 	ctx := testutil.Context(testutil.UserIdentity)
 	rxp, err := testutil.Driver(ctx)
 	require.Nil(t, err)
@@ -507,11 +506,11 @@ func TestObjectList(t *testing.T) {
 	cases := []struct {
 		name             string
 		ctx              context.Context
-		expr             types.Expression
-		opts             []option.Option
+		expr             expression.Expression
+		opts             []query.Option
 		expNumObjs       int
 		expOnlyKindNames []api.KindName
-		expOptions       option.Options
+		expOptions       query.Options
 		expMarker        string
 		expErr           string
 	}{
@@ -522,7 +521,7 @@ func TestObjectList(t *testing.T) {
 			nil,
 			0,
 			nil,
-			option.New(),
+			query.Options{},
 			"",
 			"missing identity",
 		},
@@ -533,7 +532,7 @@ func TestObjectList(t *testing.T) {
 			nil,
 			0,
 			nil,
-			option.New(),
+			query.Options{},
 			"",
 			"expression required",
 		},
@@ -544,52 +543,52 @@ func TestObjectList(t *testing.T) {
 			nil,
 			0,
 			nil,
-			option.New(),
+			query.Options{},
 			"",
-			"invalid list expression: at least one kind required",
+			"invalid query expression: at least one kind required",
 		},
 		{
-			"list system-qualified objects limit of 1",
+			"query system-qualified objects limit of 1",
 			ctx,
 			expression.KindNameEqual(platform.KindName),
-			[]option.Option{
-				option.WithLimit(1),
+			[]query.Option{
+				query.Limit(1),
 			},
 			1,
 			[]api.KindName{
 				platform.KindName,
 			},
-			option.New(option.WithLimit(1)),
+			query.NewOptions(query.Limit(1)),
 			"",
 			"",
 		},
 		{
-			"list domain-qualified objects limit of 1",
+			"query domain-qualified objects limit of 1",
 			ctx,
 			expression.KindNameEqual(application.KindName),
-			[]option.Option{
-				option.WithLimit(1),
+			[]query.Option{
+				query.Limit(1),
 			},
 			1,
 			[]api.KindName{
 				application.KindName,
 			},
-			option.New(option.WithLimit(1)),
+			query.NewOptions(query.Limit(1)),
 			"",
 			"",
 		},
 		{
-			"list namespace-qualified objects limit of 1",
+			"query namespace-qualified objects limit of 1",
 			ctx,
 			expression.KindNameEqual(service.KindName),
-			[]option.Option{
-				option.WithLimit(1),
+			[]query.Option{
+				query.Limit(1),
 			},
 			1,
 			[]api.KindName{
 				service.KindName,
 			},
-			option.New(option.WithLimit(1)),
+			query.NewOptions(query.Limit(1)),
 			"",
 			"",
 		},
@@ -597,7 +596,8 @@ func TestObjectList(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			got, err := rxp.ObjectList(c.ctx, c.expr, c.opts...)
+
+			got, err := rxp.ObjectQuery(c.ctx, c.expr, c.opts...)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {

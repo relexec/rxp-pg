@@ -6,14 +6,10 @@ import (
 
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/list"
-	"github.com/relexec/rxp/list/expression"
-	"github.com/relexec/rxp/list/option"
-	listoption "github.com/relexec/rxp/list/option"
-	"github.com/relexec/rxp/list/result"
 	"github.com/relexec/rxp/metrics"
 	"github.com/relexec/rxp/object"
-	"github.com/relexec/rxp/types"
+	"github.com/relexec/rxp/query"
+	"github.com/relexec/rxp/query/expression"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
@@ -315,16 +311,16 @@ func (d *Driver) objectWrite(
 }
 
 const (
-	DefaultObjectListLimit = 10
-	MaxObjectListLimit     = 100
+	DefaultObjectQueryLimit = 10
+	MaxObjectQueryLimit     = 100
 )
 
-// ObjectList lists zero or more Objects from persistent storage.
-func (d *Driver) ObjectList(
+// ObjectQuery queries zero or more Objects from persistent storage.
+func (d *Driver) ObjectQuery(
 	ctx context.Context,
-	expr types.Expression,
-	opts ...listoption.Option,
-) (list.Result[*object.Object], error) {
+	expr expression.Expression,
+	opts ...query.Option,
+) (*query.Result[*object.Object], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -339,20 +335,20 @@ func (d *Driver) ObjectList(
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
 		}
-		metrics.InstrumentListRequest.Add(
+		metrics.InstrumentQueryRequest.Add(
 			ctx, 1,
 			metric.WithAttributes(attrs...),
 		)
-		metrics.InstrumentListDuration.Record(ctx, elapsed)
+		metrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
-	lopts := listoption.New(opts...)
-	err = d.objectListValidate(ctx, expr, lopts)
+	qopts := query.NewOptions(opts...)
+	err = d.objectQueryValidate(ctx, expr, qopts)
 	if err != nil {
 		return nil, err
 	}
 
-	boundedOpts := d.objectListBoundedOptions(ctx, lopts)
+	boundedOpts := d.objectQueryBoundedOptions(ctx, qopts)
 
 	recs, err := d.objectStore.Query(
 		ctx, expr, boundedOpts,
@@ -364,49 +360,49 @@ func (d *Driver) ObjectList(
 	for _, rec := range recs {
 		objs = append(objs, rec.Object)
 	}
-	resOpts := option.New(
-		option.WithLimit(boundedOpts.Limit()),
+	resOpts := query.NewOptions(
+		query.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == boundedOpts.Limit() {
-		resOpts = option.New(
-			option.WithMarker(recs[len(recs)-1].Object.UUID()),
-			option.WithLimit(boundedOpts.Limit()),
+		resOpts = query.NewOptions(
+			query.ContinueFrom(recs[len(recs)-1].Object.UUID()),
+			query.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []result.Option[*object.Object]{
-		result.WithItems(objs),
-		result.WithOptions[*object.Object](resOpts),
+	resNewOpts := []query.ResultModifier[*object.Object]{
+		query.ResultWithItems(objs),
+		query.ResultWithOptions[*object.Object](resOpts),
 	}
-	return result.New[*object.Object](resNewOpts...), nil
+	return query.NewResult[*object.Object](resNewOpts...), nil
 }
 
-// objectListValidate returns an error if the supplied expression and list
+// objectQueryValidate returns an error if the supplied expression and query
 // options are not valid.
-func (d *Driver) objectListValidate(
+func (d *Driver) objectQueryValidate(
 	ctx context.Context,
-	expr types.Expression,
-	opts listoption.Options,
+	expr expression.Expression,
+	opts query.Options,
 ) error {
 	if expr == nil {
-		return errors.ErrListExpressionRequired
+		return errors.ErrQueryExpressionRequired
 	}
 	if !expression.ContainsKindPredicate(expr) {
-		return errors.ErrInvalidListExpressionKindRequired
+		return errors.ErrInvalidQueryExpressionKindRequired
 	}
 	return nil
 }
 
-// objectListBoundedOptions returns a Options that has been bounded with
-// reasonable defaults, e.g. ensuring that the number of records listed is less
+// objectQueryBoundedOptions returns a Options that has been bounded with
+// reasonable defaults, e.g. ensuring that the number of records queryed is less
 // than the max page result.
-func (d *Driver) objectListBoundedOptions(
+func (d *Driver) objectQueryBoundedOptions(
 	ctx context.Context,
-	opts listoption.Options,
-) listoption.Options {
+	opts query.Options,
+) query.Options {
 	limit := opts.Limit()
 	if limit <= 0 {
-		limit = DefaultObjectListLimit
+		limit = DefaultObjectQueryLimit
 	}
-	limit = min(limit, MaxObjectListLimit)
-	return listoption.New(listoption.WithLimit(limit))
+	limit = min(limit, MaxObjectQueryLimit)
+	return query.NewOptions(query.Limit(limit))
 }

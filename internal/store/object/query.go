@@ -11,19 +11,18 @@ import (
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/list/expression"
-	"github.com/relexec/rxp/list/option"
 	"github.com/relexec/rxp/namespace"
 	"github.com/relexec/rxp/object"
+	"github.com/relexec/rxp/query"
+	"github.com/relexec/rxp/query/expression"
 	"github.com/relexec/rxp/system"
-	"github.com/relexec/rxp/types"
 )
 
-// Query lists zero or more Objects from persistent storage.
+// Query queries zero or more Objects from persistent storage.
 func (s *Store) Query(
 	ctx context.Context,
-	expr types.Expression,
-	opts option.Options,
+	expr expression.Expression,
+	opts query.Options,
 ) ([]*Record, error) {
 	var err error
 	var nsqRecords []namespaceQualifiedObjectRecord
@@ -32,9 +31,9 @@ func (s *Store) Query(
 
 	sys := s.hostSystemRecord.System
 
-	var nsqExpr types.Expression
-	var dqExpr types.Expression
-	var sqExpr types.Expression
+	var nsqExpr expression.Expression
+	var dqExpr expression.Expression
+	var sqExpr expression.Expression
 
 	switch expr := expr.(type) {
 	case expression.UnaryExpression:
@@ -63,7 +62,7 @@ func (s *Store) Query(
 
 	out := []*Record{}
 	if nsqExpr != nil {
-		nsqRecords, err = s.objectListNamespaceQualified(
+		nsqRecords, err = s.objectQueryNamespaceQualified(
 			ctx, nsqExpr, opts,
 		)
 		if err != nil {
@@ -98,7 +97,7 @@ func (s *Store) Query(
 		}
 	}
 	if dqExpr != nil {
-		dqRecords, err = s.objectListDomainQualified(
+		dqRecords, err = s.objectQueryDomainQualified(
 			ctx, dqExpr, opts,
 		)
 		if err != nil {
@@ -128,7 +127,7 @@ func (s *Store) Query(
 		}
 	}
 	if sqExpr != nil {
-		sqRecords, err = s.objectListSystemQualified(
+		sqRecords, err = s.objectQuerySystemQualified(
 			ctx, sqExpr, opts,
 		)
 		if err != nil {
@@ -181,13 +180,13 @@ type namespaceQualifiedObjectRecord struct {
 	NamespaceName api.NamespaceName `db:"namespace_name"`
 }
 
-// objectListNamespaceQualified lists zero or more Objects that have
+// objectQueryNamespaceQualified queries zero or more Objects that have
 // namespace-qualified names from persistent storage given the pre-validated
 // expression and options.
-func (s *Store) objectListNamespaceQualified(
+func (s *Store) objectQueryNamespaceQualified(
 	ctx context.Context,
-	expr types.Expression,
-	opts option.Options,
+	expr expression.Expression,
+	opts query.Options,
 ) ([]namespaceQualifiedObjectRecord, error) {
 	sysRec := s.hostSystemRecord
 	sys := sysRec.System
@@ -292,13 +291,13 @@ type domainQualifiedObjectRecord struct {
 	DomainName  api.DomainName `db:"domain_name"`
 }
 
-// objectListDomainQualified lists zero or more Objects that have
+// objectQueryDomainQualified queries zero or more Objects that have
 // domain-qualified names from persistent storage given the pre-validated
 // expression and options.
-func (s *Store) objectListDomainQualified(
+func (s *Store) objectQueryDomainQualified(
 	ctx context.Context,
-	expr types.Expression,
-	opts option.Options,
+	expr expression.Expression,
+	opts query.Options,
 ) ([]domainQualifiedObjectRecord, error) {
 	sysRec := s.hostSystemRecord
 	sys := sysRec.System
@@ -396,13 +395,13 @@ type systemQualifiedObjectRecord struct {
 	MetaVersion string       `db:"meta_version"`
 }
 
-// objectListSystemQualified lists zero or more Objects that have
+// objectQuerySystemQualified queries zero or more Objects that have
 // system-qualified names from persistent storage given the pre-validated
 // expression and options.
-func (s *Store) objectListSystemQualified(
+func (s *Store) objectQuerySystemQualified(
 	ctx context.Context,
-	expr types.Expression,
-	opts option.Options,
+	expr expression.Expression,
+	opts query.Options,
 ) ([]systemQualifiedObjectRecord, error) {
 	sysRec := s.hostSystemRecord
 	sys := sysRec.System
