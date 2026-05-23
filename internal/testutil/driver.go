@@ -135,25 +135,18 @@ func ObjectCreateIfNotExists(
 	d *driver.Driver,
 	o *object.Object,
 ) error {
-	var sel object.Selector
+	selopts := []object.SelectOption{}
 	if o.UUID() != "" {
-		if o.Namespace() != nil {
-			sel = object.ByNamespaceAndUUID(o.Namespace(), o.UUID())
-		} else if o.Domain() != nil {
-			sel = object.ByDomainAndUUID(o.Domain(), o.UUID())
-		} else {
-			sel = object.ByUUID(o.UUID())
-		}
-	} else {
-		if o.Namespace() != nil {
-			sel = object.ByNamespaceAndName(o.Namespace(), o.Name())
-		} else if o.Domain() != nil {
-			sel = object.ByDomainAndName(o.Domain(), o.Name())
-		} else {
-			sel = object.ByName(o.Name())
-		}
+		selopts = append(selopts, object.ByUUID(o.UUID()))
+	} else if o.Name() != "" {
+		selopts = append(selopts, object.ByName(o.Name()))
 	}
-	_, err := d.ObjectRead(ctx, o.KindVersion(), sel)
+	if o.Namespace() != nil {
+		selopts = append(selopts, object.ByNamespace(o.Namespace()))
+	} else if o.Domain() != nil {
+		selopts = append(selopts, object.ByDomain(o.Domain()))
+	}
+	_, err := d.ObjectRead(ctx, o.KindVersion(), object.Select(selopts...))
 	if err != nil {
 		if err != errors.ErrNotFound {
 			return err

@@ -93,7 +93,7 @@ func (d *Driver) ObjectRead(
 		return nil, errors.ErrKindVersionUnknown
 	}
 
-	objGen := api.Generation(0) // sel.Generation()
+	objGen := sel.Generation()
 	uuid := sel.UUID()
 	name := sel.Name()
 
