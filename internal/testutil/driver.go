@@ -76,7 +76,7 @@ func KindCreateIfNotExists(
 ) error {
 	_, err := d.KindRead(
 		ctx,
-		kind.ByName(k.Name()),
+		kind.Select(kind.ByName(k.Name())),
 	)
 	if err != nil {
 		if err != errors.ErrNotFound {
