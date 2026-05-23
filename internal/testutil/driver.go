@@ -113,10 +113,9 @@ func NamespaceCreateIfNotExists(
 	ns *namespace.Namespace,
 ) error {
 	_, err := d.NamespaceRead(
-		ctx,
-		namespace.ByName(
-			ns.Domain(),
-			ns.Name(),
+		ctx, namespace.Select(
+			namespace.ByDomain(ns.Domain()),
+			namespace.ByName(ns.Name()),
 		),
 	)
 	if err != nil {

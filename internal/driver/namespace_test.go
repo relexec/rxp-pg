@@ -32,7 +32,10 @@ func TestNamespaceRead(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			namespace.ByName(fixtures.Domain, fixtures.NamespaceName),
+			namespace.Select(
+				namespace.ByDomain(fixtures.Domain),
+				namespace.ByName(fixtures.NamespaceName),
+			),
 			nil,
 			"missing identity",
 		},
@@ -44,23 +47,41 @@ func TestNamespaceRead(t *testing.T) {
 			"uuid or name required",
 		},
 		{
+			"domain required",
+			ctx,
+			namespace.Select(
+				namespace.ByName(fixtures.UnknownNamespaceName),
+			),
+			nil,
+			"domain required",
+		},
+		{
 			"unknown namespace",
 			ctx,
-			namespace.ByName(fixtures.Domain, fixtures.UnknownNamespaceName),
+			namespace.Select(
+				namespace.ByDomain(fixtures.Domain),
+				namespace.ByName(fixtures.UnknownNamespaceName),
+			),
 			nil,
 			"not found",
 		},
 		{
 			"invalid namespace",
 			ctx,
-			namespace.ByName(fixtures.Domain, fixtures.InvalidNamespaceName),
+			namespace.Select(
+				namespace.ByDomain(fixtures.Domain),
+				namespace.ByName(fixtures.InvalidNamespaceName),
+			),
 			nil,
 			"invalid namespace name: invalid characters",
 		},
 		{
 			"happy path",
 			ctx,
-			namespace.ByName(fixtures.Domain, fixtures.NamespaceName),
+			namespace.Select(
+				namespace.ByDomain(fixtures.Domain),
+				namespace.ByName(fixtures.NamespaceName),
+			),
 			fixtures.Namespace,
 			"",
 		},
