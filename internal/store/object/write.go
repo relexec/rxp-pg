@@ -6,8 +6,9 @@ import (
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/types"
+	"github.com/relexec/rxp/object"
 )
 
 // WriteFirst atomically writes the pre-validated Object to persistent storage.
@@ -15,7 +16,7 @@ import (
 // an object.
 func (s *Store) WriteFirst(
 	ctx context.Context,
-	obj types.Object,
+	obj *object.Object,
 ) error {
 	sys := obj.System()
 	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
@@ -53,9 +54,9 @@ func (s *Store) WriteFirst(
 	var nsRec *storenamespace.Record
 
 	k := kindRec.Kind
-	namescope := k.Namescope()
-	switch namescope {
-	case types.NamescopeNamespace:
+	scope := k.Scope()
+	switch scope {
+	case api.ScopeNamespace:
 		ns := obj.Namespace()
 		if ns == nil {
 			return errors.Internal(
@@ -101,7 +102,7 @@ func (s *Store) WriteFirst(
 				errors.WithWrap(err),
 			)
 		}
-	case types.NamescopeDomain:
+	case api.ScopeDomain:
 		dom := obj.Domain()
 		if dom == nil {
 			return errors.Internal(
@@ -130,8 +131,8 @@ func (s *Store) WriteFirst(
 // generation.
 func (s *Store) WriteGeneration(
 	ctx context.Context,
-	obj types.Object,
-	expectGeneration types.Generation,
+	obj *object.Object,
+	expectGeneration api.Generation,
 ) error {
 	sys := obj.System()
 	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
@@ -169,9 +170,9 @@ func (s *Store) WriteGeneration(
 	var nsRec *storenamespace.Record
 
 	k := kindRec.Kind
-	namescope := k.Namescope()
-	switch namescope {
-	case types.NamescopeNamespace:
+	scope := k.Scope()
+	switch scope {
+	case api.ScopeNamespace:
 		ns := obj.Namespace()
 		if ns == nil {
 			return errors.Internal(
@@ -217,7 +218,7 @@ func (s *Store) WriteGeneration(
 				errors.WithWrap(err),
 			)
 		}
-	case types.NamescopeDomain:
+	case api.ScopeDomain:
 		dom := obj.Domain()
 		if dom == nil {
 			return errors.Internal(

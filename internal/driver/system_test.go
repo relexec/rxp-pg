@@ -5,12 +5,8 @@ import (
 	"testing"
 
 	"github.com/relexec/rxp-pg/internal/testutil"
-	"github.com/relexec/rxp/name"
-	readoption "github.com/relexec/rxp/read/option"
-	"github.com/relexec/rxp/read/selector"
-	writeoption "github.com/relexec/rxp/system/write/option"
+	"github.com/relexec/rxp/system"
 	"github.com/relexec/rxp/testing/fixtures"
-	"github.com/relexec/rxp/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,40 +20,35 @@ func TestSystemRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		sel    types.Selector
-		opts   []readoption.Option
-		exp    types.System
+		sel    system.Selector
+		exp    *system.System
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			selector.New(selector.WithUUID(fixtures.SystemUUID)),
-			nil,
+			system.ByUUID(fixtures.SystemUUID),
 			nil,
 			"missing identity",
 		},
 		{
 			"uuid required",
 			ctx,
-			selector.New(selector.WithName(name.New(fixtures.SystemName))),
-			nil,
+			system.Selector{},
 			nil,
 			"uuid required",
 		},
 		{
 			"unknown system",
 			ctx,
-			selector.New(selector.WithUUID(fixtures.UnknownSystemUUID)),
-			nil,
+			system.ByUUID(fixtures.UnknownSystemUUID),
 			nil,
 			"not found",
 		},
 		{
 			"happy path",
 			ctx,
-			selector.New(selector.WithUUID(fixtures.SystemUUID)),
-			nil,
+			system.ByUUID(fixtures.SystemUUID),
 			fixtures.System,
 			"",
 		},
@@ -65,7 +56,7 @@ func TestSystemRead(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			got, err := rxp.SystemRead(c.ctx, c.sel, c.opts...)
+			got, err := rxp.SystemRead(c.ctx, c.sel)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {
@@ -88,29 +79,26 @@ func TestSystemWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject types.System
-		opts    []writeoption.Option
+		subject *system.System
 		expErr  string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
 			fixtures.UnknownSystem,
-			nil,
 			"missing identity",
 		},
 		{
 			"duplicate system",
 			ctx,
 			fixtures.System,
-			nil,
 			"conflict: \"system\" already exists",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			err := rxp.SystemWrite(c.ctx, c.subject, c.opts...)
+			err := rxp.SystemWrite(c.ctx, c.subject)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {

@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/types"
+	"github.com/relexec/rxp/system"
 )
 
 type byRowIDCacheKey int64
@@ -18,14 +19,14 @@ func (k byNameCacheKey) SystemUUID() string {
 	return parts[0]
 }
 
-func (k byNameCacheKey) DomainName() types.DomainName {
+func (k byNameCacheKey) DomainName() api.DomainName {
 	parts := strings.Split(string(k), "|")
-	return types.DomainName(parts[1])
+	return api.DomainName(parts[1])
 }
 
 func newByNameCacheKey(
-	system types.System,
-	name types.DomainName,
+	system *system.System,
+	name api.DomainName,
 ) byNameCacheKey {
 	return byNameCacheKey(system.UUID() + "|" + string(name))
 }

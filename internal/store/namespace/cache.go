@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/relexec/rxp/api"
+	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/types"
 )
 
 type byUUIDCacheKey string
@@ -17,14 +18,14 @@ func (k byNameCacheKey) DomainUUID() string {
 	return parts[0]
 }
 
-func (k byNameCacheKey) NamespaceName() types.NamespaceName {
+func (k byNameCacheKey) NamespaceName() api.NamespaceName {
 	parts := strings.Split(string(k), "|")
-	return types.NamespaceName(parts[1])
+	return api.NamespaceName(parts[1])
 }
 
 func newByNameCacheKey(
-	domain types.Domain,
-	name types.NamespaceName,
+	domain *domain.Domain,
+	name api.NamespaceName,
 ) byNameCacheKey {
 	return byNameCacheKey(domain.UUID() + "|" + string(name))
 }

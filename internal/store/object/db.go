@@ -10,10 +10,10 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/relexec/rxp/api"
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/object"
-	"github.com/relexec/rxp/types"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
@@ -94,7 +94,7 @@ func (s *Store) dbReadNamespaceQualifiedByRowID(
 ) (*Record, error) {
 	var uuid string
 	var name string
-	var latestGen types.Generation
+	var latestGen api.Generation
 	var spec sql.NullString
 	out := Record{
 		RowID: rowID,
@@ -164,7 +164,7 @@ func (s *Store) dbReadDomainQualifiedByRowID(
 ) (*Record, error) {
 	var uuid string
 	var name string
-	var latestGen types.Generation
+	var latestGen api.Generation
 	var spec sql.NullString
 	out := Record{
 		RowID: rowID,
@@ -231,7 +231,7 @@ func (s *Store) dbReadSystemQualifiedByRowID(
 ) (*Record, error) {
 	var uuid string
 	var name string
-	var latestGen types.Generation
+	var latestGen api.Generation
 	var spec sql.NullString
 	out := Record{
 		RowID: rowID,
@@ -295,7 +295,7 @@ func (s *Store) dbReadNamespaceQualifiedByUUID(
 	uuid string,
 ) (*Record, error) {
 	var name string
-	var latestGen types.Generation
+	var latestGen api.Generation
 	var spec sql.NullString
 	out := Record{}
 	fn := func(tx pgx.Tx) error {
@@ -362,7 +362,7 @@ func (s *Store) dbReadDomainQualifiedByUUID(
 	uuid string,
 ) (*Record, error) {
 	var name string
-	var latestGen types.Generation
+	var latestGen api.Generation
 	var spec sql.NullString
 	out := Record{}
 	fn := func(tx pgx.Tx) error {
@@ -426,7 +426,7 @@ func (s *Store) dbReadSystemQualifiedByUUID(
 	uuid string,
 ) (*Record, error) {
 	var name string
-	var latestGen types.Generation
+	var latestGen api.Generation
 	var spec sql.NullString
 	out := Record{}
 	fn := func(tx pgx.Tx) error {
@@ -487,7 +487,7 @@ func (s *Store) dbReadNamespaceQualifiedByName(
 	name string,
 ) (*Record, error) {
 	var uuid string
-	var latestGen types.Generation
+	var latestGen api.Generation
 	var spec sql.NullString
 	out := Record{}
 	fn := func(tx pgx.Tx) error {
@@ -553,7 +553,7 @@ func (s *Store) dbReadDomainQualifiedByName(
 	name string,
 ) (*Record, error) {
 	var uuid string
-	var latestGen types.Generation
+	var latestGen api.Generation
 	var spec sql.NullString
 	out := Record{}
 	fn := func(tx pgx.Tx) error {
@@ -616,7 +616,7 @@ func (s *Store) dbReadSystemQualifiedByName(
 	name string,
 ) (*Record, error) {
 	var uuid string
-	var latestGen types.Generation
+	var latestGen api.Generation
 	var spec sql.NullString
 	out := Record{}
 	fn := func(tx pgx.Tx) error {
@@ -671,7 +671,7 @@ AND n.name = $4
 func (s *Store) dbReadAtGeneration(
 	ctx context.Context,
 	rowID int64,
-	generation types.Generation,
+	generation api.Generation,
 ) (*Record, error) {
 	var spec sql.NullString
 	out := Record{
@@ -714,7 +714,7 @@ func (s *Store) dbInsertFirst(
 	metaRec *storemeta.Record,
 	domRec *storedomain.Record,
 	nsRec *storenamespace.Record,
-	obj types.Object,
+	obj *object.Object,
 ) error {
 	kind := kindRec.Kind
 	kv := obj.KindVersion()
@@ -786,7 +786,7 @@ INSERT INTO objects (
 					// This will be the UUID column uniqueness constraint
 					// violation. Since we have different uniqueness
 					// constraints for the domain, namespace and name
-					// combinations depending on namescope, we check for
+					// combinations depending on scope, we check for
 					// name-based collisions before attempting to INSERT a
 					// record in the objects table.
 					return errors.ExpectedNotToExist(fmt.Sprintf("%s (%s)", kv, uuid))
@@ -797,9 +797,9 @@ INSERT INTO objects (
 				errors.WithWrap(err),
 			)
 		}
-		namescope := kindRec.Kind.Namescope()
-		switch namescope {
-		case types.NamescopeNamespace:
+		scope := kindRec.Kind.Scope()
+		switch scope {
+		case api.ScopeNamespace:
 			qs = `
 INSERT INTO namespace_qualified_object_names (
   object
@@ -845,7 +845,7 @@ INSERT INTO namespace_qualified_object_names (
 					errors.WithWrap(err),
 				)
 			}
-		case types.NamescopeDomain:
+		case api.ScopeDomain:
 			qs = `
 INSERT INTO domain_qualified_object_names (
   object
@@ -978,8 +978,8 @@ func (s *Store) dbInsertGeneration(
 	metaRec *storemeta.Record,
 	domRec *storedomain.Record,
 	nsRec *storenamespace.Record,
-	obj types.Object,
-	expectGeneration types.Generation,
+	obj *object.Object,
+	expectGeneration api.Generation,
 ) error {
 	kv := obj.KindVersion()
 	uuid := obj.UUID()

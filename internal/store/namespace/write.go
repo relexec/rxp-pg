@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/types"
+	"github.com/relexec/rxp/namespace"
 )
 
 // Write atomically writes the pre-validated Namespace to persistent storage.
 func (s *Store) Write(
 	ctx context.Context,
-	ns types.Namespace,
+	ns *namespace.Namespace,
 ) error {
 	dom := ns.Domain()
 	domRec, err := s.domainStore.ReadByUUID(ctx, dom.UUID())

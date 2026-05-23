@@ -3,14 +3,14 @@ package store
 import (
 	"context"
 
+	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/types"
 )
 
 // Write atomically writes the pre-validated Domain to persistent storage.
 func (s *Store) Write(
 	ctx context.Context,
-	dom types.Domain,
+	dom *domain.Domain,
 ) error {
 	sys := dom.System()
 	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())

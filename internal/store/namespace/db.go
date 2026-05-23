@@ -9,10 +9,10 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/relexec/rxp/api"
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/namespace"
-	"github.com/relexec/rxp/types"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 )
@@ -88,7 +88,7 @@ func (s *Store) dbReadByUUID(
 	}
 	fn := func(tx pgx.Tx) error {
 		var domainRowID int64
-		var name types.NamespaceName
+		var name api.NamespaceName
 		qs := "SELECT domain, id, name FROM namespaces WHERE uuid = $1"
 		err := tx.QueryRow(ctx, qs, uuid).Scan(&domainRowID, &out.RowID, &name)
 		if err != nil {
@@ -122,7 +122,7 @@ func (s *Store) dbReadByUUID(
 func (s *Store) dbReadByName(
 	ctx context.Context,
 	domainRec *storedomain.Record,
-	name types.NamespaceName,
+	name api.NamespaceName,
 ) (*Record, error) {
 	out := Record{
 		DomainRecord: domainRec,
@@ -157,7 +157,7 @@ func (s *Store) dbReadByName(
 func (s *Store) dbInsert(
 	ctx context.Context,
 	domainRec *storedomain.Record,
-	dom types.Namespace,
+	dom *namespace.Namespace,
 ) error {
 	createdOn := time.Now().UnixNano()
 	createdBy := rxpcontext.Identity(ctx)

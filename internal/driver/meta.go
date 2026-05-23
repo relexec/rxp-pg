@@ -4,13 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/relexec/rxp/api"
+	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/meta"
-	"github.com/relexec/rxp/meta/read/selector"
-	"github.com/relexec/rxp/meta/write"
-	writeoption "github.com/relexec/rxp/meta/write/option"
 	"github.com/relexec/rxp/metrics"
-	readoption "github.com/relexec/rxp/read/option"
-	"github.com/relexec/rxp/types"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -18,21 +15,20 @@ import (
 // MetaRead reads a Meta from persistent storage.
 func (d *Driver) MetaRead(
 	ctx context.Context,
-	sel selector.Selector,
-	opts ...readoption.Option,
-) (types.Meta, error) {
+	sel meta.Selector,
+) (*meta.Meta, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
 	}
 	start := time.Now()
 
-	var kv types.KindVersion
+	var kv api.KindVersion
 
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeTargetType(metrics.TargetTypeMeta),
+			metrics.AttributeType(api.TypeMeta),
 			metrics.AttributeKindVersion(kv),
 		}
 		if err != nil {
@@ -45,8 +41,7 @@ func (d *Driver) MetaRead(
 		metrics.InstrumentReadDuration.Record(ctx, elapsed)
 	}()
 
-	ropts := readoption.New(opts...)
-	err = d.metaReadValidate(ctx, sel, ropts)
+	err = d.metaReadValidate(ctx, sel)
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +66,7 @@ func (d *Driver) MetaRead(
 // options are not valid for reading a single Meta.
 func (d *Driver) metaReadValidate(
 	ctx context.Context,
-	sel selector.Selector,
-	opts readoption.Options,
+	sel meta.Selector,
 ) error {
 	return sel.Validate()
 }
@@ -80,8 +74,7 @@ func (d *Driver) metaReadValidate(
 // MetaWrite atomically writes the supplied Meta to persistent storage.
 func (d *Driver) MetaWrite(
 	ctx context.Context,
-	m types.Meta,
-	opts ...writeoption.Option,
+	m *meta.Meta,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -94,7 +87,7 @@ func (d *Driver) MetaWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeTargetType(metrics.TargetTypeMeta),
+			metrics.AttributeType(api.TypeMeta),
 			metrics.AttributeKindVersion(kv),
 		}
 		if err != nil {
@@ -107,15 +100,14 @@ func (d *Driver) MetaWrite(
 		metrics.InstrumentWriteDuration.Record(ctx, elapsed)
 	}()
 
-	wopts := writeoption.New(opts...)
-	err = d.metaWriteValidate(ctx, m, wopts)
+	err = d.metaWriteValidate(ctx, m)
 	if err != nil {
 		return err
 	}
 
 	system := m.System()
 	if system == nil {
-		m.(*meta.Meta).SetSystem(d.hostSystemRecord.System)
+		m.SetSystem(d.hostSystemRecord.System)
 	}
 	return d.metaStore.Write(ctx, m)
 }
@@ -124,11 +116,13 @@ func (d *Driver) MetaWrite(
 // options are not valid for writing a single Meta.
 func (d *Driver) metaWriteValidate(
 	ctx context.Context,
-	meta types.Meta,
-	opts writeoption.Options,
+	meta *meta.Meta,
 ) error {
+	if meta == nil {
+		return errors.RequiredParameterNil(
+			"meta",
+			errors.WithWrap(errors.ErrInvalidWriteRequest),
+		)
+	}
 	return meta.Validate()
 }
-
-// var _ read.MetaReader = (*Driver)(nil)
-var _ write.MetaWriter = (*Driver)(nil)

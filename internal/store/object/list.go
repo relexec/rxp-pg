@@ -8,6 +8,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/jackc/pgx/v5"
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/list/expression"
@@ -41,16 +42,16 @@ func (s *Store) Query(
 		switch pred := pred.(type) {
 		case expression.KindNamePredicate:
 			v := pred.Values()[0]
-			kn := v.(types.KindName)
+			kn := v.(api.KindName)
 			kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
 			if err != nil {
 				return nil, err
 			}
-			namescope := kindRec.Kind.Namescope()
-			switch namescope {
-			case types.NamescopeNamespace:
+			scope := kindRec.Kind.Scope()
+			switch scope {
+			case api.ScopeNamespace:
 				nsqExpr = expr
-			case types.NamescopeDomain:
+			case api.ScopeDomain:
 				dqExpr = expr
 			default:
 				sqExpr = expr
@@ -73,7 +74,7 @@ func (s *Store) Query(
 			if err != nil {
 				return nil, err
 			}
-			kv := types.NewKindVersion(rec.KindName, *sv)
+			kv := api.NewKindVersion(rec.KindName, *sv)
 			sys := system.New(system.WithUUID(rec.SystemUUID))
 			obj := object.New(
 				object.WithSystem(sys),
@@ -108,7 +109,7 @@ func (s *Store) Query(
 			if err != nil {
 				return nil, err
 			}
-			kv := types.NewKindVersion(rec.KindName, *sv)
+			kv := api.NewKindVersion(rec.KindName, *sv)
 			sys := system.New(system.WithUUID(rec.SystemUUID))
 			obj := object.New(
 				object.WithSystem(sys),
@@ -138,7 +139,7 @@ func (s *Store) Query(
 			if err != nil {
 				return nil, err
 			}
-			kv := types.NewKindVersion(rec.KindName, *sv)
+			kv := api.NewKindVersion(rec.KindName, *sv)
 			sys := system.New(system.WithUUID(rec.SystemUUID))
 			obj := object.New(
 				object.WithSystem(sys),
@@ -164,20 +165,20 @@ func (s *Store) Query(
 }
 
 type namespaceQualifiedObjectRecord struct {
-	ID            int64               `db:"object_id"`
-	UUID          string              `db:"object_uuid"`
-	Generation    int64               `db:"object_generation"`
-	ObjectName    string              `db:"object_name"`
-	SystemID      int64               `db:"system_id"`
-	SystemUUID    string              `db:"system_uuid"`
-	KindID        int64               `db:"kind_id"`
-	KindName      types.KindName      `db:"kind_name"`
-	MetaID        int64               `db:"meta_id"`
-	MetaVersion   string              `db:"meta_version"`
-	DomainID      int64               `db:"domain_id"`
-	DomainName    types.DomainName    `db:"domain_name"`
-	NamespaceID   int64               `db:"namespace_id"`
-	NamespaceName types.NamespaceName `db:"namespace_name"`
+	ID            int64             `db:"object_id"`
+	UUID          string            `db:"object_uuid"`
+	Generation    int64             `db:"object_generation"`
+	ObjectName    string            `db:"object_name"`
+	SystemID      int64             `db:"system_id"`
+	SystemUUID    string            `db:"system_uuid"`
+	KindID        int64             `db:"kind_id"`
+	KindName      api.KindName      `db:"kind_name"`
+	MetaID        int64             `db:"meta_id"`
+	MetaVersion   string            `db:"meta_version"`
+	DomainID      int64             `db:"domain_id"`
+	DomainName    api.DomainName    `db:"domain_name"`
+	NamespaceID   int64             `db:"namespace_id"`
+	NamespaceName api.NamespaceName `db:"namespace_name"`
 }
 
 // objectListNamespaceQualified lists zero or more Objects that have
@@ -204,7 +205,7 @@ func (s *Store) objectListNamespaceQualified(
 		switch pred := pred.(type) {
 		case expression.KindNamePredicate:
 			v := pred.Values()[0]
-			kn := v.(types.KindName)
+			kn := v.(api.KindName)
 			kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
 			if err != nil {
 				return nil, err
@@ -277,18 +278,18 @@ FROM objects AS o
 }
 
 type domainQualifiedObjectRecord struct {
-	ID          int64            `db:"object_id"`
-	UUID        string           `db:"object_uuid"`
-	Generation  int64            `db:"object_generation"`
-	ObjectName  string           `db:"object_name"`
-	SystemID    int64            `db:"system_id"`
-	SystemUUID  string           `db:"system_uuid"`
-	KindID      int64            `db:"kind_id"`
-	KindName    types.KindName   `db:"kind_name"`
-	MetaID      int64            `db:"meta_id"`
-	MetaVersion string           `db:"meta_version"`
-	DomainID    int64            `db:"domain_id"`
-	DomainName  types.DomainName `db:"domain_name"`
+	ID          int64          `db:"object_id"`
+	UUID        string         `db:"object_uuid"`
+	Generation  int64          `db:"object_generation"`
+	ObjectName  string         `db:"object_name"`
+	SystemID    int64          `db:"system_id"`
+	SystemUUID  string         `db:"system_uuid"`
+	KindID      int64          `db:"kind_id"`
+	KindName    api.KindName   `db:"kind_name"`
+	MetaID      int64          `db:"meta_id"`
+	MetaVersion string         `db:"meta_version"`
+	DomainID    int64          `db:"domain_id"`
+	DomainName  api.DomainName `db:"domain_name"`
 }
 
 // objectListDomainQualified lists zero or more Objects that have
@@ -315,7 +316,7 @@ func (s *Store) objectListDomainQualified(
 		switch pred := pred.(type) {
 		case expression.KindNamePredicate:
 			v := pred.Values()[0]
-			kn := v.(types.KindName)
+			kn := v.(api.KindName)
 			kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
 			if err != nil {
 				return nil, err
@@ -383,16 +384,16 @@ FROM objects AS o
 }
 
 type systemQualifiedObjectRecord struct {
-	ID          int64          `db:"object_id"`
-	UUID        string         `db:"object_uuid"`
-	Generation  int64          `db:"object_generation"`
-	ObjectName  string         `db:"object_name"`
-	SystemID    int64          `db:"system_id"`
-	SystemUUID  string         `db:"system_uuid"`
-	KindID      int64          `db:"kind_id"`
-	KindName    types.KindName `db:"kind_name"`
-	MetaID      int64          `db:"meta_id"`
-	MetaVersion string         `db:"meta_version"`
+	ID          int64        `db:"object_id"`
+	UUID        string       `db:"object_uuid"`
+	Generation  int64        `db:"object_generation"`
+	ObjectName  string       `db:"object_name"`
+	SystemID    int64        `db:"system_id"`
+	SystemUUID  string       `db:"system_uuid"`
+	KindID      int64        `db:"kind_id"`
+	KindName    api.KindName `db:"kind_name"`
+	MetaID      int64        `db:"meta_id"`
+	MetaVersion string       `db:"meta_version"`
 }
 
 // objectListSystemQualified lists zero or more Objects that have
@@ -419,7 +420,7 @@ func (s *Store) objectListSystemQualified(
 		switch pred := pred.(type) {
 		case expression.KindNamePredicate:
 			v := pred.Values()[0]
-			kn := v.(types.KindName)
+			kn := v.(api.KindName)
 			kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
 			if err != nil {
 				return nil, err

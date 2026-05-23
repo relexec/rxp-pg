@@ -11,11 +11,11 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/relexec/rxp/api"
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/meta"
 	"github.com/relexec/rxp/meta/schema"
-	"github.com/relexec/rxp/types"
 	"github.com/relexec/rxp/version"
 
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
@@ -160,7 +160,7 @@ func (s *Store) dbReadByKindVersion(
 	ctx context.Context,
 	systemRec *storesystem.Record,
 	kindRec *storekind.Record,
-	kv types.KindVersion,
+	kv api.KindVersion,
 ) (*Record, error) {
 	sv, _ := kv.Version()
 	verStr := kv.VersionString()
@@ -267,7 +267,7 @@ func (s *Store) dbInsert(
 	ctx context.Context,
 	systemRec *storesystem.Record,
 	kindRec *storekind.Record,
-	m types.Meta,
+	m *meta.Meta,
 ) error {
 	kv := m.KindVersion()
 	ver, _ := kv.Version()

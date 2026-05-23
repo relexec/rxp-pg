@@ -8,11 +8,7 @@ import (
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp/cmp/fieldpath"
 	"github.com/relexec/rxp/domain"
-	writeoption "github.com/relexec/rxp/domain/write/option"
-	readoption "github.com/relexec/rxp/read/option"
-	selector "github.com/relexec/rxp/read/selector/domain"
 	"github.com/relexec/rxp/testing/fixtures"
-	"github.com/relexec/rxp/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,66 +25,49 @@ func TestDomainRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		sel    types.Selector
-		opts   []readoption.Option
-		exp    types.Domain
+		sel    domain.Selector
+		exp    *domain.Domain
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			selector.New(
-				selector.WithName(fixtures.InvalidDomainName),
-			),
-			nil,
+			domain.ByName(fixtures.InvalidDomainName),
 			nil,
 			"missing identity",
 		},
 		{
 			"uuid or name required",
 			ctx,
-			selector.New(),
-			nil,
+			domain.Selector{},
 			nil,
 			"uuid or name required",
 		},
 		{
 			"unknown domain",
 			ctx,
-			selector.New(
-				selector.WithName(fixtures.UnknownDomainName),
-			),
-			nil,
+			domain.ByName(fixtures.UnknownDomainName),
 			nil,
 			"not found",
 		},
 		{
 			"invalid domain",
 			ctx,
-			selector.New(
-				selector.WithName(fixtures.InvalidDomainName),
-			),
-			nil,
+			domain.ByName(fixtures.InvalidDomainName),
 			nil,
 			"invalid domain name: invalid characters",
 		},
 		{
 			"happy path by uuid",
 			ctx,
-			selector.New(
-				selector.WithUUID(fixtures.Domain.UUID()),
-			),
-			nil,
+			domain.ByUUID(fixtures.Domain.UUID()),
 			fixtures.Domain,
 			"",
 		},
 		{
 			"happy path by name",
 			ctx,
-			selector.New(
-				selector.WithName(fixtures.Domain.Name()),
-			),
-			nil,
+			domain.ByName(fixtures.Domain.Name()),
 			fixtures.Domain,
 			"",
 		},
@@ -96,7 +75,7 @@ func TestDomainRead(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			got, err := rxp.DomainRead(c.ctx, c.sel, c.opts...)
+			got, err := rxp.DomainRead(c.ctx, c.sel)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {
@@ -127,36 +106,31 @@ func TestDomainWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject types.Domain
-		opts    []writeoption.Option
+		subject *domain.Domain
 		expErr  string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
 			fixtures.UnknownDomain,
-			nil,
 			"missing identity",
 		},
 		{
 			"missing uuid",
 			ctx,
 			domain.New(),
-			nil,
 			"invalid domain: uuid required",
 		},
 		{
 			"missing name",
 			ctx,
 			domain.New(domain.WithUUID(uuid.NewString())),
-			nil,
 			"invalid domain: name required",
 		},
 		{
 			"invalid domain",
 			ctx,
 			fixtures.InvalidDomain,
-			nil,
 			"invalid domain name: invalid characters",
 		},
 		{
@@ -166,7 +140,6 @@ func TestDomainWrite(t *testing.T) {
 				domain.WithUUID(fixtures.Domain.UUID()),
 				domain.WithName("othername"),
 			),
-			nil,
 			"conflict: \"domain\" already exists",
 		},
 		{
@@ -176,14 +149,13 @@ func TestDomainWrite(t *testing.T) {
 				domain.WithUUID(uuid.NewString()),
 				domain.WithName(fixtures.Domain.Name()),
 			),
-			nil,
 			"conflict: \"domain\" already exists",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			err := rxp.DomainWrite(c.ctx, c.subject, c.opts...)
+			err := rxp.DomainWrite(c.ctx, c.subject)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {

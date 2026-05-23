@@ -4,12 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/metrics"
-	"github.com/relexec/rxp/namespace/write"
-	writeoption "github.com/relexec/rxp/namespace/write/option"
-	readoption "github.com/relexec/rxp/read/option"
-	"github.com/relexec/rxp/types"
+	"github.com/relexec/rxp/namespace"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -17,9 +15,8 @@ import (
 // NamespaceRead reads a Namespace from persistent storage.
 func (d *Driver) NamespaceRead(
 	ctx context.Context,
-	sel types.Selector,
-	opts ...readoption.Option,
-) (types.Namespace, error) {
+	sel namespace.Selector,
+) (*namespace.Namespace, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -29,7 +26,7 @@ func (d *Driver) NamespaceRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeTargetType(metrics.TargetTypeNamespace),
+			metrics.AttributeType(api.TypeNamespace),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -41,8 +38,7 @@ func (d *Driver) NamespaceRead(
 		metrics.InstrumentReadDuration.Record(ctx, elapsed)
 	}()
 
-	ropts := readoption.New(opts...)
-	err = d.namespaceReadValidate(ctx, sel, ropts)
+	err = d.namespaceReadValidate(ctx, sel)
 	if err != nil {
 		return nil, err
 	}
@@ -57,10 +53,10 @@ func (d *Driver) NamespaceRead(
 	}
 
 	name := sel.Name()
-	dom := name.Domain()
+	dom := sel.Domain()
 
 	rec, err := d.namespaceStore.ReadByName(
-		ctx, dom, types.NamespaceName(name.Name()),
+		ctx, dom, name,
 	)
 	if err != nil {
 		return nil, err
@@ -72,36 +68,15 @@ func (d *Driver) NamespaceRead(
 // options are not valid for reading a single Namespace.
 func (d *Driver) namespaceReadValidate(
 	ctx context.Context,
-	sel types.Selector,
-	opts readoption.Options,
+	sel namespace.Selector,
 ) error {
-	err := sel.Validate()
-	if err != nil {
-		return err
-	}
-	// If we're not looking up by UUID, verify that the name supplied in the
-	// selector is a valid NamespaceName and has a non-nil Domain.
-	if sel.UUID() != "" {
-		return nil
-	}
-	dom := sel.Name().Domain()
-	if dom == nil {
-		return errors.ErrSelectorDomainRequired
-	}
-	err = dom.Validate()
-	if err != nil {
-		return err
-	}
-	n := sel.Name().Name()
-	nn := types.NamespaceName(n)
-	return nn.Validate()
+	return sel.Validate()
 }
 
 // NamespaceWrite atomically writes the supplied Namespace to persistent storage.
 func (d *Driver) NamespaceWrite(
 	ctx context.Context,
-	ns types.Namespace,
-	opts ...writeoption.Option,
+	ns *namespace.Namespace,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -112,7 +87,7 @@ func (d *Driver) NamespaceWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeTargetType(metrics.TargetTypeNamespace),
+			metrics.AttributeType(api.TypeNamespace),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -124,8 +99,7 @@ func (d *Driver) NamespaceWrite(
 		metrics.InstrumentWriteDuration.Record(ctx, elapsed)
 	}()
 
-	wopts := writeoption.New(opts...)
-	err = d.namespaceWriteValidate(ctx, ns, wopts)
+	err = d.namespaceWriteValidate(ctx, ns)
 	if err != nil {
 		return err
 	}
@@ -136,11 +110,13 @@ func (d *Driver) NamespaceWrite(
 // options are not valid for writing a single Namespace.
 func (d *Driver) namespaceWriteValidate(
 	ctx context.Context,
-	namespace types.Namespace,
-	opts writeoption.Options,
+	ns *namespace.Namespace,
 ) error {
-	return namespace.Validate()
+	if ns == nil {
+		return errors.RequiredParameterNil(
+			"namespace",
+			errors.WithWrap(errors.ErrInvalidWriteRequest),
+		)
+	}
+	return ns.Validate()
 }
-
-// var _ read.NamespaceReader = (*Driver)(nil)
-var _ write.NamespaceWriter = (*Driver)(nil)

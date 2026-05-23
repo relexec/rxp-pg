@@ -4,13 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/metrics"
-	readoption "github.com/relexec/rxp/read/option"
-	"github.com/relexec/rxp/system/read"
-	"github.com/relexec/rxp/system/write"
-	writeoption "github.com/relexec/rxp/system/write/option"
-	"github.com/relexec/rxp/types"
+	"github.com/relexec/rxp/system"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -18,9 +15,8 @@ import (
 // SystemRead reads a System from persistent storage.
 func (d *Driver) SystemRead(
 	ctx context.Context,
-	sel types.Selector,
-	opts ...readoption.Option,
-) (types.System, error) {
+	sel system.Selector,
+) (*system.System, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -30,7 +26,7 @@ func (d *Driver) SystemRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeTargetType(metrics.TargetTypeSystem),
+			metrics.AttributeType(api.TypeSystem),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -42,8 +38,7 @@ func (d *Driver) SystemRead(
 		metrics.InstrumentReadDuration.Record(ctx, elapsed)
 	}()
 
-	ropts := readoption.New(opts...)
-	err = d.systemReadValidate(ctx, sel, ropts)
+	err = d.systemReadValidate(ctx, sel)
 	if err != nil {
 		return nil, err
 	}
@@ -61,21 +56,15 @@ func (d *Driver) SystemRead(
 // options are not valid for reading a single System.
 func (d *Driver) systemReadValidate(
 	ctx context.Context,
-	sel types.Selector,
-	opts readoption.Options,
+	sel system.Selector,
 ) error {
-	// For System lookup, we require a UUID lookup.
-	if sel.UUID() == "" {
-		return errors.ErrSelectorUUIDRequired
-	}
-	return nil
+	return sel.Validate()
 }
 
 // SystemWrite atomically writes the supplied System to persistent storage.
 func (d *Driver) SystemWrite(
 	ctx context.Context,
-	system types.System,
-	opts ...writeoption.Option,
+	sys *system.System,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -86,7 +75,7 @@ func (d *Driver) SystemWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeTargetType(metrics.TargetTypeSystem),
+			metrics.AttributeType(api.TypeSystem),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -98,23 +87,24 @@ func (d *Driver) SystemWrite(
 		metrics.InstrumentWriteDuration.Record(ctx, elapsed)
 	}()
 
-	wopts := writeoption.New(opts...)
-	err = d.systemWriteValidate(ctx, system, wopts)
+	err = d.systemWriteValidate(ctx, sys)
 	if err != nil {
 		return err
 	}
-	return d.systemStore.Write(ctx, system)
+	return d.systemStore.Write(ctx, sys)
 }
 
 // systemWriteValidate returns an error if the supplied system and write
 // options are not valid for writing a single System.
 func (d *Driver) systemWriteValidate(
 	ctx context.Context,
-	system types.System,
-	opts writeoption.Options,
+	sys *system.System,
 ) error {
-	return system.Validate()
+	if sys == nil {
+		return errors.RequiredParameterNil(
+			"system",
+			errors.WithWrap(errors.ErrInvalidWriteRequest),
+		)
+	}
+	return sys.Validate()
 }
-
-var _ read.SystemReader = (*Driver)(nil)
-var _ write.SystemWriter = (*Driver)(nil)

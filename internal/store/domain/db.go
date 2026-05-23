@@ -9,10 +9,10 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/relexec/rxp/api"
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/types"
 
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
@@ -86,7 +86,7 @@ func (s *Store) dbReadByRowID(
 	}
 	fn := func(tx pgx.Tx) error {
 		var systemRowID int64
-		var name types.DomainName
+		var name api.DomainName
 		var uuid string
 		qs := "SELECT system, uuid, name FROM domains WHERE id = $1"
 		err := tx.QueryRow(ctx, qs, rowID).Scan(&systemRowID, &uuid, &name)
@@ -131,7 +131,7 @@ func (s *Store) dbReadByUUID(
 		),
 	}
 	fn := func(tx pgx.Tx) error {
-		var name types.DomainName
+		var name api.DomainName
 		qs := "SELECT id, name FROM domains WHERE uuid = $1"
 		err := tx.QueryRow(ctx, qs, uuid).Scan(&out.RowID, &name)
 		if err != nil {
@@ -157,7 +157,7 @@ func (s *Store) dbReadByUUID(
 func (s *Store) dbReadByName(
 	ctx context.Context,
 	systemRec *storesystem.Record,
-	name types.DomainName,
+	name api.DomainName,
 ) (*Record, error) {
 	out := Record{
 		Domain: domain.New(
@@ -191,7 +191,7 @@ func (s *Store) dbReadByName(
 func (s *Store) dbInsert(
 	ctx context.Context,
 	systemRec *storesystem.Record,
-	dom types.Domain,
+	dom *domain.Domain,
 ) error {
 	createdOn := time.Now().UnixNano()
 	createdBy := rxpcontext.Identity(ctx)

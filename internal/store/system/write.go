@@ -7,13 +7,13 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/types"
+	"github.com/relexec/rxp/system"
 )
 
 // Write atomically writes the supplied System to persistent storage.
 func (s *Store) Write(
 	ctx context.Context,
-	system types.System,
+	system *system.System,
 ) error {
 	var name *string
 	uuid := system.UUID()

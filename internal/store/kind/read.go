@@ -3,9 +3,10 @@ package store
 import (
 	"context"
 
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
-	"github.com/relexec/rxp/types"
+	"github.com/relexec/rxp/system"
 )
 
 // Record decorates a Kind with internal DB information.
@@ -42,8 +43,8 @@ func (s *Store) ReadByRowID(
 // method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
-	sys types.System,
-	name types.KindName,
+	sys *system.System,
+	name api.KindName,
 ) (*Record, error) {
 	cacheKey := newByNameCacheKey(sys, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)

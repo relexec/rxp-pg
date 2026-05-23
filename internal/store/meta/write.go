@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/types"
+	"github.com/relexec/rxp/meta"
 )
 
 // Write atomically writes the pre-validated Meta to persistent storage.
 func (s *Store) Write(
 	ctx context.Context,
-	m types.Meta,
+	m *meta.Meta,
 ) error {
 	sys := m.System()
 	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())

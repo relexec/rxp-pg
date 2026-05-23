@@ -3,9 +3,10 @@ package store
 import (
 	"context"
 
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/meta"
-	"github.com/relexec/rxp/types"
+	"github.com/relexec/rxp/system"
 )
 
 // Record decorates a Meta with internal DB information.
@@ -42,8 +43,8 @@ func (s *Store) ReadByRowID(
 // KindVersion. This method will populate any caches with any read records.
 func (s *Store) ReadByKindVersion(
 	ctx context.Context,
-	sys types.System,
-	kv types.KindVersion,
+	sys *system.System,
+	kv api.KindVersion,
 ) (*Record, error) {
 	cacheKey := newByKindVersionCacheKey(sys, kv)
 	cached, found := s.cacheReadByKindVersion(ctx, cacheKey)

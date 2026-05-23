@@ -4,14 +4,13 @@ import (
 	"context"
 	"sync"
 
+	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
-	ksel "github.com/relexec/rxp/kind/read/selector"
-	msel "github.com/relexec/rxp/meta/read/selector"
-	"github.com/relexec/rxp/name"
-	objectselector "github.com/relexec/rxp/object/read/selector"
-	"github.com/relexec/rxp/read/selector"
+	"github.com/relexec/rxp/kind"
+	"github.com/relexec/rxp/meta"
+	"github.com/relexec/rxp/namespace"
+	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/testing/fixtures"
-	"github.com/relexec/rxp/types"
 
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/driver"
@@ -51,13 +50,11 @@ func Driver(ctx context.Context) (*driver.Driver, error) {
 func MetaCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	m types.Meta,
+	m *meta.Meta,
 ) error {
 	_, err := d.MetaRead(
 		ctx,
-		msel.New(
-			msel.WithKindVersion(m.KindVersion()),
-		),
+		meta.ByKindVersion(m.KindVersion()),
 	)
 	if err != nil {
 		if err != errors.ErrNotFound {
@@ -73,13 +70,11 @@ func MetaCreateIfNotExists(
 func KindCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	k types.Kind,
+	k *kind.Kind,
 ) error {
 	_, err := d.KindRead(
 		ctx,
-		ksel.New(
-			ksel.WithName(k.Name()),
-		),
+		kind.ByName(k.Name()),
 	)
 	if err != nil {
 		if err != errors.ErrNotFound {
@@ -95,15 +90,11 @@ func KindCreateIfNotExists(
 func DomainCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	dom types.Domain,
+	dom *domain.Domain,
 ) error {
 	_, err := d.DomainRead(
 		ctx,
-		selector.New(
-			selector.WithName(
-				name.New(string(dom.Name())),
-			),
-		),
+		domain.ByName(dom.Name()),
 	)
 	if err != nil {
 		if err != errors.ErrNotFound {
@@ -119,17 +110,13 @@ func DomainCreateIfNotExists(
 func NamespaceCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	ns types.Namespace,
+	ns *namespace.Namespace,
 ) error {
 	_, err := d.NamespaceRead(
 		ctx,
-		selector.New(
-			selector.WithName(
-				name.New(
-					string(ns.Name()),
-					name.WithDomain(ns.Domain()),
-				),
-			),
+		namespace.ByName(
+			ns.Domain(),
+			ns.Name(),
 		),
 	)
 	if err != nil {
@@ -146,23 +133,27 @@ func NamespaceCreateIfNotExists(
 func ObjectCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	o types.Object,
+	o *object.Object,
 ) error {
-	selOpts := []objectselector.Option{
-		objectselector.WithKindVersion(o.KindVersion()),
-		objectselector.WithUUID(o.UUID()),
+	var sel object.Selector
+	if o.UUID() != "" {
+		if o.Namespace() != nil {
+			sel = object.ByNamespaceAndUUID(o.Namespace(), o.UUID())
+		} else if o.Domain() != nil {
+			sel = object.ByDomainAndUUID(o.Domain(), o.UUID())
+		} else {
+			sel = object.ByUUID(o.UUID())
+		}
+	} else {
+		if o.Namespace() != nil {
+			sel = object.ByNamespaceAndName(o.Namespace(), o.Name())
+		} else if o.Domain() != nil {
+			sel = object.ByDomainAndName(o.Domain(), o.Name())
+		} else {
+			sel = object.ByName(o.Name())
+		}
 	}
-	if o.Namespace() != nil {
-		selOpts = append(
-			selOpts, objectselector.WithNamespace(o.Namespace()),
-		)
-	}
-	if o.Domain() != nil {
-		selOpts = append(
-			selOpts, objectselector.WithDomain(o.Domain()),
-		)
-	}
-	_, err := d.ObjectRead(ctx, objectselector.New(selOpts...))
+	_, err := d.ObjectRead(ctx, o.KindVersion(), sel)
 	if err != nil {
 		if err != errors.ErrNotFound {
 			return err

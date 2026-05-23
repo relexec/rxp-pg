@@ -3,9 +3,10 @@ package store
 import (
 	"context"
 
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/types"
+	"github.com/relexec/rxp/system"
 )
 
 // Record decorates a Domain with internal DB information.
@@ -64,8 +65,8 @@ func (s *Store) ReadByUUID(
 // method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
-	sys types.System,
-	name types.DomainName,
+	sys *system.System,
+	name api.DomainName,
 ) (*Record, error) {
 	cacheKey := newByNameCacheKey(sys, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)

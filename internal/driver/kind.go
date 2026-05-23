@@ -4,13 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/relexec/rxp/api"
+	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
-	"github.com/relexec/rxp/kind/read/selector"
-	"github.com/relexec/rxp/kind/write"
-	writeoption "github.com/relexec/rxp/kind/write/option"
 	"github.com/relexec/rxp/metrics"
-	readoption "github.com/relexec/rxp/read/option"
-	"github.com/relexec/rxp/types"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -18,9 +15,8 @@ import (
 // KindRead reads a Kind from persistent storage.
 func (d *Driver) KindRead(
 	ctx context.Context,
-	sel selector.Selector,
-	opts ...readoption.Option,
-) (types.Kind, error) {
+	sel kind.Selector,
+) (*kind.Kind, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -30,7 +26,7 @@ func (d *Driver) KindRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeTargetType(metrics.TargetTypeKind),
+			metrics.AttributeType(api.TypeKind),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -42,8 +38,7 @@ func (d *Driver) KindRead(
 		metrics.InstrumentReadDuration.Record(ctx, elapsed)
 	}()
 
-	ropts := readoption.New(opts...)
-	err = d.kindReadValidate(ctx, sel, ropts)
+	err = d.kindReadValidate(ctx, sel)
 	if err != nil {
 		return nil, err
 	}
@@ -68,8 +63,7 @@ func (d *Driver) KindRead(
 // options are not valid for reading a single Kind.
 func (d *Driver) kindReadValidate(
 	ctx context.Context,
-	sel selector.Selector,
-	opts readoption.Options,
+	sel kind.Selector,
 ) error {
 	return sel.Validate()
 }
@@ -77,8 +71,7 @@ func (d *Driver) kindReadValidate(
 // KindWrite atomically writes the supplied Kind to persistent storage.
 func (d *Driver) KindWrite(
 	ctx context.Context,
-	k types.Kind,
-	opts ...writeoption.Option,
+	k *kind.Kind,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -89,7 +82,7 @@ func (d *Driver) KindWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeTargetType(metrics.TargetTypeKind),
+			metrics.AttributeType(api.TypeKind),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -101,8 +94,7 @@ func (d *Driver) KindWrite(
 		metrics.InstrumentWriteDuration.Record(ctx, elapsed)
 	}()
 
-	wopts := writeoption.New(opts...)
-	err = d.kindWriteValidate(ctx, k, wopts)
+	err = d.kindWriteValidate(ctx, k)
 	if err != nil {
 		return err
 	}
@@ -110,10 +102,7 @@ func (d *Driver) KindWrite(
 	sys := k.System()
 	// Default the system to the host system if it hasn't been specified.
 	if sys == nil {
-		k = kind.New(
-			kind.WithName(k.Name()),
-			kind.WithSystem(d.hostSystemRecord.System),
-		)
+		k.SetSystem(d.hostSystemRecord.System)
 	}
 	return d.kindStore.Write(ctx, k)
 }
@@ -122,11 +111,13 @@ func (d *Driver) KindWrite(
 // options are not valid for writing a single Kind.
 func (d *Driver) kindWriteValidate(
 	ctx context.Context,
-	k types.Kind,
-	opts writeoption.Options,
+	k *kind.Kind,
 ) error {
+	if k == nil {
+		return errors.RequiredParameterNil(
+			"kind",
+			errors.WithWrap(errors.ErrInvalidWriteRequest),
+		)
+	}
 	return k.Validate()
 }
-
-// var _ read.KindReader = (*Driver)(nil)
-var _ write.KindWriter = (*Driver)(nil)

@@ -1,15 +1,16 @@
 -- +goose up
-CREATE TABLE namescopes (
+CREATE TABLE scopes (
   id SMALLINT NOT NULL PRIMARY KEY
 , name TEXT NOT NULL
 , description TEXT NOT NULL
 );
 
-INSERT INTO namescopes (id, name, description)
+INSERT INTO scopes (id, name, description)
 VALUES
-  (1, 'namespace', 'The name is unique within the scope of the object system, kind, domain and namespace.')
-, (2, 'domain', 'The name is unique within the scope of the object system, kind and domain.')
-, (3, 'system', 'The name is unique within the scope of the object system and kind.')
+  (0, 'namespace', 'The name is unique within the scope of the kind and namespace.')
+, (1, 'domain', 'The name is unique within the scope of the kind and domain.')
+, (2, 'system', 'The name is unique within the scope of the kind and system[].')
+, (3, 'global', 'The type of thing can only be identified by UUID.')
 ;
 
 CREATE TABLE systems (
@@ -24,7 +25,7 @@ CREATE TABLE kinds (
   id SERIAL NOT NULL PRIMARY KEY
 , system INT NOT NULL
 , name TEXT NOT NULL
-, namescope SMALLINT NOT NULL
+, scope SMALLINT NOT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
 , UNIQUE (system, name)
@@ -211,4 +212,4 @@ DROP TABLE domains_archived;
 DROP TABLE domains;
 DROP TABLE kinds;
 DROP TABLE systems;
-DROP TABLE namescopes;
+DROP TABLE scopes;

@@ -3,9 +3,10 @@ package store
 import (
 	"context"
 
+	"github.com/relexec/rxp/api"
+	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/namespace"
-	"github.com/relexec/rxp/types"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 )
@@ -47,8 +48,8 @@ func (s *Store) ReadByUUID(
 // method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
-	dom types.Domain,
-	name types.NamespaceName,
+	dom *domain.Domain,
+	name api.NamespaceName,
 ) (*Record, error) {
 	cacheKey := newByNameCacheKey(dom, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)

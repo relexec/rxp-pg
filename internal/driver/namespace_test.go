@@ -6,13 +6,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/relexec/rxp-pg/internal/testutil"
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/namespace"
-	writeoption "github.com/relexec/rxp/namespace/write/option"
-	readoption "github.com/relexec/rxp/read/option"
-	selector "github.com/relexec/rxp/read/selector/namespace"
 	"github.com/relexec/rxp/testing/fixtures"
-	"github.com/relexec/rxp/types"
-	rxptypes "github.com/relexec/rxp/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,60 +25,42 @@ func TestNamespaceRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		sel    selector.Selector
-		opts   []readoption.Option
-		exp    rxptypes.Namespace
+		sel    namespace.Selector
+		exp    *namespace.Namespace
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			selector.New(
-				selector.WithDomain(fixtures.Domain),
-				selector.WithName(fixtures.NamespaceName),
-			),
-			nil,
+			namespace.ByName(fixtures.Domain, fixtures.NamespaceName),
 			nil,
 			"missing identity",
 		},
 		{
 			"uuid or name required",
 			ctx,
-			selector.New(),
-			nil,
+			namespace.Selector{},
 			nil,
 			"uuid or name required",
 		},
 		{
 			"unknown namespace",
 			ctx,
-			selector.New(
-				selector.WithDomain(fixtures.Domain),
-				selector.WithName(fixtures.UnknownNamespaceName),
-			),
-			nil,
+			namespace.ByName(fixtures.Domain, fixtures.UnknownNamespaceName),
 			nil,
 			"not found",
 		},
 		{
 			"invalid namespace",
 			ctx,
-			selector.New(
-				selector.WithDomain(fixtures.Domain),
-				selector.WithName(fixtures.InvalidNamespaceName),
-			),
-			nil,
+			namespace.ByName(fixtures.Domain, fixtures.InvalidNamespaceName),
 			nil,
 			"invalid namespace name: invalid characters",
 		},
 		{
 			"happy path",
 			ctx,
-			selector.New(
-				selector.WithDomain(fixtures.Domain),
-				selector.WithName(fixtures.NamespaceName),
-			),
-			nil,
+			namespace.ByName(fixtures.Domain, fixtures.NamespaceName),
 			fixtures.Namespace,
 			"",
 		},
@@ -90,7 +68,7 @@ func TestNamespaceRead(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			got, err := rxp.NamespaceRead(c.ctx, c.sel, c.opts...)
+			got, err := rxp.NamespaceRead(c.ctx, c.sel)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {
@@ -116,15 +94,13 @@ func TestNamespaceWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject types.Namespace
-		opts    []writeoption.Option
+		subject *namespace.Namespace
 		expErr  string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
 			fixtures.UnknownNamespace,
-			nil,
 			"missing identity",
 		},
 		{
@@ -133,7 +109,6 @@ func TestNamespaceWrite(t *testing.T) {
 			namespace.New(
 				namespace.WithDomain(fixtures.Domain),
 			),
-			nil,
 			"invalid namespace: uuid required",
 		},
 		{
@@ -143,7 +118,6 @@ func TestNamespaceWrite(t *testing.T) {
 				namespace.WithDomain(fixtures.Domain),
 				namespace.WithUUID(uuid.NewString()),
 			),
-			nil,
 			"invalid namespace: name required",
 		},
 		{
@@ -151,30 +125,27 @@ func TestNamespaceWrite(t *testing.T) {
 			ctx,
 			namespace.New(
 				namespace.WithUUID(uuid.NewString()),
-				namespace.WithName(types.NamespaceName("mynamespace")),
+				namespace.WithName(api.NamespaceName("mynamespace")),
 			),
-			nil,
 			"invalid namespace: domain required",
 		},
 		{
 			"invalid namespace",
 			ctx,
 			fixtures.InvalidNamespace,
-			nil,
 			"invalid namespace name: invalid characters",
 		},
 		{
 			"duplicate namespace",
 			ctx,
 			fixtures.Namespace,
-			nil,
 			"conflict: \"namespace\" already exists",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			err := rxp.NamespaceWrite(c.ctx, c.subject, c.opts...)
+			err := rxp.NamespaceWrite(c.ctx, c.subject)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {

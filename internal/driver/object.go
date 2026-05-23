@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/list"
 	"github.com/relexec/rxp/list/expression"
@@ -12,12 +13,6 @@ import (
 	"github.com/relexec/rxp/list/result"
 	"github.com/relexec/rxp/metrics"
 	"github.com/relexec/rxp/object"
-	objlist "github.com/relexec/rxp/object/list"
-	"github.com/relexec/rxp/object/read"
-	readoption "github.com/relexec/rxp/object/read/option"
-	"github.com/relexec/rxp/object/read/selector"
-	"github.com/relexec/rxp/object/write"
-	writeoption "github.com/relexec/rxp/object/write/option"
 	"github.com/relexec/rxp/types"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -29,21 +24,19 @@ import (
 // ObjectRead reads a single object from persistent storage.
 func (d *Driver) ObjectRead(
 	ctx context.Context,
-	sel selector.Selector,
-	opts ...readoption.Option,
-) (types.Object, error) {
+	kv api.KindVersion,
+	sel object.Selector,
+) (*object.Object, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
 	}
 	start := time.Now()
 
-	kv := sel.KindVersion()
-
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeTargetType(metrics.TargetTypeObject),
+			metrics.AttributeType(api.TypeObject),
 			metrics.AttributeKindVersion(kv),
 		}
 		if err != nil {
@@ -56,8 +49,7 @@ func (d *Driver) ObjectRead(
 		metrics.InstrumentReadDuration.Record(ctx, elapsed)
 	}()
 
-	ropts := readoption.New(opts...)
-	err = d.objectReadValidate(ctx, sel, ropts)
+	err = d.objectReadValidate(ctx, kv, sel)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +83,7 @@ func (d *Driver) ObjectRead(
 		return nil, errors.ErrKindVersionUnknown
 	}
 
-	err = d.objectReadValidateNamescope(ctx, kindRec, sel)
+	err = d.objectReadValidateScope(ctx, kindRec, sel)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +93,7 @@ func (d *Driver) ObjectRead(
 		return nil, errors.ErrKindVersionUnknown
 	}
 
-	objGen := sel.Generation()
+	objGen := api.Generation(0) // sel.Generation()
 	uuid := sel.UUID()
 	name := sel.Name()
 
@@ -139,29 +131,36 @@ func (d *Driver) ObjectRead(
 // options are not valid for reading a single Object.
 func (d *Driver) objectReadValidate(
 	ctx context.Context,
-	sel selector.Selector,
-	opts readoption.Options,
+	kv api.KindVersion,
+	sel object.Selector,
 ) error {
+	err := kv.Validate()
+	if err != nil {
+		return err
+	}
 	return sel.Validate()
 }
 
-// objectReadValidateNamescope verifies that the object being read has the
-// required namespace and domain in the selector if the namescope of metas is
-// either NamescopeNamespace or NamescopeDomain.
-func (d *Driver) objectReadValidateNamescope(
+// objectReadValidateScope verifies that the object being read has the
+// required namespace and domain in the selector if the scope of metas is
+// either ScopeNamespace or ScopeDomain.
+func (d *Driver) objectReadValidateScope(
 	ctx context.Context,
 	kindRec *storekind.Record,
-	sel selector.Selector,
+	sel object.Selector,
 ) error {
-	namescope := kindRec.Kind.Namescope()
-	switch namescope {
-	case types.NamescopeNamespace:
+	if sel.UUID() != "" {
+		return nil
+	}
+	scope := kindRec.Kind.Scope()
+	switch scope {
+	case api.ScopeNamespace:
 		ns := sel.Namespace()
 		if ns == nil {
 			return errors.ErrSelectorNamespaceRequired
 		}
 		return ns.Validate()
-	case types.NamescopeDomain:
+	case api.ScopeDomain:
 		domain := sel.Domain()
 		if domain == nil {
 			return errors.ErrSelectorDomainRequired
@@ -174,8 +173,7 @@ func (d *Driver) objectReadValidateNamescope(
 // ObjectWrite persists a single supplied Object to backend storage,
 func (d *Driver) ObjectWrite(
 	ctx context.Context,
-	obj types.Object,
-	opts ...writeoption.Option,
+	obj *object.Object,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -188,7 +186,7 @@ func (d *Driver) ObjectWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeTargetType(metrics.TargetTypeObject),
+			metrics.AttributeType(api.TypeObject),
 			metrics.AttributeKindVersion(kv),
 		}
 		if err != nil {
@@ -201,8 +199,7 @@ func (d *Driver) ObjectWrite(
 		metrics.InstrumentWriteDuration.Record(ctx, elapsed)
 	}()
 
-	wopts := writeoption.New(opts...)
-	err = d.objectWriteValidate(ctx, obj, wopts)
+	err = d.objectWriteValidate(ctx, obj)
 	if err != nil {
 		return err
 	}
@@ -222,27 +219,26 @@ func (d *Driver) ObjectWrite(
 	// Default the system to the host system if it hasn't been specified.
 	if sys == nil {
 		sys = d.hostSystemRecord.System
-		obj.(*object.Object).SetSystem(sys)
+		obj.SetSystem(sys)
 	}
 
 	kindRec, err := d.kindStore.ReadByName(ctx, sys, kv.Kind())
 	if err != nil {
 		return errors.ErrKindVersionUnknown
 	}
-	err = d.objectWriteValidateNamescope(ctx, kindRec, obj)
+	err = d.objectWriteValidateScope(ctx, kindRec, obj)
 	if err != nil {
 		return err
 	}
 
-	return d.objectWrite(ctx, wopts, obj)
+	return d.objectWrite(ctx, obj)
 }
 
 // objectWriteValidate returns an error if the supplied object and write
 // options are not valid for writing a single Object.
 func (d *Driver) objectWriteValidate(
 	ctx context.Context,
-	obj types.Object,
-	opts writeoption.Options,
+	obj *object.Object,
 ) error {
 	kv := obj.KindVersion()
 	if kv == "" {
@@ -259,23 +255,23 @@ func (d *Driver) objectWriteValidate(
 	return nil
 }
 
-// objectWriteValidateNamescope verifies that the object being written has the
-// required namespace and domain qualification if the namescope of metas is
-// either NamescopeNamespace or NamescopeDomain.
-func (d *Driver) objectWriteValidateNamescope(
+// objectWriteValidateScope verifies that the object being written has the
+// required namespace and domain qualification if the scope of metas is
+// either ScopeNamespace or ScopeDomain.
+func (d *Driver) objectWriteValidateScope(
 	ctx context.Context,
 	kindRec *storekind.Record,
-	obj types.Object,
+	obj *object.Object,
 ) error {
-	namescope := kindRec.Kind.Namescope()
-	switch namescope {
-	case types.NamescopeNamespace:
+	scope := kindRec.Kind.Scope()
+	switch scope {
+	case api.ScopeNamespace:
 		ns := obj.Namespace()
 		if ns == nil {
 			return errors.ErrObjectNamespaceRequired
 		}
 		return ns.Validate()
-	case types.NamescopeDomain:
+	case api.ScopeDomain:
 		domain := obj.Domain()
 		if domain == nil {
 			return errors.ErrObjectDomainRequired
@@ -288,31 +284,34 @@ func (d *Driver) objectWriteValidateNamescope(
 // objectWrite atomically writes the supplied Object to persistent storage,
 func (d *Driver) objectWrite(
 	ctx context.Context,
-	opts writeoption.Options,
-	obj types.Object,
+	obj *object.Object,
 ) error {
-	expectGeneration := opts.Generation()
-	if expectGeneration == 0 {
-		// caller expects that they are the first writer of this object. This
-		// means we can attempt to insert into the objects table with this
-		// object's keys and a generation of 1. any returned unique key
-		// contraint violation will indicate another caller tried to create the
-		// exact same object concurrently.
-		return d.objectStore.WriteFirst(
-			ctx, obj,
-		)
-	}
-	// Otherwise, the caller expects that there is an existing object with this
-	// object's keys and that the latest generation of said object matches a
-	// supplied generation marker. In this case, we insert a new record into
-	// the object_generations table and update the objects table using a WHERE
-	// condition against the expected generation. If this UPDATE fails to
-	// return any affected rows, we know another caller beat us to write their
-	// updated desired state changes and we need to either retry the write or
-	// fail.
-	return d.objectStore.WriteGeneration(
-		ctx, obj, expectGeneration,
+	/*
+		expectGeneration := opts.Generation()
+		if expectGeneration == 0 {
+	*/
+	// caller expects that they are the first writer of this object. This
+	// means we can attempt to insert into the objects table with this
+	// object's keys and a generation of 1. any returned unique key
+	// contraint violation will indicate another caller tried to create the
+	// exact same object concurrently.
+	return d.objectStore.WriteFirst(
+		ctx, obj,
 	)
+	/*
+		}
+			// Otherwise, the caller expects that there is an existing object with this
+			// object's keys and that the latest generation of said object matches a
+			// supplied generation marker. In this case, we insert a new record into
+			// the object_generations table and update the objects table using a WHERE
+			// condition against the expected generation. If this UPDATE fails to
+			// return any affected rows, we know another caller beat us to write their
+			// updated desired state changes and we need to either retry the write or
+			// fail.
+			return d.objectStore.WriteGeneration(
+				ctx, obj, expectGeneration,
+			)
+	*/
 }
 
 const (
@@ -325,7 +324,7 @@ func (d *Driver) ObjectList(
 	ctx context.Context,
 	expr types.Expression,
 	opts ...listoption.Option,
-) (list.Result[types.Object], error) {
+) (list.Result[*object.Object], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -335,7 +334,7 @@ func (d *Driver) ObjectList(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeTargetType(metrics.TargetTypeObject),
+			metrics.AttributeType(api.TypeObject),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -361,7 +360,7 @@ func (d *Driver) ObjectList(
 	if err != nil {
 		return nil, err
 	}
-	objs := make([]types.Object, 0, len(recs))
+	objs := make([]*object.Object, 0, len(recs))
 	for _, rec := range recs {
 		objs = append(objs, rec.Object)
 	}
@@ -374,11 +373,11 @@ func (d *Driver) ObjectList(
 			option.WithLimit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []result.Option[types.Object]{
+	resNewOpts := []result.Option[*object.Object]{
 		result.WithItems(objs),
-		result.WithOptions[types.Object](resOpts),
+		result.WithOptions[*object.Object](resOpts),
 	}
-	return result.New[types.Object](resNewOpts...), nil
+	return result.New[*object.Object](resNewOpts...), nil
 }
 
 // objectListValidate returns an error if the supplied expression and list
@@ -411,7 +410,3 @@ func (d *Driver) objectListBoundedOptions(
 	limit = min(limit, MaxObjectListLimit)
 	return listoption.New(listoption.WithLimit(limit))
 }
-
-var _ write.ObjectWriter = (*Driver)(nil)
-var _ read.ObjectReader = (*Driver)(nil)
-var _ objlist.Lister = (*Driver)(nil)

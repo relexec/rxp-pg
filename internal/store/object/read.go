@@ -4,9 +4,14 @@ import (
 	"context"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
+	"github.com/relexec/rxp/api"
+	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
+	"github.com/relexec/rxp/kind"
+	"github.com/relexec/rxp/meta"
+	"github.com/relexec/rxp/namespace"
 	"github.com/relexec/rxp/object"
-	"github.com/relexec/rxp/types"
+	"github.com/relexec/rxp/system"
 )
 
 // Record decorates an Object with internal DB information.
@@ -21,11 +26,11 @@ type Record struct {
 // row ID.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
-	sys types.System,
-	k types.Kind,
-	m types.Meta,
-	dom types.Domain,
-	ns types.Namespace,
+	sys *system.System,
+	k *kind.Kind,
+	m *meta.Meta,
+	dom *domain.Domain,
+	ns *namespace.Namespace,
 	rowID int64,
 ) (*Record, error) {
 	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
@@ -57,9 +62,9 @@ func (s *Store) ReadByRowID(
 			errors.WithWrap(err),
 		)
 	}
-	namescope := k.Namescope()
-	switch namescope {
-	case types.NamescopeNamespace:
+	scope := k.Scope()
+	switch scope {
+	case api.ScopeNamespace:
 		if ns == nil {
 			return nil, errors.ErrSelectorNamespaceRequired
 		}
@@ -103,7 +108,7 @@ func (s *Store) ReadByRowID(
 		return s.dbReadNamespaceQualifiedByRowID(
 			ctx, sysRec, kindRec, metaRec, domRec, nsRec, rowID,
 		)
-	case types.NamescopeDomain:
+	case api.ScopeDomain:
 		if dom == nil {
 			return nil, errors.ErrSelectorDomainRequired
 		}
@@ -130,11 +135,11 @@ func (s *Store) ReadByRowID(
 // ReadByUUID returns a Record for the Object with the supplied UUID.
 func (s *Store) ReadByUUID(
 	ctx context.Context,
-	sys types.System,
-	k types.Kind,
-	m types.Meta,
-	dom types.Domain,
-	ns types.Namespace,
+	sys *system.System,
+	k *kind.Kind,
+	m *meta.Meta,
+	dom *domain.Domain,
+	ns *namespace.Namespace,
 	uuid string,
 ) (*Record, error) {
 	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
@@ -166,9 +171,9 @@ func (s *Store) ReadByUUID(
 			errors.WithWrap(err),
 		)
 	}
-	namescope := k.Namescope()
-	switch namescope {
-	case types.NamescopeNamespace:
+	scope := k.Scope()
+	switch scope {
+	case api.ScopeNamespace:
 		if ns == nil {
 			return nil, errors.ErrSelectorNamespaceRequired
 		}
@@ -212,7 +217,7 @@ func (s *Store) ReadByUUID(
 		return s.dbReadNamespaceQualifiedByUUID(
 			ctx, sysRec, kindRec, metaRec, domRec, nsRec, uuid,
 		)
-	case types.NamescopeDomain:
+	case api.ScopeDomain:
 		if dom == nil {
 			return nil, errors.ErrSelectorDomainRequired
 		}
@@ -239,11 +244,11 @@ func (s *Store) ReadByUUID(
 // ReadByName returns a Record for the Object with the supplied Name.
 func (s *Store) ReadByName(
 	ctx context.Context,
-	sys types.System,
-	k types.Kind,
-	m types.Meta,
-	dom types.Domain,
-	ns types.Namespace,
+	sys *system.System,
+	k *kind.Kind,
+	m *meta.Meta,
+	dom *domain.Domain,
+	ns *namespace.Namespace,
 	name string,
 ) (*Record, error) {
 	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
@@ -275,9 +280,9 @@ func (s *Store) ReadByName(
 			errors.WithWrap(err),
 		)
 	}
-	namescope := k.Namescope()
-	switch namescope {
-	case types.NamescopeNamespace:
+	scope := k.Scope()
+	switch scope {
+	case api.ScopeNamespace:
 		if ns == nil {
 			return nil, errors.ErrSelectorNamespaceRequired
 		}
@@ -321,7 +326,7 @@ func (s *Store) ReadByName(
 		return s.dbReadNamespaceQualifiedByName(
 			ctx, sysRec, kindRec, metaRec, domRec, nsRec, name,
 		)
-	case types.NamescopeDomain:
+	case api.ScopeDomain:
 		if dom == nil {
 			return nil, errors.ErrSelectorDomainRequired
 		}
@@ -350,7 +355,7 @@ func (s *Store) ReadByName(
 func (s *Store) ReadAtGeneration(
 	ctx context.Context,
 	rowID int64,
-	generation types.Generation,
+	generation api.Generation,
 ) (*Record, error) {
 	return s.dbReadAtGeneration(ctx, rowID, generation)
 }

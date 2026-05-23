@@ -8,10 +8,10 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/relexec/rxp/api"
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
-	"github.com/relexec/rxp/types"
 
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
@@ -85,12 +85,12 @@ func (s *Store) dbReadByRowID(
 	}
 	fn := func(tx pgx.Tx) error {
 		var systemRowID int64
-		var name types.KindName
-		var namescope types.Namescope
-		qs := "SELECT system, name, namescope FROM kinds WHERE id = $1"
+		var name api.KindName
+		var scope api.Scope
+		qs := "SELECT system, name, scope FROM kinds WHERE id = $1"
 		err := tx.QueryRow(
 			ctx, qs, rowID,
-		).Scan(&systemRowID, &name, &namescope)
+		).Scan(&systemRowID, &name, &scope)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -110,7 +110,7 @@ func (s *Store) dbReadByRowID(
 		out.Kind = kind.New(
 			kind.WithSystem(systemRec.System),
 			kind.WithName(name),
-			kind.WithNamescope(namescope),
+			kind.WithScope(scope),
 		)
 		return nil
 	}
@@ -125,7 +125,7 @@ func (s *Store) dbReadByRowID(
 func (s *Store) dbReadByName(
 	ctx context.Context,
 	systemRec *storesystem.Record,
-	name types.KindName,
+	name api.KindName,
 ) (*Record, error) {
 	out := Record{
 		Kind: kind.New(
@@ -134,11 +134,11 @@ func (s *Store) dbReadByName(
 		),
 	}
 	fn := func(tx pgx.Tx) error {
-		var namescope types.Namescope
-		qs := "SELECT id, namescope FROM kinds WHERE system = $1 AND name = $2"
+		var scope api.Scope
+		qs := "SELECT id, scope FROM kinds WHERE system = $1 AND name = $2"
 		err := tx.QueryRow(
 			ctx, qs, systemRec.RowID, name,
-		).Scan(&out.RowID, &namescope)
+		).Scan(&out.RowID, &scope)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -148,7 +148,7 @@ func (s *Store) dbReadByName(
 				errors.WithWrap(err),
 			)
 		}
-		out.Kind.SetNamescope(namescope)
+		out.Kind.SetScope(scope)
 		return nil
 	}
 	if err := s.dbExec(ctx, fn); err != nil {
@@ -161,7 +161,7 @@ func (s *Store) dbReadByName(
 func (s *Store) dbInsert(
 	ctx context.Context,
 	systemRec *storesystem.Record,
-	kind types.Kind,
+	kind *kind.Kind,
 ) error {
 	createdOn := time.Now().UnixNano()
 	createdBy := rxpcontext.Identity(ctx)
@@ -170,7 +170,7 @@ func (s *Store) dbInsert(
 INSERT INTO kinds (
   system
 , name
-, namescope
+, scope
 , last_modified_on
 , last_modified_by
 ) VALUES (
@@ -182,7 +182,7 @@ INSERT INTO kinds (
 )`
 		_, err := tx.Exec(
 			ctx, qs, systemRec.RowID,
-			kind.Name(), kind.Namescope(),
+			kind.Name(), kind.Scope(),
 			createdOn, createdBy,
 		)
 		if err != nil {
