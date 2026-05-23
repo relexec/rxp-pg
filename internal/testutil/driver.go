@@ -94,7 +94,7 @@ func DomainCreateIfNotExists(
 ) error {
 	_, err := d.DomainRead(
 		ctx,
-		domain.ByName(dom.Name()),
+		domain.Select(domain.ByName(dom.Name())),
 	)
 	if err != nil {
 		if err != errors.ErrNotFound {
