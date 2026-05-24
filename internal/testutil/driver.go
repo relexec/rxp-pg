@@ -152,7 +152,8 @@ func ObjectCreateIfNotExists(
 		if err != errors.ErrNotFound {
 			return err
 		}
-		return d.ObjectWrite(ctx, o)
+		_, err := d.ObjectWrite(ctx, *o)
+		return err
 	}
 	return nil
 }

@@ -11,17 +11,47 @@ import (
 	"github.com/relexec/rxp/object"
 )
 
-// WriteFirst atomically writes the pre-validated Object to persistent storage.
+// Write atomically writes the supplied Object to persistent storage. On
+// successful write, the newly created or updated Object is returned.
+func (s *Store) Write(
+	ctx context.Context,
+	obj object.Object,
+) (*object.Object, error) {
+	expectGeneration := obj.Generation()
+	if expectGeneration == 0 {
+		// caller expects that they are the first writer of this object. This
+		// means we can attempt to insert into the objects table with this
+		// object's keys and a generation of 1. any returned unique key
+		// contraint violation will indicate another caller tried to create the
+		// exact same object concurrently.
+		return s.writeFirst(
+			ctx, obj,
+		)
+	}
+	// Otherwise, the caller expects that there is an existing object with this
+	// object's keys and that the latest generation of said object matches a
+	// supplied generation marker. In this case, we insert a new record into
+	// the object_generations table and update the objects table using a WHERE
+	// condition against the expected generation. If this UPDATE fails to
+	// return any affected rows, we know another caller beat us to write their
+	// updated desired state changes and we need to either retry the write or
+	// fail.
+	return s.writeGeneration(
+		ctx, obj, expectGeneration,
+	)
+}
+
+// writeFirst atomically writes the pre-validated Object to persistent storage.
 // This method is called when the caller believes they are the first writer of
 // an object.
-func (s *Store) WriteFirst(
+func (s *Store) writeFirst(
 	ctx context.Context,
-	obj *object.Object,
-) error {
+	obj object.Object,
+) (*object.Object, error) {
 	sys := obj.System()
 	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
 	if err != nil {
-		return errors.Internal(
+		return nil, errors.Internal(
 			"failed reading system record",
 			errors.WithWrap(err),
 		)
@@ -30,9 +60,9 @@ func (s *Store) WriteFirst(
 	kindRec, err := s.kindStore.ReadByName(ctx, sys, kv.Kind())
 	if err != nil {
 		if err == errors.ErrNotFound {
-			return errors.ErrKindVersionUnknown
+			return nil, errors.ErrKindVersionUnknown
 		}
-		return errors.Internal(
+		return nil, errors.Internal(
 			"failed reading kind record",
 			errors.WithWrap(err),
 		)
@@ -42,9 +72,9 @@ func (s *Store) WriteFirst(
 	)
 	if err != nil {
 		if err == errors.ErrNotFound {
-			return errors.ErrKindVersionUnknown
+			return nil, errors.ErrKindVersionUnknown
 		}
-		return errors.Internal(
+		return nil, errors.Internal(
 			"failed reading meta record",
 			errors.WithWrap(err),
 		)
@@ -59,7 +89,7 @@ func (s *Store) WriteFirst(
 	case api.ScopeNamespace:
 		ns := obj.Namespace()
 		if ns == nil {
-			return errors.Internal(
+			return nil, errors.Internal(
 				fmt.Sprintf(
 					"expected to have namespace for object %q",
 					obj.UUID(),
@@ -71,7 +101,7 @@ func (s *Store) WriteFirst(
 			dom = ns.Domain()
 		}
 		if dom == nil {
-			return errors.Internal(
+			return nil, errors.Internal(
 				fmt.Sprintf(
 					"expected to have domain for namespace %q",
 					ns.Name(),
@@ -88,7 +118,7 @@ func (s *Store) WriteFirst(
 			)
 		}
 		if err != nil {
-			return errors.Internal(
+			return nil, errors.Internal(
 				"failed reading domain record",
 				errors.WithWrap(err),
 			)
@@ -97,7 +127,7 @@ func (s *Store) WriteFirst(
 			ctx, dom, ns.Name(),
 		)
 		if err != nil {
-			return errors.Internal(
+			return nil, errors.Internal(
 				"failed reading namespace record",
 				errors.WithWrap(err),
 			)
@@ -105,7 +135,7 @@ func (s *Store) WriteFirst(
 	case api.ScopeDomain:
 		dom := obj.Domain()
 		if dom == nil {
-			return errors.Internal(
+			return nil, errors.Internal(
 				fmt.Sprintf(
 					"expected to have domain for object %q",
 					obj.UUID(),
@@ -119,25 +149,31 @@ func (s *Store) WriteFirst(
 		} else {
 			domRec, err = s.domainStore.ReadByName(
 				ctx, sys, dom.Name(),
+			)
+		}
+		if err != nil {
+			return nil, errors.Internal(
+				"failed reading domain record",
+				errors.WithWrap(err),
 			)
 		}
 	}
 	return s.dbInsertFirst(ctx, sysRec, kindRec, metaRec, domRec, nsRec, obj)
 }
 
-// WriteGeneration atomically writes the pre-validated Object to persistent
+// writeGeneration atomically writes the pre-validated Object to persistent
 // storage.  This method is called when the caller believes they are the NOT
 // thefirst writer of an object and expect to find a supplied latest
 // generation.
-func (s *Store) WriteGeneration(
+func (s *Store) writeGeneration(
 	ctx context.Context,
-	obj *object.Object,
+	obj object.Object,
 	expectGeneration api.Generation,
-) error {
+) (*object.Object, error) {
 	sys := obj.System()
 	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
 	if err != nil {
-		return errors.Internal(
+		return nil, errors.Internal(
 			"failed reading system record",
 			errors.WithWrap(err),
 		)
@@ -146,9 +182,9 @@ func (s *Store) WriteGeneration(
 	kindRec, err := s.kindStore.ReadByName(ctx, sys, kv.Kind())
 	if err != nil {
 		if err == errors.ErrNotFound {
-			return errors.ErrKindVersionUnknown
+			return nil, errors.ErrKindVersionUnknown
 		}
-		return errors.Internal(
+		return nil, errors.Internal(
 			"failed reading kind record",
 			errors.WithWrap(err),
 		)
@@ -158,9 +194,9 @@ func (s *Store) WriteGeneration(
 	)
 	if err != nil {
 		if err == errors.ErrNotFound {
-			return errors.ErrKindVersionUnknown
+			return nil, errors.ErrKindVersionUnknown
 		}
-		return errors.Internal(
+		return nil, errors.Internal(
 			"failed reading meta record",
 			errors.WithWrap(err),
 		)
@@ -175,7 +211,7 @@ func (s *Store) WriteGeneration(
 	case api.ScopeNamespace:
 		ns := obj.Namespace()
 		if ns == nil {
-			return errors.Internal(
+			return nil, errors.Internal(
 				fmt.Sprintf(
 					"expected to have namespace for object %q",
 					obj.UUID(),
@@ -187,7 +223,7 @@ func (s *Store) WriteGeneration(
 			dom = ns.Domain()
 		}
 		if dom == nil {
-			return errors.Internal(
+			return nil, errors.Internal(
 				fmt.Sprintf(
 					"expected to have domain for namespace %q",
 					ns.Name(),
@@ -204,7 +240,7 @@ func (s *Store) WriteGeneration(
 			)
 		}
 		if err != nil {
-			return errors.Internal(
+			return nil, errors.Internal(
 				"failed reading domain record",
 				errors.WithWrap(err),
 			)
@@ -213,7 +249,7 @@ func (s *Store) WriteGeneration(
 			ctx, dom, ns.Name(),
 		)
 		if err != nil {
-			return errors.Internal(
+			return nil, errors.Internal(
 				"failed reading namespace record",
 				errors.WithWrap(err),
 			)
@@ -221,7 +257,7 @@ func (s *Store) WriteGeneration(
 	case api.ScopeDomain:
 		dom := obj.Domain()
 		if dom == nil {
-			return errors.Internal(
+			return nil, errors.Internal(
 				fmt.Sprintf(
 					"expected to have domain for object %q",
 					obj.UUID(),
@@ -237,6 +273,16 @@ func (s *Store) WriteGeneration(
 				ctx, sys, dom.Name(),
 			)
 		}
+		if err != nil {
+			return nil, errors.Internal(
+				"failed reading domain record",
+				errors.WithWrap(err),
+			)
+		}
 	}
-	return s.dbInsertGeneration(ctx, sysRec, kindRec, metaRec, domRec, nsRec, obj, expectGeneration)
+	return s.dbInsertGeneration(
+		ctx,
+		sysRec, kindRec, metaRec, domRec, nsRec,
+		obj, expectGeneration,
+	)
 }

@@ -166,14 +166,15 @@ func (d *Driver) objectReadValidateScope(
 	return nil
 }
 
-// ObjectWrite persists a single supplied Object to backend storage,
+// ObjectWrite persists a single supplied Object to backend storage, Note that
+// on successful write, the newly-create or updated Object is returned.
 func (d *Driver) ObjectWrite(
 	ctx context.Context,
-	obj *object.Object,
-) error {
+	obj object.Object,
+) (*object.Object, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	start := time.Now()
 
@@ -197,7 +198,7 @@ func (d *Driver) ObjectWrite(
 
 	err = d.objectWriteValidate(ctx, obj)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	sys := obj.System()
@@ -222,21 +223,20 @@ func (d *Driver) ObjectWrite(
 
 	kindRec, err := d.kindStore.ReadByName(ctx, sys, kv.Kind())
 	if err != nil {
-		return errors.ErrKindVersionUnknown
+		return nil, errors.ErrKindVersionUnknown
 	}
 	err = d.objectWriteValidateScope(ctx, kindRec, obj)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	return d.objectWrite(ctx, obj)
+	return d.objectStore.Write(ctx, obj)
 }
 
 // objectWriteValidate returns an error if the supplied object and write
 // options are not valid for writing a single Object.
 func (d *Driver) objectWriteValidate(
 	ctx context.Context,
-	obj *object.Object,
+	obj object.Object,
 ) error {
 	kv := obj.KindVersion()
 	if kv == "" {
@@ -259,7 +259,7 @@ func (d *Driver) objectWriteValidate(
 func (d *Driver) objectWriteValidateScope(
 	ctx context.Context,
 	kindRec *storekind.Record,
-	obj *object.Object,
+	obj object.Object,
 ) error {
 	scope := kindRec.Kind.Scope()
 	switch scope {
@@ -277,39 +277,6 @@ func (d *Driver) objectWriteValidateScope(
 		return domain.Validate()
 	}
 	return nil
-}
-
-// objectWrite atomically writes the supplied Object to persistent storage,
-func (d *Driver) objectWrite(
-	ctx context.Context,
-	obj *object.Object,
-) error {
-	/*
-		expectGeneration := opts.Generation()
-		if expectGeneration == 0 {
-	*/
-	// caller expects that they are the first writer of this object. This
-	// means we can attempt to insert into the objects table with this
-	// object's keys and a generation of 1. any returned unique key
-	// contraint violation will indicate another caller tried to create the
-	// exact same object concurrently.
-	return d.objectStore.WriteFirst(
-		ctx, obj,
-	)
-	/*
-		}
-			// Otherwise, the caller expects that there is an existing object with this
-			// object's keys and that the latest generation of said object matches a
-			// supplied generation marker. In this case, we insert a new record into
-			// the object_generations table and update the objects table using a WHERE
-			// condition against the expected generation. If this UPDATE fails to
-			// return any affected rows, we know another caller beat us to write their
-			// updated desired state changes and we need to either retry the write or
-			// fail.
-			return d.objectStore.WriteGeneration(
-				ctx, obj, expectGeneration,
-			)
-	*/
 }
 
 const (

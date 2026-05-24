@@ -714,8 +714,8 @@ func (s *Store) dbInsertFirst(
 	metaRec *storemeta.Record,
 	domRec *storedomain.Record,
 	nsRec *storenamespace.Record,
-	obj *object.Object,
-) error {
+	obj object.Object,
+) (*object.Object, error) {
 	kind := kindRec.Kind
 	kv := obj.KindVersion()
 	uuid := obj.UUID()
@@ -726,7 +726,7 @@ func (s *Store) dbInsertFirst(
 	spec := obj.Spec()
 	specBytes, err := json.Marshal(spec)
 	if err != nil {
-		return errors.Internal(
+		return nil, errors.Internal(
 			"failed marshaling spec",
 			errors.WithWrap(err),
 		)
@@ -966,7 +966,12 @@ INSERT INTO object_generations (
 		}
 		return nil
 	}
-	return s.dbExec(ctx, fn)
+	if err := s.dbExec(ctx, fn); err != nil {
+		return nil, err
+	}
+	out := obj
+	out.SetGeneration(1)
+	return &out, nil
 }
 
 // dbInsertGeneration is called when the caller believes they are NOT the first
@@ -978,9 +983,9 @@ func (s *Store) dbInsertGeneration(
 	metaRec *storemeta.Record,
 	domRec *storedomain.Record,
 	nsRec *storenamespace.Record,
-	obj *object.Object,
+	obj object.Object,
 	expectGeneration api.Generation,
-) error {
+) (*object.Object, error) {
 	kv := obj.KindVersion()
 	uuid := obj.UUID()
 	createdOn := time.Now().UnixNano()
@@ -989,7 +994,7 @@ func (s *Store) dbInsertGeneration(
 	spec := obj.Spec()
 	specBytes, err := json.Marshal(spec)
 	if err != nil {
-		return errors.Internal(
+		return nil, errors.Internal(
 			"failed marshaling spec",
 			errors.WithWrap(err),
 		)
@@ -1082,5 +1087,10 @@ AND generation = $6`
 		}
 		return nil
 	}
-	return s.dbExec(ctx, fn)
+	if err := s.dbExec(ctx, fn); err != nil {
+		return nil, err
+	}
+	out := obj
+	out.SetGeneration(expectGeneration + 1)
+	return &out, nil
 }

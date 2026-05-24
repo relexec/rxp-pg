@@ -267,6 +267,8 @@ func TestObjectWrite(t *testing.T) {
 		object.WithUUID(uuid.NewString()),
 		object.WithName(plat1Name),
 	)
+	plat1Gen1 := plat1.Clone()
+	plat1Gen1.SetGeneration(1)
 
 	// NOTE: Application is NamescopeDomain which allows us to test the
 	// domain-qualified name constraints.
@@ -288,6 +290,8 @@ func TestObjectWrite(t *testing.T) {
 		object.WithDomain(domain),
 		object.WithName(app1Name),
 	)
+	app1Gen1 := app1.Clone()
+	app1Gen1.SetGeneration(1)
 
 	// NOTE: Service is NamescopeNamespace which allows us to test the
 	// namespace-qualified name constraints.
@@ -322,6 +326,11 @@ func TestObjectWrite(t *testing.T) {
 		object.WithUUID(uuid.NewString()),
 		object.WithName(testutil.RandomName()),
 	)
+
+	svc1Gen1 := svc1.Clone()
+	svc1Gen1.SetGeneration(1)
+	svc1Gen2 := svc1.Clone()
+	svc1Gen2.SetGeneration(2)
 
 	cases := []struct {
 		name    string
@@ -376,7 +385,7 @@ func TestObjectWrite(t *testing.T) {
 			"happy path system-scoped object",
 			ctx,
 			plat1,
-			plat1,
+			&plat1Gen1,
 			"",
 		},
 		{
@@ -390,7 +399,7 @@ func TestObjectWrite(t *testing.T) {
 			"happy path domain-scoped object",
 			ctx,
 			app1,
-			app1,
+			&app1Gen1,
 			"",
 		},
 		{
@@ -404,7 +413,7 @@ func TestObjectWrite(t *testing.T) {
 			"happy path namespace-scoped object",
 			ctx,
 			svc1,
-			svc1,
+			&svc1Gen1,
 			"",
 		},
 		{
@@ -414,24 +423,47 @@ func TestObjectWrite(t *testing.T) {
 			nil,
 			"conflict: \"service.testing.rxp\" already exists with name",
 		},
-		// Attempting to write the exact same object without specifying an
-		// expected generation should result in a precondition failed.
+		// Attempting to write the exact same object without specifying the
+		// existing generation should result in a precondition failed.
 		{
 			"duplicate UUID",
 			ctx,
 			svc1,
-			svc1,
+			nil,
 			"not to exist",
+		},
+		{
+			"new generation",
+			ctx,
+			&svc1Gen1,
+			&svc1Gen2,
+			"",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			err := rxp.ObjectWrite(c.ctx, c.subject)
+			got, err := rxp.ObjectWrite(c.ctx, *c.subject)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
+				require.Nil(got)
 			} else {
 				require.Nil(err)
+				require.NotNil(got)
+				require.Equal(c.exp.KindVersion(), got.KindVersion())
+				if c.exp.Domain() != nil {
+					require.NotNil(got.Domain())
+					require.Equal(c.exp.Domain().Name(), got.Domain().Name())
+				}
+				if c.exp.Namespace() != nil {
+					require.NotNil(got.Namespace())
+					require.Equal(c.exp.Namespace().Name(), got.Namespace().Name())
+				}
+				require.Equal(c.exp.Name(), got.Name())
+				require.Equal(c.exp.UUID(), got.UUID())
+				require.Equal(c.exp.Generation(), got.Generation())
+				// TODO(jaypipes): finish coding Object.Diff
+				//require.Equal(got, c.exp)
 			}
 		})
 	}
