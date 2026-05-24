@@ -32,9 +32,9 @@ type Driver struct {
 
 	// hostSystemUUID is the UUID of the host System managed by this Driver.
 	hostSystemUUID string
-	// hostSystemName is the name of the host System managed by this Driver, if
+	// hostSystemTag is the tag of the host System managed by this Driver, if
 	// any.
-	hostSystemName string
+	hostSystemTag string
 	// hostSystemRecord is the host System managed by this Driver.
 	hostSystemRecord *storesystem.Record
 

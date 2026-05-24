@@ -9,15 +9,17 @@ INSERT INTO scopes (id, name, description)
 VALUES
   (0, 'namespace', 'The name is unique within the scope of the kind and namespace.')
 , (1, 'domain', 'The name is unique within the scope of the kind and domain.')
-, (2, 'system', 'The name is unique within the scope of the kind and system[].')
+, (2, 'system', 'The name is unique within the scope of the kind and system.')
 , (3, 'global', 'The type of thing can only be identified by UUID.')
 ;
 
 CREATE TABLE systems (
   id SERIAL NOT NULL PRIMARY KEY
 , uuid UUID NOT NULL
-, name TEXT NULL
+, tag TEXT NULL
 , host BOOLEAN DEFAULT FALSE
+, last_modified_on BIGINT NOT NULL
+, last_modified_by TEXT NOT NULL
 , UNIQUE (uuid)
 );
 

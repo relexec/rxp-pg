@@ -33,10 +33,10 @@ func WithHostSystemUUID(uuid string) WithOption {
 	}
 }
 
-// WithHostSystemName sets the Driver's host system name.
-func WithHostSystemName(name string) WithOption {
+// WithHostSystemTag sets the Driver's host system tag.
+func WithHostSystemTag(tag string) WithOption {
 	return func(d *Driver) {
-		d.hostSystemName = name
+		d.hostSystemTag = tag
 	}
 }
 

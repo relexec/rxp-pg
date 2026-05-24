@@ -96,20 +96,20 @@ func (d *Driver) ensureHostSystem() error {
 		}
 	}
 	d.log.Info("host system uuid: %s", d.hostSystemUUID)
-	if d.hostSystemName == "" {
+	if d.hostSystemTag == "" {
 		// try to find the system identifier by looking at the configuration
 		// and environment variabled.
-		if d.cfg.SystemName != "" {
-			d.hostSystemName = d.cfg.SystemName
+		if d.cfg.SystemTag != "" {
+			d.hostSystemTag = d.cfg.SystemTag
 		} else {
-			v := os.Getenv("RXP_SYSTEM_NAME")
+			v := os.Getenv("RXP_SYSTEM_TAG")
 			if v != "" {
-				d.hostSystemName = v
+				d.hostSystemTag = v
 			}
 		}
 	}
-	if d.hostSystemName != "" {
-		d.log.Info("host system name: %s", d.hostSystemName)
+	if d.hostSystemTag != "" {
+		d.log.Info("host system name: %s", d.hostSystemTag)
 	}
 	return nil
 }
@@ -220,7 +220,7 @@ func (d *Driver) initHostSystemRecord(ctx context.Context) error {
 				ctx,
 				system.New(
 					system.WithUUID(d.hostSystemUUID),
-					system.WithName(d.hostSystemName),
+					system.WithTag(d.hostSystemTag),
 				),
 			)
 			if err != nil {

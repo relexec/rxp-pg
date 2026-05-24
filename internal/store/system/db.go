@@ -4,8 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/system"
 )
@@ -79,9 +83,9 @@ func (s *Store) dbReadByRowID(
 	}
 	fn := func(tx pgx.Tx) error {
 		var uuid string
-		var name string
-		qs := "SELECT uuid, name FROM systems WHERE id = $1"
-		err := tx.QueryRow(ctx, qs, rowID).Scan(&uuid, &name)
+		var tag string
+		qs := "SELECT uuid, tag FROM systems WHERE id = $1"
+		err := tx.QueryRow(ctx, qs, rowID).Scan(&uuid, &tag)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -93,7 +97,7 @@ func (s *Store) dbReadByRowID(
 		}
 		out.System = system.New(
 			system.WithUUID(uuid),
-			system.WithName(name),
+			system.WithTag(tag),
 		)
 		return nil
 	}
@@ -115,9 +119,9 @@ func (s *Store) dbReadByUUID(
 		),
 	}
 	fn := func(tx pgx.Tx) error {
-		var name sql.NullString
-		qs := "SELECT id, name FROM systems WHERE uuid = $1"
-		err := tx.QueryRow(ctx, qs, uuid).Scan(&out.RowID, &name)
+		var tag sql.NullString
+		qs := "SELECT id, tag FROM systems WHERE uuid = $1"
+		err := tx.QueryRow(ctx, qs, uuid).Scan(&out.RowID, &tag)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -127,8 +131,8 @@ func (s *Store) dbReadByUUID(
 				errors.WithWrap(err),
 			)
 		}
-		if name.Valid {
-			out.System.SetName(name.String)
+		if tag.Valid {
+			out.System.SetTag(tag.String)
 		}
 		return nil
 	}
@@ -136,4 +140,49 @@ func (s *Store) dbReadByUUID(
 		return nil, err
 	}
 	return &out, nil
+}
+
+// dbInsert atomically writes the supplied System to persistent storage.
+func (s *Store) dbInsert(
+	ctx context.Context,
+	sys *system.System,
+) error {
+	createdOn := time.Now().UnixNano()
+	createdBy := rxpcontext.Identity(ctx)
+	var tag *string
+	uuid := sys.UUID()
+	sysTag := sys.Tag()
+	if sysTag != "" {
+		tag = &sysTag
+	}
+	fn := func(tx pgx.Tx) error {
+		qs := `
+INSERT INTO systems (
+  uuid
+, tag
+, last_modified_on
+, last_modified_by
+) VALUES (
+  $1
+, $2
+, $3
+, $4
+)`
+		_, err := tx.Exec(ctx, qs, uuid, tag, createdOn, createdBy)
+		if err != nil {
+			if pgErr, ok := err.(*pgconn.PgError); ok {
+				if pgErr.Code == pgerrcode.UniqueViolation {
+					return errors.DuplicateKey("system", "uuid", sys.UUID())
+				}
+			}
+		}
+		return err
+	}
+	if err := s.dbExec(ctx, fn); err != nil {
+		return errors.Internal(
+			"failed inserting systems record",
+			errors.WithWrap(err),
+		)
+	}
+	return nil
 }

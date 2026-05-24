@@ -12,8 +12,8 @@ import (
 const (
 	flagSystemUUID     = "rxp-system-uuid"
 	flagSystemUUIDDesc = "Contains the rxp host system UUID. If empty, the value of RXP_SYSTEM_UUID environs variable is used."
-	flagSystemName     = "rxp-system-name"
-	flagSystemNameDesc = "Contains the rxp host system name. If empty, the value of RXP_SYSTEM_NAME environs variable is used."
+	flagSystemTag      = "rxp-system-tag"
+	flagSystemTagDesc  = "Contains the rxp host system tag. If empty, the value of RXP_SYSTEM_TAG environs variable is used."
 
 	flagConnect     = "rxp-postgres-connect"
 	flagConnectDesc = "Contains the libpq connection string in either key=value or URL format. If not empty, all connection parameters are set from the supplied string."
@@ -32,8 +32,8 @@ const (
 type Config struct {
 	// SystemUUID contains the rxp host system UUID.
 	SystemUUID string `json:"system_uuid,omitempty"`
-	// SystemName contains the rxp host system Name, if any.
-	SystemName string `json:"system_name,omitempty"`
+	// SystemTag contains the rxp host system Name, if any.
+	SystemTag string `json:"system_name,omitempty"`
 	// Connect contains the libpq connection string in either key=value or URL
 	// format.
 	//
@@ -85,10 +85,10 @@ func (c *Config) BindFlags(fs *pflag.FlagSet) {
 		flagSystemUUIDDesc,
 	)
 	pflag.StringVar(
-		&c.SystemName,
-		flagSystemName,
+		&c.SystemTag,
+		flagSystemTag,
 		"",
-		flagSystemNameDesc,
+		flagSystemTagDesc,
 	)
 	pflag.StringVar(
 		&c.Connect,

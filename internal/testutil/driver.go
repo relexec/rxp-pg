@@ -37,7 +37,7 @@ func Driver(ctx context.Context) (*driver.Driver, error) {
 		testDriver, err = driver.New(
 			ctx,
 			driver.WithHostSystemUUID(fixtures.SystemUUID),
-			driver.WithHostSystemName(fixtures.SystemName),
+			driver.WithHostSystemTag(fixtures.SystemTag),
 			driver.WithMetrics(metrics),
 			driver.WithConfig(cfg),
 		)
