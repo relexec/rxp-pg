@@ -215,6 +215,8 @@ func (d *Driver) ObjectWrite(
 	// Default the system to the host system if it hasn't been specified.
 	if sys == nil {
 		sys = d.hostSystemRecord.System
+	}
+	if obj.System() == nil {
 		obj.SetSystem(sys)
 	}
 
