@@ -40,20 +40,23 @@ func (s *Store) Query(
 		pred := expr.Predicate
 		switch pred := pred.(type) {
 		case expression.KindNamePredicate:
-			v := pred.Values()[0]
-			kn := v.(api.KindName)
-			kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
-			if err != nil {
-				return nil, err
-			}
-			scope := kindRec.Kind.Scope()
-			switch scope {
-			case api.ScopeNamespace:
-				nsqExpr = expr
-			case api.ScopeDomain:
-				dqExpr = expr
-			default:
-				sqExpr = expr
+			op := pred.Operator()
+			switch op {
+			case expression.PredicateOperatorEqual:
+				kn := pred.Value().(api.KindName)
+				kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
+				if err != nil {
+					return nil, err
+				}
+				scope := kindRec.Kind.Scope()
+				switch scope {
+				case api.ScopeNamespace:
+					nsqExpr = expr
+				case api.ScopeDomain:
+					dqExpr = expr
+				default:
+					sqExpr = expr
+				}
 			}
 		}
 	case expression.OrExpression:
@@ -203,14 +206,17 @@ func (s *Store) objectQueryNamespaceQualified(
 		pred := expr.Predicate
 		switch pred := pred.(type) {
 		case expression.KindNamePredicate:
-			v := pred.Values()[0]
-			kn := v.(api.KindName)
-			kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
-			if err != nil {
-				return nil, err
+			op := pred.Operator()
+			switch op {
+			case expression.PredicateOperatorEqual:
+				kn := pred.Value().(api.KindName)
+				kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
+				if err != nil {
+					return nil, err
+				}
+				wheres = append(wheres, fmt.Sprintf("m.kind = $%d", len(qargs)+1))
+				qargs = append(qargs, kindRec.RowID)
 			}
-			wheres = append(wheres, fmt.Sprintf("m.kind = $%d", len(qargs)+1))
-			qargs = append(qargs, kindRec.RowID)
 		}
 	case expression.OrExpression:
 	case expression.AndExpression:
@@ -314,14 +320,17 @@ func (s *Store) objectQueryDomainQualified(
 		pred := expr.Predicate
 		switch pred := pred.(type) {
 		case expression.KindNamePredicate:
-			v := pred.Values()[0]
-			kn := v.(api.KindName)
-			kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
-			if err != nil {
-				return nil, err
+			op := pred.Operator()
+			switch op {
+			case expression.PredicateOperatorEqual:
+				kn := pred.Value().(api.KindName)
+				kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
+				if err != nil {
+					return nil, err
+				}
+				wheres = append(wheres, fmt.Sprintf("m.kind = $%d", len(qargs)+1))
+				qargs = append(qargs, kindRec.RowID)
 			}
-			wheres = append(wheres, fmt.Sprintf("m.kind = $%d", len(qargs)+1))
-			qargs = append(qargs, kindRec.RowID)
 		}
 	case expression.OrExpression:
 	case expression.AndExpression:
@@ -418,14 +427,17 @@ func (s *Store) objectQuerySystemQualified(
 		pred := expr.Predicate
 		switch pred := pred.(type) {
 		case expression.KindNamePredicate:
-			v := pred.Values()[0]
-			kn := v.(api.KindName)
-			kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
-			if err != nil {
-				return nil, err
+			op := pred.Operator()
+			switch op {
+			case expression.PredicateOperatorEqual:
+				kn := pred.Value().(api.KindName)
+				kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
+				if err != nil {
+					return nil, err
+				}
+				wheres = append(wheres, fmt.Sprintf("m.kind = $%d", len(qargs)+1))
+				qargs = append(qargs, kindRec.RowID)
 			}
-			wheres = append(wheres, fmt.Sprintf("m.kind = $%d", len(qargs)+1))
-			qargs = append(qargs, kindRec.RowID)
 		}
 	case expression.OrExpression:
 	case expression.AndExpression:

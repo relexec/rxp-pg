@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgerrcode"
@@ -11,6 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
+	"github.com/relexec/rxp/query"
+	"github.com/relexec/rxp/query/expression"
 	"github.com/relexec/rxp/system"
 )
 
@@ -185,4 +188,92 @@ INSERT INTO systems (
 		)
 	}
 	return nil
+}
+
+type systemRecord struct {
+	ID   int64  `db:"system_id"`
+	UUID string `db:"system_uuid"`
+	Tag  string `db:"system_tag"`
+}
+
+// dbReadByExpression queries zero or more Systems that match the given
+// pre-validated expression and options.
+func (s *Store) dbReadByExpression(
+	ctx context.Context,
+	expr expression.Expression,
+	opts query.Options,
+) ([]*Record, error) {
+	qargs := []any{}
+	wheres := []string{}
+
+	switch expr := expr.(type) {
+	case expression.UnaryExpression:
+		pred := expr.Predicate
+		switch pred := pred.(type) {
+		case expression.UUIDPredicate:
+			op := pred.Operator()
+			switch op {
+			case expression.PredicateOperatorEqual:
+				wheres = append(wheres, fmt.Sprintf("s.uuid = $%d", len(qargs)+1))
+				qargs = append(qargs, pred.Value())
+			case expression.PredicateOperatorIn:
+				wheres = append(wheres, fmt.Sprintf("s.uuid = ANY ($%d)", len(qargs)+1))
+				qargs = append(qargs, pred.Value())
+			default:
+				return nil, errors.Internal(
+					fmt.Sprintf("unhandled predicate operator %v", op),
+				)
+			}
+		}
+	case expression.OrExpression:
+	case expression.AndExpression:
+	}
+
+	var recs []systemRecord
+	fn := func(tx pgx.Tx) error {
+		qs := `
+SELECT
+  s.id AS system_id
+, s.uuid AS system_uuid
+, s.tag AS system_tag
+FROM systems AS s
+`
+		if len(wheres) > 0 {
+			qs += "\nWHERE " + strings.Join(wheres, " AND ")
+		}
+		qs += fmt.Sprintf("\nORDER BY s.uuid ASC LIMIT %d", opts.Limit())
+		rows, err := tx.Query(ctx, qs, qargs...)
+		if err != nil {
+			return errors.Internal(
+				"failed reading system records",
+				errors.WithWrap(err),
+			)
+		}
+		defer rows.Close()
+		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[systemRecord])
+		if err != nil {
+			return errors.Internal(
+				"failed collecting system records",
+				errors.WithWrap(err),
+			)
+		}
+		return nil
+	}
+	if err := s.dbExec(ctx, fn); err != nil {
+		return nil, err
+	}
+
+	out := make([]*Record, 0, len(recs))
+	for _, rec := range recs {
+		sys := system.New(
+			system.WithUUID(rec.UUID),
+			system.WithTag(rec.Tag),
+		)
+		out = append(out, &Record{
+			RowID:  rec.ID,
+			System: sys,
+		})
+	}
+
+	return out, nil
 }

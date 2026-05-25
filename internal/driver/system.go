@@ -7,6 +7,8 @@ import (
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/metrics"
+	"github.com/relexec/rxp/query"
+	"github.com/relexec/rxp/query/expression"
 	"github.com/relexec/rxp/system"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -107,4 +109,98 @@ func (d *Driver) systemWriteValidate(
 		)
 	}
 	return sys.Validate()
+}
+
+const (
+	DefaultSystemQueryLimit = 10
+	MaxSystemQueryLimit     = 100
+)
+
+// SystemQuery queries zero or more Systems from persistent storage.
+func (d *Driver) SystemQuery(
+	ctx context.Context,
+	expr expression.Expression,
+	opts ...query.Option,
+) (*query.Result[*system.System], error) {
+	err := d.requestValidate(ctx)
+	if err != nil {
+		return nil, err
+	}
+	start := time.Now()
+
+	defer func() {
+		elapsed := time.Since(start).Seconds()
+		attrs := []attribute.KeyValue{
+			metrics.AttributeType(api.TypeSystem),
+		}
+		if err != nil {
+			attrs = append(attrs, metrics.AttributeErrCode(err))
+		}
+		metrics.InstrumentQueryRequest.Add(
+			ctx, 1,
+			metric.WithAttributes(attrs...),
+		)
+		metrics.InstrumentQueryDuration.Record(ctx, elapsed)
+	}()
+
+	qopts := query.NewOptions(opts...)
+	err = d.systemQueryValidate(ctx, expr, qopts)
+	if err != nil {
+		return nil, err
+	}
+
+	boundedOpts := d.systemQueryBoundedOptions(ctx, qopts)
+
+	recs, err := d.systemStore.Query(
+		ctx, expr, boundedOpts,
+	)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*system.System, 0, len(recs))
+	for _, rec := range recs {
+		out = append(out, rec.System)
+	}
+	resOpts := query.NewOptions(
+		query.Limit(boundedOpts.Limit()),
+	)
+	if len(recs) == boundedOpts.Limit() {
+		resOpts = query.NewOptions(
+			query.ContinueFrom(recs[len(recs)-1].System.UUID()),
+			query.Limit(boundedOpts.Limit()),
+		)
+	}
+	resNewOpts := []query.ResultModifier[*system.System]{
+		query.ResultWithItems(out),
+		query.ResultWithOptions[*system.System](resOpts),
+	}
+	return query.NewResult[*system.System](resNewOpts...), nil
+}
+
+// systemQueryValidate returns an error if the supplied expression and query
+// options are not valid.
+func (d *Driver) systemQueryValidate(
+	ctx context.Context,
+	expr expression.Expression,
+	opts query.Options,
+) error {
+	if expr == nil {
+		return errors.ErrQueryExpressionRequired
+	}
+	return nil
+}
+
+// systemQueryBoundedOptions returns a Options that has been bounded with
+// reasonable defaults, e.g. ensuring that the number of records queryed is less
+// than the max page result.
+func (d *Driver) systemQueryBoundedOptions(
+	ctx context.Context,
+	opts query.Options,
+) query.Options {
+	limit := opts.Limit()
+	if limit <= 0 {
+		limit = DefaultSystemQueryLimit
+	}
+	limit = min(limit, MaxSystemQueryLimit)
+	return query.NewOptions(query.Limit(limit))
 }
