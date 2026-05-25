@@ -287,6 +287,18 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
+		case expression.NamespaceNamePredicate:
+			op := pred.Operator()
+			switch op {
+			case expression.PredicateOperatorEqual:
+				wheres = append(wheres, fmt.Sprintf("n.name = $%d", len(qargs)+1))
+				qargs = append(qargs, pred.Value())
+			case expression.PredicateOperatorIn:
+				wheres = append(wheres, fmt.Sprintf("n.name = ANY ($%d)", len(qargs)+1))
+				qargs = append(qargs, pred.Value())
+			default:
+				return nil, errors.UnsupportedPredicateOperator(op)
+			}
 		default:
 			return nil, errors.UnsupportedPredicate(pred)
 		}

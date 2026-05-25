@@ -261,6 +261,34 @@ func TestNamespaceQuery(t *testing.T) {
 			"",
 		},
 		{
+			"no results when looking up non-existing namespace name",
+			ctx,
+			expression.NamespaceNameEqual(fixtures.UnknownNamespaceName),
+			nil,
+			0,
+			[]string{},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+		{
+			"query namespaces by name, expect one",
+			ctx,
+			expression.NamespaceNameEqual(fixtures.NamespaceName),
+			nil,
+			1,
+			[]string{
+				fixtures.NamespaceUUID,
+			},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+		{
 			"query namespaces by UUID, expect one",
 			ctx,
 			expression.UUIDEqual(fixtures.NamespaceUUID),
