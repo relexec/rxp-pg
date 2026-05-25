@@ -8,7 +8,7 @@ BIN_DIR ?= $(shell pwd)/bin
 $(BIN_DIR):
 	@mkdir -p "$(BIN_DIR)"
 
-include mk/build.mk
-include mk/go.mk
-include mk/test.mk
-include mk/help.mk
+include .mk/build.mk
+include .mk/go.mk
+include .mk/test.mk
+include .mk/help.mk
