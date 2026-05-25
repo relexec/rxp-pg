@@ -13,6 +13,8 @@ import (
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/namespace"
+	"github.com/relexec/rxp/query"
+	"github.com/relexec/rxp/query/expression"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 )
@@ -250,4 +252,102 @@ INSERT INTO namespaces (
 		)
 	}
 	return nil
+}
+
+type namespaceRecord struct {
+	DomainID int64             `db:"domain_id"`
+	ID       int64             `db:"namespace_id"`
+	UUID     string            `db:"namespace_uuid"`
+	Name     api.NamespaceName `db:"namespace_name"`
+}
+
+// dbReadByExpression queries zero or more Namespaces that match the given
+// pre-validated expression and options.
+func (s *Store) dbReadByExpression(
+	ctx context.Context,
+	expr expression.Expression,
+	opts query.Options,
+) ([]*Record, error) {
+	qargs := []any{}
+	wheres := []string{}
+
+	switch expr := expr.(type) {
+	case expression.UnaryExpression:
+		pred := expr.Predicate
+		switch pred := pred.(type) {
+		case expression.UUIDPredicate:
+			op := pred.Operator()
+			switch op {
+			case expression.PredicateOperatorEqual:
+				wheres = append(wheres, fmt.Sprintf("n.uuid = $%d", len(qargs)+1))
+				qargs = append(qargs, pred.Value())
+			case expression.PredicateOperatorIn:
+				wheres = append(wheres, fmt.Sprintf("n.uuid = ANY ($%d)", len(qargs)+1))
+				qargs = append(qargs, pred.Value())
+			default:
+				return nil, errors.UnsupportedPredicateOperator(op)
+			}
+		default:
+			return nil, errors.UnsupportedPredicate(pred)
+		}
+	default:
+		return nil, errors.UnsupportedExpression(expr)
+	}
+
+	var recs []namespaceRecord
+	fn := func(tx pgx.Tx) error {
+		qs := `
+SELECT
+  n.domain AS domain_id
+, n.id AS namespace_id
+, n.uuid AS namespace_uuid
+, n.name AS namespace_name
+FROM namespaces AS n
+`
+		if len(wheres) > 0 {
+			qs += "\nWHERE " + strings.Join(wheres, " AND ")
+		}
+		qs += fmt.Sprintf("\nORDER BY n.uuid ASC LIMIT %d", opts.Limit())
+		rows, err := tx.Query(ctx, qs, qargs...)
+		if err != nil {
+			return errors.Internal(
+				"failed reading namespace records",
+				errors.WithWrap(err),
+			)
+		}
+		defer rows.Close()
+		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[namespaceRecord])
+		if err != nil {
+			return errors.Internal(
+				"failed collecting namespace records",
+				errors.WithWrap(err),
+			)
+		}
+		return nil
+	}
+	if err := s.dbExec(ctx, fn); err != nil {
+		return nil, err
+	}
+
+	out := make([]*Record, 0, len(recs))
+	for _, rec := range recs {
+		domRec, err := s.domainStore.ReadByRowID(ctx, rec.DomainID)
+		if err != nil {
+			return nil, errors.Internal(
+				"failed reading domain record by rowid",
+				errors.WithWrap(err),
+			)
+		}
+		ns := namespace.New(
+			namespace.WithUUID(rec.UUID),
+			namespace.WithName(rec.Name),
+			namespace.WithDomain(domRec.Domain),
+		)
+		out = append(out, &Record{
+			RowID:     rec.ID,
+			Namespace: ns,
+		})
+	}
+
+	return out, nil
 }

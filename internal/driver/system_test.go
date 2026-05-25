@@ -141,6 +141,17 @@ func TestSystemQuery(t *testing.T) {
 			"missing identity",
 		},
 		{
+			"unsupported predicate",
+			ctx,
+			expression.DomainNameEqual(fixtures.DomainName),
+			nil,
+			0,
+			nil,
+			query.Options{},
+			"",
+			"unsupported predicate expression.DomainNamePredicate",
+		},
+		{
 			"expression required",
 			ctx,
 			nil,
@@ -150,6 +161,20 @@ func TestSystemQuery(t *testing.T) {
 			query.Options{},
 			"",
 			"expression required",
+		},
+		{
+			"unsupported expression",
+			ctx,
+			expression.Or(
+				expression.DomainNameEqual(fixtures.DomainName),
+				expression.DomainNameEqual(fixtures.UnknownDomainName),
+			),
+			nil,
+			0,
+			nil,
+			query.Options{},
+			"",
+			"unsupported expression expression.OrExpression",
 		},
 		{
 			"no results when looking up non-existing system UUID",

@@ -220,13 +220,13 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("s.uuid = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value())
 			default:
-				return nil, errors.Internal(
-					fmt.Sprintf("unhandled predicate operator %v", op),
-				)
+				return nil, errors.UnsupportedPredicateOperator(op)
 			}
+		default:
+			return nil, errors.UnsupportedPredicate(pred)
 		}
-	case expression.OrExpression:
-	case expression.AndExpression:
+	default:
+		return nil, errors.UnsupportedExpression(expr)
 	}
 
 	var recs []systemRecord
