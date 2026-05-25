@@ -54,6 +54,10 @@ func (d *Driver) NamespaceRead(
 
 	name := sel.Name()
 	dom := sel.Domain()
+	sys := dom.System()
+	if sys == nil {
+		dom.SetSystem(d.hostSystemRecord.System)
+	}
 
 	rec, err := d.namespaceStore.ReadByName(
 		ctx, dom, name,
@@ -102,6 +106,12 @@ func (d *Driver) NamespaceWrite(
 	err = d.namespaceWriteValidate(ctx, ns)
 	if err != nil {
 		return err
+	}
+
+	dom := ns.Domain()
+	sys := dom.System()
+	if sys == nil {
+		dom.SetSystem(d.hostSystemRecord.System)
 	}
 	return d.namespaceStore.Write(ctx, ns)
 }

@@ -75,6 +75,50 @@ func (s *Store) dbExec(
 	return nil
 }
 
+// dbReadByRowID performs a SELECT query to return the stored namespace record
+// having the supplied internal DB RowID.
+func (s *Store) dbReadByRowID(
+	ctx context.Context,
+	rowID int64,
+) (*Record, error) {
+	out := Record{
+		RowID: rowID,
+	}
+	fn := func(tx pgx.Tx) error {
+		var domainRowID int64
+		var name api.NamespaceName
+		var uuid string
+		qs := "SELECT domain, uuid, name FROM namespaces WHERE id = $1"
+		err := tx.QueryRow(ctx, qs, rowID).Scan(&domainRowID, &uuid, &name)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				return errors.ErrNotFound
+			}
+			return errors.Internal(
+				"failed reading namespaces record",
+				errors.WithWrap(err),
+			)
+		}
+		domainRec, err := s.domainStore.ReadByRowID(ctx, domainRowID)
+		if err != nil {
+			return errors.Internal(
+				"failed reading domain record for namespace",
+				errors.WithWrap(err),
+			)
+		}
+		out.Namespace = namespace.New(
+			namespace.WithDomain(domainRec.Domain),
+			namespace.WithName(name),
+			namespace.WithUUID(uuid),
+		)
+		return nil
+	}
+	if err := s.dbExec(ctx, fn); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // dbReadByUUID performs a SELECT query to return the stored namespace record
 // having the supplied UUID.
 func (s *Store) dbReadByUUID(
@@ -107,8 +151,8 @@ func (s *Store) dbReadByUUID(
 				errors.WithWrap(err),
 			)
 		}
-		out.DomainRecord = domainRec
 		out.Namespace.SetName(name)
+		out.Namespace.SetDomain(domainRec.Domain)
 		return nil
 	}
 	if err := s.dbExec(ctx, fn); err != nil {
@@ -125,7 +169,6 @@ func (s *Store) dbReadByName(
 	name api.NamespaceName,
 ) (*Record, error) {
 	out := Record{
-		DomainRecord: domainRec,
 		Namespace: namespace.New(
 			namespace.WithDomain(domainRec.Domain),
 			namespace.WithName(name),

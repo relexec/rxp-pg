@@ -24,9 +24,12 @@ type Store struct {
 	pool *pgxpool.Pool
 	// byUUID is a cache that stores known Namespaces keyed by namespace UUID.
 	byUUID *cache.Cache[byUUIDCacheKey, *Record]
-	// byName is a cache that stores known Namespaces keyed by domain UUID and
-	// namespace name.
-	byName *cache.Cache[byNameCacheKey, *Record]
+	// byName is a cache that stores a lookup map of SystemUUID + DomainUUID +
+	// NamespaceName to Namespace UUID.
+	byName *cache.Cache[byNameCacheKey, byUUIDCacheKey]
+	// byRowID is a cache that stores a lookup map of Namespace UUID to
+	// internal DB Row ID.
+	byRowID *cache.Cache[byRowIDCacheKey, byUUIDCacheKey]
 
 	// hostSystemRecord is the host System managed by the Driver.
 	hostSystemRecord storesystem.Record

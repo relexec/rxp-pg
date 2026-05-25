@@ -46,15 +46,25 @@ func (s *Store) initCache(ctx context.Context) error {
 		s.byUUID = byUUID
 		s.onClose = append(s.onClose, s.byUUID.Close)
 
-		byName, err := cache.New[byNameCacheKey, *Record](
+		byName, err := cache.New[byNameCacheKey, byUUIDCacheKey](
 			ctx,
-			cache.WithConfig[byNameCacheKey, *Record](cacheCfg),
+			cache.WithConfig[byNameCacheKey, byUUIDCacheKey](cacheCfg),
 		)
 		if err != nil {
 			return err
 		}
 		s.byName = byName
 		s.onClose = append(s.onClose, s.byName.Close)
+
+		byRowID, err := cache.New[byRowIDCacheKey, byUUIDCacheKey](
+			ctx,
+			cache.WithConfig[byRowIDCacheKey, byUUIDCacheKey](cacheCfg),
+		)
+		if err != nil {
+			return err
+		}
+		s.byRowID = byRowID
+		s.onClose = append(s.onClose, s.byRowID.Close)
 		s.log.Info("initialized namespace cache")
 	} else {
 		s.log.V(4).Info("namespace cache disabled")

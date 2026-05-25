@@ -10,24 +10,49 @@ import (
 	"github.com/relexec/rxp/errors"
 )
 
+type byRowIDCacheKey int64
 type byUUIDCacheKey string
 type byNameCacheKey string
 
-func (k byNameCacheKey) DomainUUID() string {
+func (k byNameCacheKey) SystemUUID() string {
 	parts := strings.Split(string(k), "|")
 	return parts[0]
 }
 
+func (k byNameCacheKey) DomainUUID() string {
+	parts := strings.Split(string(k), "|")
+	return parts[1]
+}
+
 func (k byNameCacheKey) NamespaceName() api.NamespaceName {
 	parts := strings.Split(string(k), "|")
-	return api.NamespaceName(parts[1])
+	return api.NamespaceName(parts[2])
 }
 
 func newByNameCacheKey(
 	domain *domain.Domain,
 	name api.NamespaceName,
 ) byNameCacheKey {
-	return byNameCacheKey(domain.UUID() + "|" + string(name))
+	sys := domain.System()
+	return byNameCacheKey(
+		sys.UUID() + domain.UUID() + "|" + string(name),
+	)
+}
+
+// cacheReadByRowID looks up a cached Namespace by RowID, returning the cached
+// Record and whether or not the entry was found.
+func (s *Store) cacheReadByRowID(
+	ctx context.Context,
+	key byRowIDCacheKey,
+) (*Record, bool) {
+	if s.byRowID == nil {
+		return nil, false
+	}
+	uuid, found := s.byRowID.Get(key)
+	if !found {
+		return nil, false
+	}
+	return s.cacheReadByUUID(ctx, uuid)
 }
 
 // cacheReadByUUID looks up a cached Domain by UUID, returning the cached
@@ -51,7 +76,11 @@ func (s *Store) cacheReadByName(
 	if s.byName == nil {
 		return nil, false
 	}
-	return s.byName.Get(key)
+	uuid, found := s.byName.Get(key)
+	if !found {
+		return nil, false
+	}
+	return s.cacheReadByUUID(ctx, uuid)
 }
 
 // cacheWrite ensures the supplied Record is written to the lookup caches if
@@ -70,11 +99,20 @@ func (s *Store) cacheWrite(
 			fmt.Sprintf("failed setting domain cache uuid key %q", uuidKey),
 		)
 	}
+	// Here we populate our row ID -> uuid and name -> uuid maps
 	nameKey := newByNameCacheKey(rec.Namespace.Domain(), rec.Namespace.Name())
-	set = s.byName.Set(nameKey, rec)
+	uuid := rec.Namespace.UUID()
+	set = s.byName.Set(nameKey, byUUIDCacheKey(uuid))
 	if !set {
 		return errors.Internal(
-			fmt.Sprintf("failed setting domain cache name key %q", nameKey),
+			fmt.Sprintf("failed setting namespace cache name key %q", nameKey),
+		)
+	}
+	rowIDKey := byRowIDCacheKey(rec.RowID)
+	set = s.byRowID.Set(rowIDKey, byUUIDCacheKey(uuid))
+	if !set {
+		return errors.Internal(
+			fmt.Sprintf("failed setting namespace cache rowid key %q", rowIDKey),
 		)
 	}
 	return nil
