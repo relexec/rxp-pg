@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgerrcode"
@@ -14,6 +15,8 @@ import (
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/object"
+	"github.com/relexec/rxp/query"
+	"github.com/relexec/rxp/query/expression"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
@@ -1084,4 +1087,127 @@ AND generation = $6`
 	out := obj
 	out.SetGeneration(expectGeneration + 1)
 	return &out, nil
+}
+
+type objectRecord struct {
+	ID          int64          `db:"object_id"`
+	UUID        string         `db:"object_uuid"`
+	Generation  api.Generation `db:"object_generation"`
+	Name        string         `db:"object_name"`
+	Spec        sql.NullString `db:"object_spec"`
+	SystemID    int64          `db:"system_id"`
+	MetaID      int64          `db:"meta_id"`
+	NamespaceID int64          `db:"namespace_id"`
+}
+
+// dbReadNamespaceQualifiedByExpression queries zero or more Objects that have
+// namespace-qualified names from persistent storage given the pre-validated
+// expression and options.
+func (s *Store) dbReadNamespaceQualifiedByExpression(
+	ctx context.Context,
+	expr expression.Expression,
+	opts query.Options,
+) ([]*Record, error) {
+	sysRec := s.hostSystemRecord
+	sys := sysRec.System
+
+	qargs := []any{
+		sysRec.RowID,
+	}
+	wheres := []string{
+		"o.system = $1",
+	}
+
+	switch expr := expr.(type) {
+	case expression.UnaryExpression:
+		pred := expr.Predicate
+		switch pred := pred.(type) {
+		case expression.KindNamePredicate:
+			op := pred.Operator()
+			switch op {
+			case expression.PredicateOperatorEqual:
+				kn := pred.Value().(api.KindName)
+				kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
+				if err != nil {
+					return nil, err
+				}
+				wheres = append(wheres, fmt.Sprintf("m.kind = $%d", len(qargs)+1))
+				qargs = append(qargs, kindRec.RowID)
+			}
+		}
+	case expression.OrExpression:
+	case expression.AndExpression:
+	}
+
+	var recs []objectRecord
+	fn := func(tx pgx.Tx) error {
+		qs := `
+SELECT
+  o.id AS object_id
+, o.uuid AS object_uuid
+, o.generation AS object_generation
+, n.name AS object_name
+, o.spec AS object_spec
+, o.system AS system_id
+, o.meta AS meta_id
+, o.namespace AS namespace_id
+FROM objects AS o
+ INNER JOIN metas AS m
+  ON o.meta = m.id
+ INNER JOIN namespace_qualified_object_names AS n
+  ON o.id = n.object
+`
+		if len(wheres) > 0 {
+			qs += "\nWHERE " + strings.Join(wheres, " AND ")
+		}
+		qs += fmt.Sprintf("\nORDER BY o.uuid ASC LIMIT %d", opts.Limit())
+		rows, err := tx.Query(ctx, qs, qargs...)
+		if err != nil {
+			return errors.Internal(
+				"failed reading namespace-qualified object records",
+				errors.WithWrap(err),
+			)
+		}
+		defer rows.Close()
+		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[objectRecord])
+		if err != nil {
+			return errors.Internal(
+				"failed collecting namespace-qualified object records",
+				errors.WithWrap(err),
+			)
+		}
+
+		return nil
+	}
+	if err := s.dbExec(ctx, fn); err != nil {
+		return nil, err
+	}
+	out := make([]*Record, 0, len(recs))
+	for _, rec := range recs {
+		metaRec, err := s.metaStore.ReadByRowID(ctx, rec.MetaID)
+		if err != nil {
+			return nil, err
+		}
+		kv := metaRec.Meta.KindVersion()
+		nsRec, err := s.namespaceStore.ReadByRowID(ctx, rec.NamespaceID)
+		if err != nil {
+			return nil, err
+		}
+		obj := object.New(
+			object.WithKindVersion(kv),
+			object.WithUUID(rec.UUID),
+			object.WithName(rec.Name),
+			object.WithGeneration(rec.Generation),
+			object.WithSystem(sys),
+			object.WithNamespace(nsRec.Namespace),
+		)
+		if rec.Spec.Valid {
+			obj.SetSpec(rec.Spec.String)
+		}
+		out = append(out, &Record{
+			RowID:  rec.ID,
+			Object: obj,
+		})
+	}
+	return out, nil
 }

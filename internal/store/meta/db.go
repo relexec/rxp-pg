@@ -99,7 +99,7 @@ func (s *Store) dbReadByRowID(
 		err := tx.QueryRow(
 			ctx, qs, rowID,
 		).Scan(
-			&systemRowID, &kindRowID, &verStr,
+			&systemRowID, &kindRowID, &verStr, &schemaBytes,
 		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
@@ -119,6 +119,9 @@ func (s *Store) dbReadByRowID(
 		}
 		kindRec, err := s.kindStore.ReadByRowID(ctx, kindRowID)
 		if err != nil {
+			if err == pgx.ErrNoRows {
+				return errors.ErrNotFound
+			}
 			return errors.Internal(
 				"failed reading kind record for meta",
 				errors.WithWrap(err),

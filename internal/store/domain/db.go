@@ -101,6 +101,9 @@ func (s *Store) dbReadByRowID(
 		}
 		systemRec, err := s.systemStore.ReadByRowID(ctx, systemRowID)
 		if err != nil {
+			if err == pgx.ErrNoRows {
+				return errors.ErrNotFound
+			}
 			return errors.Internal(
 				"failed reading system record for domain",
 				errors.WithWrap(err),

@@ -104,6 +104,9 @@ func (s *Store) dbReadByRowID(
 		}
 		domainRec, err := s.domainStore.ReadByRowID(ctx, domainRowID)
 		if err != nil {
+			if err == pgx.ErrNoRows {
+				return errors.ErrNotFound
+			}
 			return errors.Internal(
 				"failed reading domain record for namespace",
 				errors.WithWrap(err),

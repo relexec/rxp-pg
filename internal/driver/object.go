@@ -329,18 +329,17 @@ func (d *Driver) ObjectQuery(
 	for _, rec := range recs {
 		objs = append(objs, rec.Object)
 	}
-	resOpts := query.NewOptions(
-		query.Limit(boundedOpts.Limit()),
-	)
-	if len(recs) == boundedOpts.Limit() {
-		resOpts = query.NewOptions(
-			query.ContinueFrom(recs[len(recs)-1].Object.UUID()),
-			query.Limit(boundedOpts.Limit()),
-		)
-	}
 	resNewOpts := []query.ResultModifier[*object.Object]{
 		query.ResultWithItems(objs),
-		query.ResultWithOptions[*object.Object](resOpts),
+		query.ResultWithOptions[*object.Object](boundedOpts),
+	}
+	if len(recs) == boundedOpts.Limit() {
+		resNewOpts = append(
+			resNewOpts,
+			query.ResultWithMarker[*object.Object](
+				recs[len(recs)-1].Object.UUID(),
+			),
+		)
 	}
 	return query.NewResult[*object.Object](resNewOpts...), nil
 }

@@ -542,8 +542,8 @@ func TestObjectQuery(t *testing.T) {
 		opts             []query.Option
 		expNumObjs       int
 		expOnlyKindNames []api.KindName
-		expOptions       query.Options
-		expMarker        string
+		expOptionLimit   int
+		expMarkerEmpty   bool
 		expErr           string
 	}{
 		{
@@ -553,8 +553,8 @@ func TestObjectQuery(t *testing.T) {
 			nil,
 			0,
 			nil,
-			query.Options{},
-			"",
+			0,
+			true,
 			"missing identity",
 		},
 		{
@@ -564,8 +564,8 @@ func TestObjectQuery(t *testing.T) {
 			nil,
 			0,
 			nil,
-			query.Options{},
-			"",
+			0,
+			true,
 			"expression required",
 		},
 		{
@@ -575,8 +575,8 @@ func TestObjectQuery(t *testing.T) {
 			nil,
 			0,
 			nil,
-			query.Options{},
-			"",
+			0,
+			true,
 			"invalid query expression: at least one kind required",
 		},
 		{
@@ -590,8 +590,8 @@ func TestObjectQuery(t *testing.T) {
 			[]api.KindName{
 				platform.KindName,
 			},
-			query.NewOptions(query.Limit(1)),
-			"",
+			1,
+			true,
 			"",
 		},
 		{
@@ -605,8 +605,8 @@ func TestObjectQuery(t *testing.T) {
 			[]api.KindName{
 				application.KindName,
 			},
-			query.NewOptions(query.Limit(1)),
-			"",
+			1,
+			true,
 			"",
 		},
 		{
@@ -620,8 +620,8 @@ func TestObjectQuery(t *testing.T) {
 			[]api.KindName{
 				service.KindName,
 			},
-			query.NewOptions(query.Limit(1)),
-			"",
+			1,
+			false,
 			"",
 		},
 	}
@@ -638,8 +638,8 @@ func TestObjectQuery(t *testing.T) {
 				gotObjs := got.Items()
 				gotOptions := got.Options()
 				gotMarker := got.Marker()
-				require.Equal(c.expOptions, gotOptions)
-				require.Equal(c.expMarker, gotMarker)
+				require.Equal(c.expOptionLimit, gotOptions.Limit())
+				require.Equal(c.expMarkerEmpty, gotMarker == "")
 				require.Len(gotObjs, c.expNumObjs)
 				gotKindNames := lo.Map(gotObjs, func(o *object.Object, _ int) api.KindName {
 					return o.KindVersion().Kind()
