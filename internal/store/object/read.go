@@ -68,30 +68,8 @@ func (s *Store) ReadByRowID(
 		if ns == nil {
 			return nil, errors.ErrSelectorNamespaceRequired
 		}
-		if dom == nil {
-			dom = ns.Domain()
-		}
-		if dom == nil {
+		if ns.Domain() == nil {
 			return nil, errors.ErrSelectorDomainRequired
-		}
-		var domRec *storedomain.Record
-		if dom.UUID() != "" {
-			domRec, err = s.domainStore.ReadByUUID(
-				ctx, dom.UUID(),
-			)
-		} else {
-			domRec, err = s.domainStore.ReadByName(
-				ctx, sys, dom.Name(),
-			)
-		}
-		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, err
-			}
-			return nil, errors.Internal(
-				"failed reading domain record",
-				errors.WithWrap(err),
-			)
 		}
 		nsRec, err := s.namespaceStore.ReadByName(
 			ctx, ns.Domain(), ns.Name(),
@@ -106,7 +84,7 @@ func (s *Store) ReadByRowID(
 			)
 		}
 		return s.dbReadNamespaceQualifiedByRowID(
-			ctx, sysRec, kindRec, metaRec, domRec, nsRec, rowID,
+			ctx, sysRec, kindRec, metaRec, nsRec, rowID,
 		)
 	case api.ScopeDomain:
 		if dom == nil {
@@ -177,30 +155,8 @@ func (s *Store) ReadByUUID(
 		if ns == nil {
 			return nil, errors.ErrSelectorNamespaceRequired
 		}
-		if dom == nil {
-			dom = ns.Domain()
-		}
-		if dom == nil {
+		if ns.Domain() == nil {
 			return nil, errors.ErrSelectorDomainRequired
-		}
-		var domRec *storedomain.Record
-		if dom.UUID() != "" {
-			domRec, err = s.domainStore.ReadByUUID(
-				ctx, dom.UUID(),
-			)
-		} else {
-			domRec, err = s.domainStore.ReadByName(
-				ctx, sys, dom.Name(),
-			)
-		}
-		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, err
-			}
-			return nil, errors.Internal(
-				"failed reading domain record",
-				errors.WithWrap(err),
-			)
 		}
 		nsRec, err := s.namespaceStore.ReadByName(
 			ctx, ns.Domain(), ns.Name(),
@@ -215,7 +171,7 @@ func (s *Store) ReadByUUID(
 			)
 		}
 		return s.dbReadNamespaceQualifiedByUUID(
-			ctx, sysRec, kindRec, metaRec, domRec, nsRec, uuid,
+			ctx, sysRec, kindRec, metaRec, nsRec, uuid,
 		)
 	case api.ScopeDomain:
 		if dom == nil {
@@ -286,30 +242,8 @@ func (s *Store) ReadByName(
 		if ns == nil {
 			return nil, errors.ErrSelectorNamespaceRequired
 		}
-		if dom == nil {
-			dom = ns.Domain()
-		}
-		if dom == nil {
+		if ns.Domain() == nil {
 			return nil, errors.ErrSelectorDomainRequired
-		}
-		var domRec *storedomain.Record
-		if dom.UUID() != "" {
-			domRec, err = s.domainStore.ReadByUUID(
-				ctx, dom.UUID(),
-			)
-		} else {
-			domRec, err = s.domainStore.ReadByName(
-				ctx, sys, dom.Name(),
-			)
-		}
-		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, err
-			}
-			return nil, errors.Internal(
-				"failed reading domain record",
-				errors.WithWrap(err),
-			)
 		}
 		nsRec, err := s.namespaceStore.ReadByName(
 			ctx, ns.Domain(), ns.Name(),
@@ -324,7 +258,7 @@ func (s *Store) ReadByName(
 			)
 		}
 		return s.dbReadNamespaceQualifiedByName(
-			ctx, sysRec, kindRec, metaRec, domRec, nsRec, name,
+			ctx, sysRec, kindRec, metaRec, nsRec, name,
 		)
 	case api.ScopeDomain:
 		if dom == nil {

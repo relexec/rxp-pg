@@ -88,7 +88,6 @@ func (s *Store) dbReadNamespaceQualifiedByRowID(
 	sysRec *storesystem.Record,
 	kindRec *storekind.Record,
 	metaRec *storemeta.Record,
-	domRec *storedomain.Record,
 	nsRec *storenamespace.Record,
 	rowID int64,
 ) (*Record, error) {
@@ -115,12 +114,11 @@ WHERE o.system = $1
 AND o.meta = $2
 AND n.kind = $3
 AND o.id = $4
-AND o.domain = $5
-AND o.namespace = $6
+AND o.namespace = $5
 `
 		err := tx.QueryRow(
 			ctx, qs, sysRec.RowID, metaRec.RowID, kindRec.RowID,
-			rowID, domRec.RowID, nsRec.RowID,
+			rowID, nsRec.RowID,
 		).Scan(&uuid, &latestGen, &name, &spec)
 		if err != nil {
 			if err == pgx.ErrNoRows {
@@ -134,7 +132,6 @@ AND o.namespace = $6
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
 			object.WithKindVersion(metaRec.Meta.KindVersion()),
-			object.WithDomain(domRec.Domain),
 			object.WithNamespace(nsRec.Namespace),
 			object.WithUUID(uuid),
 			object.WithName(name),
@@ -290,7 +287,6 @@ func (s *Store) dbReadNamespaceQualifiedByUUID(
 	sysRec *storesystem.Record,
 	kindRec *storekind.Record,
 	metaRec *storemeta.Record,
-	domRec *storedomain.Record,
 	nsRec *storenamespace.Record,
 	uuid string,
 ) (*Record, error) {
@@ -314,12 +310,11 @@ WHERE o.system = $1
 AND o.meta = $2
 AND n.kind = $3
 AND o.uuid = $4
-AND o.domain = $5
-AND o.namespace = $6
+AND o.namespace = $5
 `
 		err := tx.QueryRow(
 			ctx, qs, sysRec.RowID, metaRec.RowID, kindRec.RowID,
-			uuid, domRec.RowID, nsRec.RowID,
+			uuid, nsRec.RowID,
 		).Scan(&out.RowID, &latestGen, &name, &spec)
 		if err != nil {
 			if err == pgx.ErrNoRows {
@@ -333,7 +328,6 @@ AND o.namespace = $6
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
 			object.WithKindVersion(metaRec.Meta.KindVersion()),
-			object.WithDomain(domRec.Domain),
 			object.WithNamespace(nsRec.Namespace),
 			object.WithUUID(uuid),
 			object.WithName(name),
@@ -482,7 +476,6 @@ func (s *Store) dbReadNamespaceQualifiedByName(
 	sysRec *storesystem.Record,
 	kindRec *storekind.Record,
 	metaRec *storemeta.Record,
-	domRec *storedomain.Record,
 	nsRec *storenamespace.Record,
 	name string,
 ) (*Record, error) {
@@ -506,12 +499,11 @@ WHERE o.system = $1
 AND o.meta = $2
 AND n.kind = $3
 AND n.name = $4
-AND o.domain = $5
-AND o.namespace = $6
+AND o.namespace = $5
 `
 		err := tx.QueryRow(
 			ctx, qs, sysRec.RowID, metaRec.RowID, kindRec.RowID,
-			name, domRec.RowID, nsRec.RowID,
+			name, nsRec.RowID,
 		).Scan(&out.RowID, &uuid, &latestGen, &spec)
 		if err != nil {
 			if err == pgx.ErrNoRows {
@@ -525,7 +517,6 @@ AND o.namespace = $6
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
 			object.WithKindVersion(metaRec.Meta.KindVersion()),
-			object.WithDomain(domRec.Domain),
 			object.WithNamespace(nsRec.Namespace),
 			object.WithUUID(uuid),
 			object.WithName(name),
