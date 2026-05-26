@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
 	rxpcontext "github.com/relexec/rxp/context"
+	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/namespace"
 	"github.com/relexec/rxp/query"
@@ -296,6 +297,147 @@ func (s *Store) dbReadByExpression(
 			case expression.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("n.name = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value())
+			default:
+				return nil, errors.UnsupportedPredicateOperator(op)
+			}
+		case expression.DomainUUIDPredicate:
+			op := pred.Operator()
+			switch op {
+			case expression.PredicateOperatorEqual:
+				domUUID := pred.Value().(string)
+				domRec, err := s.domainStore.ReadByUUID(ctx, domUUID)
+				if err != nil {
+					// If we're looking up namespaces by a non-existent domain,
+					// just return am empty result since there's clearly not
+					// going to be any matching namespace records.
+					if err == errors.ErrNotFound {
+						return nil, nil
+					}
+					return nil, err
+				}
+				wheres = append(wheres, fmt.Sprintf("n.domain = $%d", len(qargs)+1))
+				qargs = append(qargs, domRec.RowID)
+			case expression.PredicateOperatorIn:
+				domRowIDs := []int64{}
+				domUUIDs := pred.Value().([]string)
+				for _, domUUID := range domUUIDs {
+					domRec, err := s.domainStore.ReadByUUID(ctx, domUUID)
+					if err != nil {
+						if err == errors.ErrNotFound {
+							continue
+						}
+						return nil, err
+					}
+					domRowIDs = append(domRowIDs, domRec.RowID)
+				}
+				if len(domRowIDs) == 0 {
+					// If we're looking up namespaces by a non-existent domain,
+					// just return am empty result since there's clearly not
+					// going to be any matching namespace records.
+					return nil, nil
+				}
+				wheres = append(wheres, fmt.Sprintf("n.domain = ANY ($%d)", len(qargs)+1))
+				qargs = append(qargs, domRowIDs)
+			default:
+				return nil, errors.UnsupportedPredicateOperator(op)
+			}
+		case expression.DomainNamePredicate:
+			// NOTE(jaypipes): DomainNamePredicate is used when the caller only
+			// knows the domain name and not the domain's UUID and domain's
+			// System. Therefore, we assume the host system for these cases. In
+			// cases when the caller knows the domain name AND System but not
+			// the domain's UUID, the DomainPredicate is used and we don't need
+			// to assume the host system.
+			sys := s.hostSystemRecord.System
+			op := pred.Operator()
+			switch op {
+			case expression.PredicateOperatorEqual:
+				domName := pred.Value().(api.DomainName)
+				domRec, err := s.domainStore.ReadByName(ctx, sys, domName)
+				if err != nil {
+					// If we're looking up namespaces by a non-existent domain,
+					// just return am empty result since there's clearly not
+					// going to be any matching namespace records.
+					if err == errors.ErrNotFound {
+						return nil, nil
+					}
+					return nil, err
+				}
+				wheres = append(wheres, fmt.Sprintf("n.domain = $%d", len(qargs)+1))
+				qargs = append(qargs, domRec.RowID)
+			case expression.PredicateOperatorIn:
+				domRowIDs := []int64{}
+				domNames := pred.Value().([]api.DomainName)
+				for _, domName := range domNames {
+					domRec, err := s.domainStore.ReadByName(ctx, sys, domName)
+					if err != nil {
+						if err == errors.ErrNotFound {
+							continue
+						}
+						return nil, err
+					}
+					domRowIDs = append(domRowIDs, domRec.RowID)
+				}
+				if len(domRowIDs) == 0 {
+					// If we're looking up namespaces by a non-existent domain,
+					// just return am empty result since there's clearly not
+					// going to be any matching namespace records.
+					return nil, nil
+				}
+				wheres = append(wheres, fmt.Sprintf("n.domain = ANY ($%d)", len(qargs)+1))
+				qargs = append(qargs, domRowIDs)
+			default:
+				return nil, errors.UnsupportedPredicateOperator(op)
+			}
+		case expression.DomainPredicate:
+			// NOTE(jaypipes): DomainPredicate is used when the caller only
+			// knows the domain name AND system but does NOT know the domain's
+			// UUID.
+			op := pred.Operator()
+			switch op {
+			case expression.PredicateOperatorEqual:
+				dom := pred.Value().(*domain.Domain)
+				sys := dom.System()
+				if sys == nil {
+					sys = s.hostSystemRecord.System
+				}
+				domRec, err := s.domainStore.ReadByName(ctx, sys, dom.Name())
+				if err != nil {
+					// If we're looking up namespaces by a non-existent domain,
+					// just return am empty result since there's clearly not
+					// going to be any matching namespace records.
+					if err == errors.ErrNotFound {
+						return nil, nil
+					}
+					return nil, err
+				}
+				wheres = append(wheres, fmt.Sprintf("n.domain = $%d", len(qargs)+1))
+				qargs = append(qargs, domRec.RowID)
+			case expression.PredicateOperatorIn:
+				domRowIDs := []int64{}
+				doms := pred.Value().([]*domain.Domain)
+				for _, dom := range doms {
+					sys := dom.System()
+					if sys == nil {
+						sys = s.hostSystemRecord.System
+					}
+					domRec, err := s.domainStore.ReadByName(ctx, sys, dom.Name())
+					if err != nil {
+						if err == errors.ErrNotFound {
+							continue
+						}
+						return nil, err
+					}
+					domRowIDs = append(domRowIDs, domRec.RowID)
+				}
+				if len(domRowIDs) == 0 {
+					// If we're looking up namespaces by a non-existent domain,
+					// just return am empty result since there's clearly not
+					// going to be any matching namespace records.
+					return nil, nil
+				}
+				wheres = append(wheres, fmt.Sprintf("n.domain = ANY ($%d)", len(qargs)+1))
+				qargs = append(qargs, domRowIDs)
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}

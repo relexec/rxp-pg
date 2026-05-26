@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp/api"
+	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/namespace"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/query/expression"
@@ -214,13 +215,13 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"unsupported predicate",
 			ctx,
-			expression.DomainNameEqual(fixtures.DomainName),
+			expression.GenerationEqual(0),
 			nil,
 			0,
 			nil,
 			query.Options{},
 			"",
-			"unsupported predicate expression.DomainNamePredicate",
+			"unsupported predicate expression.GenerationPredicate",
 		},
 		{
 			"expression required",
@@ -274,6 +275,45 @@ func TestNamespaceQuery(t *testing.T) {
 			"",
 		},
 		{
+			"no results when looking up namespaces by non-existing domain name",
+			ctx,
+			expression.DomainNameEqual(fixtures.UnknownDomainName),
+			nil,
+			0,
+			[]string{},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+		{
+			"no results when looking up namespaces by non-existing domain UUID",
+			ctx,
+			expression.DomainUUIDEqual(fixtures.UnknownDomainUUID),
+			nil,
+			0,
+			[]string{},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+		{
+			"no results when looking up namespaces by non-existing domain",
+			ctx,
+			expression.DomainEqual(fixtures.UnknownDomain),
+			nil,
+			0,
+			[]string{},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+		{
 			"query namespaces by name, expect one",
 			ctx,
 			expression.NamespaceNameEqual(fixtures.NamespaceName),
@@ -312,6 +352,88 @@ func TestNamespaceQuery(t *testing.T) {
 			[]string{
 				fixtures.NamespaceUUID,
 			},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+		{
+			"query namespaces by domain UUID, expect one",
+			ctx,
+			expression.DomainUUIDEqual(fixtures.DomainUUID),
+			nil,
+			1,
+			[]string{
+				fixtures.NamespaceUUID,
+			},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+		{
+			"query namespaces by domain name, expect one",
+			ctx,
+			expression.DomainNameEqual(fixtures.DomainName),
+			nil,
+			1,
+			[]string{
+				fixtures.NamespaceUUID,
+			},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+		{
+			"query namespaces by domain, expect one",
+			ctx,
+			expression.DomainEqual(fixtures.Domain),
+			nil,
+			1,
+			[]string{
+				fixtures.NamespaceUUID,
+			},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+		{
+			"query namespaces by domain with no system only name, expect one",
+			ctx,
+			expression.DomainEqual(
+				domain.New(
+					domain.WithName(fixtures.DomainName),
+				),
+			),
+			nil,
+			1,
+			[]string{
+				fixtures.NamespaceUUID,
+			},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+		{
+			"no results when query namespaces by domain with non existent system",
+			ctx,
+			expression.DomainEqual(
+				domain.New(
+					domain.WithName(fixtures.DomainName),
+					domain.WithSystem(fixtures.UnknownSystem),
+				),
+			),
+			nil,
+			0,
+			[]string{},
 			query.NewOptions(
 				query.Limit(10), // 10 is default when not specified
 			),

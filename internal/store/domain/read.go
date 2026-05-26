@@ -75,6 +75,9 @@ func (s *Store) ReadByName(
 	}
 	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
 	if err != nil {
+		if err == errors.ErrNotFound {
+			return nil, err
+		}
 		return nil, errors.Internal(
 			"failed reading system record",
 			errors.WithWrap(err),
