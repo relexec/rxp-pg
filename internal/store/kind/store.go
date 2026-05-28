@@ -21,11 +21,14 @@ type Store struct {
 	cfg *config.Config
 	// pool holds the underlying pgx connection pool.
 	pool *pgxpool.Pool
-	// byName is a cache that stores of known Kinds by System UUID+KindName
-	byName *cache.Cache[byNameCacheKey, *Record]
-	// byRowID is a cache that stores a lookup map of internal DB Row ID to
-	// System UUID+Kind Name.
-	byRowID *cache.Cache[byRowIDCacheKey, byNameCacheKey]
+	// byUUID is a cache that stores known Kinds keyed by kind UUID.
+	byUUID *cache.Cache[byUUIDCacheKey, *Record]
+	// byName is a cache that stores a lookup map of System UUID+KindName to
+	// Kind UUID.
+	byName *cache.Cache[byNameCacheKey, byUUIDCacheKey]
+	// byRowID is a cache that stores a lookup map of Kind UUID to internal
+	// DB Row ID.
+	byRowID *cache.Cache[byRowIDCacheKey, byUUIDCacheKey]
 
 	// hostSystemRecord is the host System managed by the Driver.
 	hostSystemRecord storesystem.Record

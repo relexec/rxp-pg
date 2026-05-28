@@ -8,6 +8,8 @@ import (
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/metrics"
+	"github.com/relexec/rxp/query"
+	"github.com/relexec/rxp/query/expression"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -120,4 +122,98 @@ func (d *Driver) kindWriteValidate(
 		)
 	}
 	return k.Validate()
+}
+
+const (
+	DefaultKindQueryLimit = 10
+	MaxKindQueryLimit     = 100
+)
+
+// KindQuery queries zero or more Kinds from persistent storage.
+func (d *Driver) KindQuery(
+	ctx context.Context,
+	expr expression.Expression,
+	opts ...query.Option,
+) (*query.Result[*kind.Kind], error) {
+	err := d.requestValidate(ctx)
+	if err != nil {
+		return nil, err
+	}
+	start := time.Now()
+
+	defer func() {
+		elapsed := time.Since(start).Seconds()
+		attrs := []attribute.KeyValue{
+			metrics.AttributeType(api.TypeKind),
+		}
+		if err != nil {
+			attrs = append(attrs, metrics.AttributeErrCode(err))
+		}
+		metrics.InstrumentQueryRequest.Add(
+			ctx, 1,
+			metric.WithAttributes(attrs...),
+		)
+		metrics.InstrumentQueryDuration.Record(ctx, elapsed)
+	}()
+
+	qopts := query.NewOptions(opts...)
+	err = d.kindQueryValidate(ctx, expr, qopts)
+	if err != nil {
+		return nil, err
+	}
+
+	boundedOpts := d.kindQueryBoundedOptions(ctx, qopts)
+
+	recs, err := d.kindStore.Query(
+		ctx, expr, boundedOpts,
+	)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*kind.Kind, 0, len(recs))
+	for _, rec := range recs {
+		out = append(out, rec.Kind)
+	}
+	resOpts := query.NewOptions(
+		query.Limit(boundedOpts.Limit()),
+	)
+	if len(recs) == boundedOpts.Limit() {
+		resOpts = query.NewOptions(
+			query.ContinueFrom(recs[len(recs)-1].Kind.UUID()),
+			query.Limit(boundedOpts.Limit()),
+		)
+	}
+	resNewOpts := []query.ResultModifier[*kind.Kind]{
+		query.ResultWithItems(out),
+		query.ResultWithOptions[*kind.Kind](resOpts),
+	}
+	return query.NewResult[*kind.Kind](resNewOpts...), nil
+}
+
+// kindQueryValidate returns an error if the supplied expression and query
+// options are not valid.
+func (d *Driver) kindQueryValidate(
+	ctx context.Context,
+	expr expression.Expression,
+	opts query.Options,
+) error {
+	if expr == nil {
+		return errors.ErrQueryExpressionRequired
+	}
+	return nil
+}
+
+// kindQueryBoundedOptions returns a Options that has been bounded with
+// reasonable defaults, e.g. ensuring that the number of records queryed is less
+// than the max page result.
+func (d *Driver) kindQueryBoundedOptions(
+	ctx context.Context,
+	opts query.Options,
+) query.Options {
+	limit := opts.Limit()
+	if limit <= 0 {
+		limit = DefaultKindQueryLimit
+	}
+	limit = min(limit, MaxKindQueryLimit)
+	return query.NewOptions(query.Limit(limit))
 }

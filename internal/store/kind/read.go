@@ -39,6 +39,28 @@ func (s *Store) ReadByRowID(
 	return record, nil
 }
 
+// ReadByUUID returns a Record for the Kind with the supplied UUID. This
+// method will populate any caches with any read records.
+func (s *Store) ReadByUUID(
+	ctx context.Context,
+	uuid string,
+) (*Record, error) {
+	cacheKey := byUUIDCacheKey(uuid)
+	cached, found := s.cacheReadByUUID(ctx, cacheKey)
+	if found {
+		return cached, nil
+	}
+	record, err := s.dbReadByUUID(ctx, uuid)
+	if err != nil {
+		return nil, err
+	}
+	err = s.cacheWrite(ctx, record)
+	if err != nil {
+		return nil, err
+	}
+	return record, nil
+}
+
 // ReadByName returns a Record for the Kind with the supplied Name. This
 // method will populate any caches with any read records.
 func (s *Store) ReadByName(

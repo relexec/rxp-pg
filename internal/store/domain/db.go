@@ -300,9 +300,9 @@ func (s *Store) dbReadByExpression(
 				sysUUID := pred.Value().(string)
 				sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 				if err != nil {
-					// If we're looking up sysains by a non-existent system,
+					// If we're looking up domains by a non-existent system,
 					// just return am empty result since there's clearly not
-					// going to be any matching sysain records.
+					// going to be any matching domain records.
 					if err == errors.ErrNotFound {
 						return nil, nil
 					}
@@ -324,7 +324,7 @@ func (s *Store) dbReadByExpression(
 					sysRowIDs = append(sysRowIDs, sysRec.RowID)
 				}
 				if len(sysRowIDs) == 0 {
-					// If we're looking up domaios by a non-existent system,
+					// If we're looking up domains by a non-existent system,
 					// just return am empty result since there's clearly not
 					// going to be any matching domain records.
 					return nil, nil

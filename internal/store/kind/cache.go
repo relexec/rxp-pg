@@ -40,11 +40,23 @@ func (s *Store) cacheReadByRowID(
 	if s.byRowID == nil {
 		return nil, false
 	}
-	name, found := s.byRowID.Get(key)
+	uuid, found := s.byRowID.Get(key)
 	if !found {
 		return nil, false
 	}
-	return s.cacheReadByName(ctx, name)
+	return s.cacheReadByUUID(ctx, uuid)
+}
+
+// cacheReadByUUID looks up a cached Kind by UUID, returning the cached
+// Record and whether or not the entry was found.
+func (s *Store) cacheReadByUUID(
+	ctx context.Context,
+	key byUUIDCacheKey,
+) (*Record, bool) {
+	if s.byUUID == nil {
+		return nil, false
+	}
+	return s.byUUID.Get(key)
 }
 
 // cacheReadByName looks up a cached Kind by System UUID + Name, returning the cached
@@ -56,7 +68,11 @@ func (s *Store) cacheReadByName(
 	if s.byName == nil {
 		return nil, false
 	}
-	return s.byName.Get(key)
+	uuid, found := s.byName.Get(key)
+	if !found {
+		return nil, false
+	}
+	return s.cacheReadByUUID(ctx, uuid)
 }
 
 // cacheWrite ensures the supplied Record is written to the lookup caches if
@@ -65,19 +81,27 @@ func (s *Store) cacheWrite(
 	ctx context.Context,
 	rec *Record,
 ) error {
-	if s.byName == nil {
+	if s.byUUID == nil {
 		return nil
 	}
+	uuidKey := byUUIDCacheKey(rec.Kind.UUID())
+	set := s.byUUID.Set(uuidKey, rec)
+	if !set {
+		return errors.Internal(
+			fmt.Sprintf("failed setting kind cache uuid key %q", uuidKey),
+		)
+	}
+	// Here we populate our row ID -> uuid and name -> uuid maps
 	nameKey := newByNameCacheKey(rec.Kind.System(), rec.Kind.Name())
-	set := s.byName.Set(nameKey, rec)
+	uuid := rec.Kind.UUID()
+	set = s.byName.Set(nameKey, byUUIDCacheKey(uuid))
 	if !set {
 		return errors.Internal(
 			fmt.Sprintf("failed setting kind cache name key %q", nameKey),
 		)
 	}
-	// Here we populate our row ID -> name map.
 	rowIDKey := byRowIDCacheKey(rec.RowID)
-	set = s.byRowID.Set(rowIDKey, nameKey)
+	set = s.byRowID.Set(rowIDKey, byUUIDCacheKey(uuid))
 	if !set {
 		return errors.Internal(
 			fmt.Sprintf("failed setting kind cache rowid key %q", rowIDKey),

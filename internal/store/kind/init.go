@@ -36,9 +36,19 @@ func (s *Store) initCache(ctx context.Context) error {
 	if s.cfg.Cache.Kind.Enabled {
 		s.log.V(4).Info("initializing kind cache")
 		cacheCfg := s.cfg.Cache.Kind
-		byName, err := cache.New[byNameCacheKey, *Record](
+		byUUID, err := cache.New[byUUIDCacheKey, *Record](
 			ctx,
-			cache.WithConfig[byNameCacheKey, *Record](cacheCfg),
+			cache.WithConfig[byUUIDCacheKey, *Record](cacheCfg),
+		)
+		if err != nil {
+			return err
+		}
+		s.byUUID = byUUID
+		s.onClose = append(s.onClose, s.byUUID.Close)
+
+		byName, err := cache.New[byNameCacheKey, byUUIDCacheKey](
+			ctx,
+			cache.WithConfig[byNameCacheKey, byUUIDCacheKey](cacheCfg),
 		)
 		if err != nil {
 			return err
@@ -46,9 +56,9 @@ func (s *Store) initCache(ctx context.Context) error {
 		s.byName = byName
 		s.onClose = append(s.onClose, s.byName.Close)
 
-		byRowID, err := cache.New[byRowIDCacheKey, byNameCacheKey](
+		byRowID, err := cache.New[byRowIDCacheKey, byUUIDCacheKey](
 			ctx,
-			cache.WithConfig[byRowIDCacheKey, byNameCacheKey](cacheCfg),
+			cache.WithConfig[byRowIDCacheKey, byUUIDCacheKey](cacheCfg),
 		)
 		if err != nil {
 			return err
