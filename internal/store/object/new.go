@@ -9,7 +9,7 @@ import (
 	"github.com/relexec/rxp-pg/config"
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
-	storemeta "github.com/relexec/rxp-pg/internal/store/meta"
+	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
 	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
@@ -74,10 +74,11 @@ func WithKindStore(store *storekind.Store) WithOption {
 	}
 }
 
-// WithMetaStore sets the Store's meta Store to the supplied value.
-func WithMetaStore(store *storemeta.Store) WithOption {
+// WithKindVersionStore sets the Store's kindversion Store to the supplied
+// value.
+func WithKindVersionStore(store *storekindversion.Store) WithOption {
 	return func(s *Store) {
-		s.metaStore = store
+		s.kindversionStore = store
 	}
 }
 

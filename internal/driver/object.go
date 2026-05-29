@@ -20,7 +20,7 @@ import (
 // ObjectRead reads a single object from persistent storage.
 func (d *Driver) ObjectRead(
 	ctx context.Context,
-	kv api.KindVersion,
+	kv api.KindVersionName,
 	sel object.Selector,
 ) (*object.Object, error) {
 	err := d.requestValidate(ctx)
@@ -84,7 +84,7 @@ func (d *Driver) ObjectRead(
 		return nil, err
 	}
 
-	metaRec, err := d.metaStore.ReadByKindVersion(ctx, sys, kv)
+	kvRec, err := d.kindversionStore.ReadByName(ctx, sys, kv)
 	if err != nil {
 		return nil, errors.ErrKindVersionUnknown
 	}
@@ -96,12 +96,12 @@ func (d *Driver) ObjectRead(
 	var rec *storeobject.Record
 	if uuid != "" {
 		rec, err = d.objectStore.ReadByUUID(
-			ctx, sys, kindRec.Kind, metaRec.Meta,
+			ctx, sys, kindRec.Kind, kvRec.KindVersion,
 			dom, ns, uuid,
 		)
 	} else {
 		rec, err = d.objectStore.ReadByName(
-			ctx, sys, kindRec.Kind, metaRec.Meta,
+			ctx, sys, kindRec.Kind, kvRec.KindVersion,
 			dom, ns, name,
 		)
 	}
@@ -127,7 +127,7 @@ func (d *Driver) ObjectRead(
 // options are not valid for reading a single Object.
 func (d *Driver) objectReadValidate(
 	ctx context.Context,
-	kv api.KindVersion,
+	kv api.KindVersionName,
 	sel object.Selector,
 ) error {
 	err := kv.Validate()
@@ -138,7 +138,7 @@ func (d *Driver) objectReadValidate(
 }
 
 // objectReadValidateScope verifies that the object being read has the
-// required namespace and domain in the selector if the scope of metas is
+// required namespace and domain in the selector if the scope of kindversions is
 // either ScopeNamespace or ScopeDomain.
 func (d *Driver) objectReadValidateScope(
 	ctx context.Context,
@@ -178,7 +178,7 @@ func (d *Driver) ObjectWrite(
 	}
 	start := time.Now()
 
-	kv := obj.KindVersion()
+	kv := obj.KindVersionName()
 
 	defer func() {
 		elapsed := time.Since(start).Seconds()
@@ -238,7 +238,7 @@ func (d *Driver) objectWriteValidate(
 	ctx context.Context,
 	obj object.Object,
 ) error {
-	kv := obj.KindVersion()
+	kv := obj.KindVersionName()
 	if kv == "" {
 		return errors.ErrObjectKindVersionRequired
 	}
@@ -254,7 +254,7 @@ func (d *Driver) objectWriteValidate(
 }
 
 // objectWriteValidateScope verifies that the object being written has the
-// required namespace and domain qualification if the scope of metas is
+// required namespace and domain qualification if the scope of kindversions is
 // either ScopeNamespace or ScopeDomain.
 func (d *Driver) objectWriteValidateScope(
 	ctx context.Context,

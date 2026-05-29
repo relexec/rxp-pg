@@ -14,7 +14,7 @@ import (
 	"github.com/relexec/rxp-pg/config"
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
-	storemeta "github.com/relexec/rxp-pg/internal/store/meta"
+	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
 	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
@@ -59,7 +59,7 @@ func (d *Driver) init(ctx context.Context) error {
 		return err
 	}
 
-	if err = d.initMetaStore(ctx); err != nil {
+	if err = d.initKindVersionStore(ctx); err != nil {
 		return err
 	}
 
@@ -185,23 +185,23 @@ func (d *Driver) initKindStore(ctx context.Context) error {
 	return nil
 }
 
-// initMetaStore initializes the meta store.
-func (d *Driver) initMetaStore(ctx context.Context) error {
-	d.log.V(4).Info("initializing meta store")
-	s, err := storemeta.New(
+// initKindVersionStore initializes the kindversion store.
+func (d *Driver) initKindVersionStore(ctx context.Context) error {
+	d.log.V(4).Info("initializing kindversion store")
+	s, err := storekindversion.New(
 		ctx,
-		storemeta.WithConfig(d.cfg),
-		storemeta.WithPool(d.pool),
-		storemeta.WithSystemStore(d.systemStore),
-		storemeta.WithHostSystemRecord(*d.hostSystemRecord),
-		storemeta.WithKindStore(d.kindStore),
+		storekindversion.WithConfig(d.cfg),
+		storekindversion.WithPool(d.pool),
+		storekindversion.WithSystemStore(d.systemStore),
+		storekindversion.WithHostSystemRecord(*d.hostSystemRecord),
+		storekindversion.WithKindStore(d.kindStore),
 	)
 	if err != nil {
 		return err
 	}
-	d.metaStore = s
-	d.onClose = append(d.onClose, d.metaStore.Close)
-	d.log.Info("initialized meta store")
+	d.kindversionStore = s
+	d.onClose = append(d.onClose, d.kindversionStore.Close)
+	d.log.Info("initialized kindversion store")
 	return nil
 }
 
@@ -286,7 +286,7 @@ func (d *Driver) initObjectStore(ctx context.Context) error {
 		storeobject.WithHostSystemRecord(*d.hostSystemRecord),
 		storeobject.WithSystemStore(d.systemStore),
 		storeobject.WithKindStore(d.kindStore),
-		storeobject.WithMetaStore(d.metaStore),
+		storeobject.WithKindVersionStore(d.kindversionStore),
 		storeobject.WithNamespaceStore(d.namespaceStore),
 		storeobject.WithDomainStore(d.domainStore),
 	)

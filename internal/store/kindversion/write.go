@@ -4,15 +4,15 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/meta"
+	"github.com/relexec/rxp/kind/kindversion"
 )
 
-// Write atomically writes the pre-validated Meta to persistent storage.
+// Write atomically writes the pre-validated KindVersion to persistent storage.
 func (s *Store) Write(
 	ctx context.Context,
-	m *meta.Meta,
+	kv *kindversion.KindVersion,
 ) error {
-	sys := m.System()
+	sys := kv.System()
 	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
 	if err != nil {
 		return errors.Internal(
@@ -20,14 +20,13 @@ func (s *Store) Write(
 			errors.WithWrap(err),
 		)
 	}
-	kv := m.KindVersion()
 	k := kv.Kind()
-	kindRec, err := s.kindStore.ReadByName(ctx, sys, k)
+	kindRec, err := s.kindStore.ReadByName(ctx, sys, k.Name())
 	if err != nil {
 		return errors.Internal(
 			"failed reading kind record",
 			errors.WithWrap(err),
 		)
 	}
-	return s.dbInsert(ctx, sysRec, kindRec, m)
+	return s.dbInsert(ctx, sysRec, kindRec, kv)
 }

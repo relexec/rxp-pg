@@ -7,7 +7,7 @@ import (
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
-	"github.com/relexec/rxp/meta"
+	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/namespace"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/testing/fixtures"
@@ -45,24 +45,24 @@ func Driver(ctx context.Context) (*driver.Driver, error) {
 	return testDriver, err
 }
 
-// KindCreateIfNotExists ensures that the supplied Kind exists in the
-// database.
-func MetaCreateIfNotExists(
+// KindVersionCreateIfNotExists ensures that the supplied KindVersion exists in
+// the database.
+func KindVersionCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	m *meta.Meta,
+	kv *kindversion.KindVersion,
 ) error {
-	_, err := d.MetaRead(
+	_, err := d.KindVersionRead(
 		ctx,
-		meta.Select(
-			meta.ByKindVersion(m.KindVersion()),
+		kindversion.Select(
+			kindversion.ByName(kv.Name()),
 		),
 	)
 	if err != nil {
 		if err != errors.ErrNotFound {
 			return err
 		}
-		return d.MetaWrite(ctx, m)
+		return d.KindVersionWrite(ctx, kv)
 	}
 	return nil
 }
@@ -147,7 +147,7 @@ func ObjectCreateIfNotExists(
 	} else if o.Domain() != nil {
 		selopts = append(selopts, object.ByDomain(o.Domain()))
 	}
-	_, err := d.ObjectRead(ctx, o.KindVersion(), object.Select(selopts...))
+	_, err := d.ObjectRead(ctx, o.KindVersionName(), object.Select(selopts...))
 	if err != nil {
 		if err != errors.ErrNotFound {
 			return err

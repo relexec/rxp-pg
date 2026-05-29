@@ -16,13 +16,6 @@ const (
 	flagCacheSystemMaxSize     = "rxp-cache-system-max-size"
 	flagCacheSystemMaxSizeDesc = "Maximum size (in bytes) for the System cache. Specify with common size strings, e.g. '1MB' or '10Gb'"
 
-	DefaultCacheKindEnabled  = true
-	flagCacheKindEnabled     = "rxp-cache-kind-enabled"
-	flagCacheKindEnabledDesc = "Enable the Kind cache."
-	DefaultCacheKindMaxSize  = "2Mb"
-	flagCacheKindMaxSize     = "rxp-cache-kind-max-size"
-	flagCacheKindMaxSizeDesc = "Maximum size (in bytes) for the Kind cache. Specify with common size strings, e.g. '1MB' or '10Gb'"
-
 	DefaultCacheDomainEnabled  = true
 	flagCacheDomainEnabled     = "rxp-cache-domain-enabled"
 	flagCacheDomainEnabledDesc = "Enable the Domain cache."
@@ -37,12 +30,19 @@ const (
 	flagCacheNamespaceMaxSize     = "rxp-cache-namespace-max-size"
 	flagCacheNamespaceMaxSizeDesc = "Maximum size (in bytes) for the Namespace cache. Specify with common size strings, e.g. '1MB' or '10Gb'"
 
-	DefaultCacheMetaEnabled  = true
-	flagCacheMetaEnabled     = "rxp-cache-meta-enabled"
-	flagCacheMetaEnabledDesc = "Enable the Meta cache."
-	DefaultCacheMetaMaxSize  = "32Mb"
-	flagCacheMetaMaxSize     = "rxp-cache-meta-max-size"
-	flagCacheMetaMaxSizeDesc = "Maximum size (in bytes) for the Meta cache. Specify with common size strings, e.g. '1MB' or '10Gb'"
+	DefaultCacheKindEnabled  = true
+	flagCacheKindEnabled     = "rxp-cache-kind-enabled"
+	flagCacheKindEnabledDesc = "Enable the Kind cache."
+	DefaultCacheKindMaxSize  = "2Mb"
+	flagCacheKindMaxSize     = "rxp-cache-kind-max-size"
+	flagCacheKindMaxSizeDesc = "Maximum size (in bytes) for the Kind cache. Specify with common size strings, e.g. '1MB' or '10Gb'"
+
+	DefaultCacheKindVersionEnabled  = true
+	flagCacheKindVersionEnabled     = "rxp-cache-kindversion-enabled"
+	flagCacheKindVersionEnabledDesc = "Enable the KindVersion cache."
+	DefaultCacheKindVersionMaxSize  = "32Mb"
+	flagCacheKindVersionMaxSize     = "rxp-cache-kindversion-max-size"
+	flagCacheKindVersionMaxSizeDesc = "Maximum size (in bytes) for the KindVersion cache. Specify with common size strings, e.g. '1MB' or '10Gb'"
 )
 
 // CacheConfigs contains configuration options for caches in the rxp-pg library.
@@ -50,32 +50,50 @@ type CacheConfigs struct {
 	// System contains the configuration options for the rxp-pg library's
 	// system cache.
 	System CacheConfig `json:"system"`
-	// Kind contains the configuration options for the rxp-pg library's
-	// kind cache.
-	Kind CacheConfig `json:"kind"`
 	// Domain contains the configuration options for the rxp-pg library's
 	// domain cache.
 	Domain CacheConfig `json:"domain"`
 	// Namespace contains the configuration options for the rxp-pg library's
 	// namespace cache.
 	Namespace CacheConfig `json:"namespace"`
-	// Meta contains the configuration options for the rxp-pg library's
-	// meta cache.
-	Meta CacheConfig `json:"meta"`
+	// Kind contains the configuration options for the rxp-pg library's
+	// kind cache.
+	Kind CacheConfig `json:"kind"`
+	// KindVersion contains the configuration options for the rxp-pg library's
+	// kindversion cache.
+	KindVersion CacheConfig `json:"kindversion"`
 }
 
 // Validate checks for invalid settings.
 func (c CacheConfigs) Validate() error {
+	if c.System.Enabled {
+		_, err := c.System.MaxSizeBytes()
+		if err != nil {
+			return fmt.Errorf("invalid system cache max size: %w", err)
+		}
+	}
 	if c.Domain.Enabled {
 		_, err := c.Domain.MaxSizeBytes()
 		if err != nil {
 			return fmt.Errorf("invalid domain cache max size: %w", err)
 		}
 	}
-	if c.Meta.Enabled {
-		_, err := c.Meta.MaxSizeBytes()
+	if c.Namespace.Enabled {
+		_, err := c.Namespace.MaxSizeBytes()
 		if err != nil {
-			return fmt.Errorf("invalid meta cache max size: %w", err)
+			return fmt.Errorf("invalid namespace cache max size: %w", err)
+		}
+	}
+	if c.Kind.Enabled {
+		_, err := c.Kind.MaxSizeBytes()
+		if err != nil {
+			return fmt.Errorf("invalid kind cache max size: %w", err)
+		}
+	}
+	if c.KindVersion.Enabled {
+		_, err := c.KindVersion.MaxSizeBytes()
+		if err != nil {
+			return fmt.Errorf("invalid kindversion cache max size: %w", err)
 		}
 	}
 	return nil
@@ -151,15 +169,15 @@ func (c *CacheConfigs) BindFlags(fs *pflag.FlagSet) {
 		flagCacheNamespaceMaxSizeDesc,
 	)
 	pflag.BoolVar(
-		&c.Meta.Enabled,
-		flagCacheMetaEnabled,
-		DefaultCacheMetaEnabled,
-		flagCacheMetaEnabledDesc,
+		&c.KindVersion.Enabled,
+		flagCacheKindVersionEnabled,
+		DefaultCacheKindVersionEnabled,
+		flagCacheKindVersionEnabledDesc,
 	)
 	pflag.StringVar(
-		&c.Meta.MaxSize,
-		flagCacheMetaMaxSize,
-		DefaultCacheMetaMaxSize,
-		flagCacheMetaMaxSizeDesc,
+		&c.KindVersion.MaxSize,
+		flagCacheKindVersionMaxSize,
+		DefaultCacheKindVersionMaxSize,
+		flagCacheKindVersionMaxSizeDesc,
 	)
 }

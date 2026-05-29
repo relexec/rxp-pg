@@ -16,7 +16,7 @@ func (s *Store) init(ctx context.Context) error {
 		lc := logr.FromContextOrDiscard(ctx)
 		s.log = &lc
 	}
-	s.log.WithName("rxp.pg.store.namespace")
+	s.log.WithName("rxp.pg.store.object")
 
 	err := s.cfg.Validate()
 	if err != nil {

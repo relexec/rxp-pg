@@ -5,19 +5,19 @@ import (
 
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/meta"
+	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/system"
 )
 
-// Record decorates a Meta with internal DB information.
+// Record decorates a KindVersion with internal DB information.
 type Record struct {
-	// RowID is the internal database SERIAL for the metas record.
+	// RowID is the internal database SERIAL for the kindversions record.
 	RowID int64
-	// Meta is the publicly-exposed Meta object.
-	Meta *meta.Meta
+	// KindVersion is the publicly-exposed KindVersion object.
+	KindVersion *kindversion.KindVersion
 }
 
-// ReadByRowID returns a Record for the Meta with the supplied internal DB
+// ReadByRowID returns a Record for the KindVersion with the supplied internal DB
 // row ID. This method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
@@ -39,15 +39,15 @@ func (s *Store) ReadByRowID(
 	return record, nil
 }
 
-// ReadByKindVersion returns a Record for the Meta with the supplied
-// KindVersion. This method will populate any caches with any read records.
-func (s *Store) ReadByKindVersion(
+// ReadByName returns a Record for the KindVersion with the supplied
+// KindVersionName. This method will populate any caches with any read records.
+func (s *Store) ReadByName(
 	ctx context.Context,
 	sys *system.System,
-	kv api.KindVersion,
+	name api.KindVersionName,
 ) (*Record, error) {
-	cacheKey := newByKindVersionCacheKey(sys, kv)
-	cached, found := s.cacheReadByKindVersion(ctx, cacheKey)
+	cacheKey := newByNameCacheKey(sys, name)
+	cached, found := s.cacheReadByName(ctx, cacheKey)
 	if found {
 		return cached, nil
 	}
@@ -58,7 +58,7 @@ func (s *Store) ReadByKindVersion(
 			errors.WithWrap(err),
 		)
 	}
-	k := kv.Kind()
+	k := name.Kind()
 	kindRec, err := s.kindStore.ReadByName(ctx, sys, k)
 	if err != nil {
 		if err == errors.ErrNotFound {
@@ -69,7 +69,7 @@ func (s *Store) ReadByKindVersion(
 			errors.WithWrap(err),
 		)
 	}
-	record, err := s.dbReadByKindVersion(ctx, sysRec, kindRec, kv)
+	record, err := s.dbReadByName(ctx, sysRec, kindRec, name)
 	if err != nil {
 		return nil, err
 	}

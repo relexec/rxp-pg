@@ -26,19 +26,19 @@ func TestObjectRead(t *testing.T) {
 	err = testutil.KindCreateIfNotExists(ctx, rxp, platform.Kind)
 	require.Nil(t, err, err)
 
-	err = testutil.MetaCreateIfNotExists(ctx, rxp, platform.FirstMeta())
+	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, platform.FirstKindVersion())
 	require.Nil(t, err)
 
 	err = testutil.KindCreateIfNotExists(ctx, rxp, application.Kind)
 	require.Nil(t, err, err)
 
-	err = testutil.MetaCreateIfNotExists(ctx, rxp, application.FirstMeta())
+	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, application.FirstKindVersion())
 	require.Nil(t, err)
 
 	err = testutil.KindCreateIfNotExists(ctx, rxp, service.Kind)
 	require.Nil(t, err, err)
 
-	err = testutil.MetaCreateIfNotExists(ctx, rxp, service.FirstMeta())
+	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, service.FirstKindVersion())
 	require.Nil(t, err)
 
 	dom := fixtures.Domain
@@ -52,7 +52,7 @@ func TestObjectRead(t *testing.T) {
 	ctxMissingIdent := context.TODO()
 
 	app1 := object.New(
-		object.WithKindVersion(application.FirstKindVersion()),
+		object.WithKindVersionName(application.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithDomain(dom),
 		object.WithName(testutil.RandomName()),
@@ -62,7 +62,7 @@ func TestObjectRead(t *testing.T) {
 	require.Nil(t, err, err)
 
 	svc1 := object.New(
-		object.WithKindVersion(service.FirstKindVersion()),
+		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithNamespace(ns),
 		object.WithName(testutil.RandomName()),
@@ -74,7 +74,7 @@ func TestObjectRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		kv     api.KindVersion
+		kv     api.KindVersionName
 		sel    object.Selector
 		exp    *object.Object
 		expErr string
@@ -82,7 +82,7 @@ func TestObjectRead(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			service.FirstKindVersion(),
+			service.FirstKindVersionName(),
 			object.Select(object.ByUUID(svc1.UUID())),
 			nil,
 			"missing identity",
@@ -90,7 +90,7 @@ func TestObjectRead(t *testing.T) {
 		{
 			"unknown kind version",
 			ctx,
-			fixtures.UnknownKindVersion,
+			fixtures.UnknownKindVersionName,
 			object.Select(object.ByUUID(svc1.UUID())),
 			nil,
 			"unknown kind version",
@@ -98,7 +98,7 @@ func TestObjectRead(t *testing.T) {
 		{
 			"invalid kind version",
 			ctx,
-			fixtures.InvalidKindVersion,
+			fixtures.InvalidKindVersionName,
 			object.Select(object.ByUUID(svc1.UUID())),
 			nil,
 			"invalid kind name: invalid characters",
@@ -106,7 +106,7 @@ func TestObjectRead(t *testing.T) {
 		{
 			"either uuid or name required in selector",
 			ctx,
-			service.FirstKindVersion(),
+			service.FirstKindVersionName(),
 			object.Select(),
 			nil,
 			"invalid selector: uuid or name required",
@@ -114,7 +114,7 @@ func TestObjectRead(t *testing.T) {
 		{
 			"missing domain with uuid",
 			ctx,
-			application.FirstKindVersion(),
+			application.FirstKindVersionName(),
 			object.Select(object.ByUUID(app1.UUID())),
 			nil,
 			"invalid selector: domain required",
@@ -122,7 +122,7 @@ func TestObjectRead(t *testing.T) {
 		{
 			"missing domain with name",
 			ctx,
-			application.FirstKindVersion(),
+			application.FirstKindVersionName(),
 			object.Select(object.ByName(testutil.RandomName())),
 			nil,
 			"invalid selector: domain required",
@@ -130,7 +130,7 @@ func TestObjectRead(t *testing.T) {
 		{
 			"missing namespace with uuid",
 			ctx,
-			service.FirstKindVersion(),
+			service.FirstKindVersionName(),
 			object.Select(object.ByUUID(svc1.UUID())),
 			nil,
 			"invalid selector: namespace required",
@@ -138,7 +138,7 @@ func TestObjectRead(t *testing.T) {
 		{
 			"missing namespace with name",
 			ctx,
-			service.FirstKindVersion(),
+			service.FirstKindVersionName(),
 			object.Select(object.ByName(testutil.RandomName())),
 			nil,
 			"invalid selector: namespace required",
@@ -146,7 +146,7 @@ func TestObjectRead(t *testing.T) {
 		{
 			"mismatched kind",
 			ctx,
-			application.FirstKindVersion(),
+			application.FirstKindVersionName(),
 			object.Select(object.ByDomain(dom), object.ByUUID(svc1.UUID())),
 			nil,
 			"not found",
@@ -154,7 +154,7 @@ func TestObjectRead(t *testing.T) {
 		{
 			"unknown generation",
 			ctx,
-			application.FirstKindVersion(),
+			application.FirstKindVersionName(),
 			object.Select(
 				object.ByDomain(dom),
 				object.ByUUID(app1.UUID()),
@@ -166,7 +166,7 @@ func TestObjectRead(t *testing.T) {
 		{
 			"happy path by domain and uuid",
 			ctx,
-			application.FirstKindVersion(),
+			application.FirstKindVersionName(),
 			object.Select(object.ByDomain(dom), object.ByUUID(app1.UUID())),
 			app1,
 			"",
@@ -174,7 +174,7 @@ func TestObjectRead(t *testing.T) {
 		{
 			"happy path by domain-qualified name",
 			ctx,
-			application.FirstKindVersion(),
+			application.FirstKindVersionName(),
 			object.Select(object.ByDomain(dom), object.ByName(app1.Name())),
 			app1,
 			"",
@@ -182,7 +182,7 @@ func TestObjectRead(t *testing.T) {
 		{
 			"happy path by namespace and uuid",
 			ctx,
-			service.FirstKindVersion(),
+			service.FirstKindVersionName(),
 			object.Select(object.ByNamespace(ns), object.ByUUID(svc1.UUID())),
 			svc1,
 			"",
@@ -190,7 +190,7 @@ func TestObjectRead(t *testing.T) {
 		{
 			"happy path by namespace-qualified name",
 			ctx,
-			service.FirstKindVersion(),
+			service.FirstKindVersionName(),
 			object.Select(object.ByNamespace(ns), object.ByName(svc1.Name())),
 			svc1,
 			"",
@@ -205,7 +205,7 @@ func TestObjectRead(t *testing.T) {
 			} else {
 				require.Nil(err, err)
 				require.NotNil(got)
-				require.Equal(c.exp.KindVersion(), got.KindVersion())
+				require.Equal(c.exp.KindVersionName(), got.KindVersionName())
 				if c.exp.Domain() != nil {
 					require.NotNil(got.Domain())
 					require.Equal(c.exp.Domain().Name(), got.Domain().Name())
@@ -231,7 +231,7 @@ func TestObjectWrite(t *testing.T) {
 	err = testutil.KindCreateIfNotExists(ctx, rxp, platform.Kind)
 	require.Nil(t, err, err)
 
-	err = testutil.MetaCreateIfNotExists(ctx, rxp, platform.FirstMeta())
+	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, platform.FirstKindVersion())
 	require.Nil(t, err)
 
 	domain := fixtures.Domain
@@ -245,25 +245,25 @@ func TestObjectWrite(t *testing.T) {
 	err = testutil.KindCreateIfNotExists(ctx, rxp, application.Kind)
 	require.Nil(t, err, err)
 
-	err = testutil.MetaCreateIfNotExists(ctx, rxp, application.FirstMeta())
+	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, application.FirstKindVersion())
 	require.Nil(t, err)
 
 	err = testutil.KindCreateIfNotExists(ctx, rxp, service.Kind)
 	require.Nil(t, err, err)
 
-	err = testutil.MetaCreateIfNotExists(ctx, rxp, service.FirstMeta())
+	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, service.FirstKindVersion())
 	require.Nil(t, err)
 
 	// NOTE: Platform is NamescopeSystem which allows us to test the
 	// system-qualified name constraints.
 	plat1 := object.New(
-		object.WithKindVersion(platform.FirstKindVersion()),
+		object.WithKindVersionName(platform.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithName(testutil.RandomName()),
 	)
 	plat1Name := plat1.Name()
 	platDuplicateName := object.New(
-		object.WithKindVersion(platform.FirstKindVersion()),
+		object.WithKindVersionName(platform.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithName(plat1Name),
 	)
@@ -273,19 +273,19 @@ func TestObjectWrite(t *testing.T) {
 	// NOTE: Application is NamescopeDomain which allows us to test the
 	// domain-qualified name constraints.
 	appMissingDomain := object.New(
-		object.WithKindVersion(application.FirstKindVersion()),
+		object.WithKindVersionName(application.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithName(testutil.RandomName()),
 	)
 	app1 := object.New(
-		object.WithKindVersion(application.FirstKindVersion()),
+		object.WithKindVersionName(application.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithDomain(domain),
 		object.WithName(testutil.RandomName()),
 	)
 	app1Name := app1.Name()
 	appDuplicateName := object.New(
-		object.WithKindVersion(application.FirstKindVersion()),
+		object.WithKindVersionName(application.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithDomain(domain),
 		object.WithName(app1Name),
@@ -296,14 +296,14 @@ func TestObjectWrite(t *testing.T) {
 	// NOTE: Service is NamescopeNamespace which allows us to test the
 	// namespace-qualified name constraints.
 	svc1 := object.New(
-		object.WithKindVersion(service.FirstKindVersion()),
+		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithNamespace(ns),
 		object.WithName(testutil.RandomName()),
 	)
 	svc1Name := svc1.Name()
 	svcDuplicateName := object.New(
-		object.WithKindVersion(service.FirstKindVersion()),
+		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithNamespace(ns),
 		object.WithName(svc1Name),
@@ -312,17 +312,17 @@ func TestObjectWrite(t *testing.T) {
 	ctxMissingIdent := context.TODO()
 
 	svcMissingUUID := object.New(
-		object.WithKindVersion(service.FirstKindVersion()),
+		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithNamespace(ns),
 		object.WithName(testutil.RandomName()),
 	)
 	svcMissingName := object.New(
-		object.WithKindVersion(service.FirstKindVersion()),
+		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithNamespace(ns),
 	)
 	svcMissingNamespace := object.New(
-		object.WithKindVersion(service.FirstKindVersion()),
+		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithName(testutil.RandomName()),
 	)
@@ -450,7 +450,7 @@ func TestObjectWrite(t *testing.T) {
 			} else {
 				require.Nil(err)
 				require.NotNil(got)
-				require.Equal(c.exp.KindVersion(), got.KindVersion())
+				require.Equal(c.exp.KindVersionName(), got.KindVersionName())
 				if c.exp.Domain() != nil {
 					require.NotNil(got.Domain())
 					require.Equal(c.exp.Domain().Name(), got.Domain().Name())
@@ -477,13 +477,13 @@ func TestObjectQuery(t *testing.T) {
 	err = testutil.KindCreateIfNotExists(ctx, rxp, platform.Kind)
 	require.Nil(t, err, err)
 
-	err = testutil.MetaCreateIfNotExists(ctx, rxp, platform.FirstMeta())
+	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, platform.FirstKindVersion())
 	require.Nil(t, err)
 
 	// NOTE: Platform is NamescopeSystem which allows us to test the
 	// system-qualified name constraints.
 	plat1 := object.New(
-		object.WithKindVersion(platform.FirstKindVersion()),
+		object.WithKindVersionName(platform.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithName(testutil.RandomName()),
 	)
@@ -501,13 +501,13 @@ func TestObjectQuery(t *testing.T) {
 	err = testutil.KindCreateIfNotExists(ctx, rxp, application.Kind)
 	require.Nil(t, err, err)
 
-	err = testutil.MetaCreateIfNotExists(ctx, rxp, application.FirstMeta())
+	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, application.FirstKindVersion())
 	require.Nil(t, err)
 
 	// NOTE: Application is NamescopeDomain which allows us to test the
 	// domain-qualified name constraints.
 	app1 := object.New(
-		object.WithKindVersion(application.FirstKindVersion()),
+		object.WithKindVersionName(application.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithDomain(domain),
 		object.WithName(testutil.RandomName()),
@@ -518,13 +518,13 @@ func TestObjectQuery(t *testing.T) {
 	err = testutil.KindCreateIfNotExists(ctx, rxp, service.Kind)
 	require.Nil(t, err, err)
 
-	err = testutil.MetaCreateIfNotExists(ctx, rxp, service.FirstMeta())
+	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, service.FirstKindVersion())
 	require.Nil(t, err)
 
 	// NOTE: Service is NamescopeNamespace which allows us to test the
 	// namespace-qualified name constraints.
 	svc1 := object.New(
-		object.WithKindVersion(service.FirstKindVersion()),
+		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithDomain(domain),
 		object.WithNamespace(ns),
@@ -642,7 +642,7 @@ func TestObjectQuery(t *testing.T) {
 				require.Equal(c.expMarkerEmpty, gotMarker == "")
 				require.Len(gotObjs, c.expNumObjs)
 				gotKindNames := lo.Map(gotObjs, func(o *object.Object, _ int) api.KindName {
-					return o.KindVersion().Kind()
+					return o.KindVersionName().Kind()
 				})
 				gotKindNames = lo.Uniq(gotKindNames)
 				require.Equal(c.expOnlyKindNames, gotKindNames)

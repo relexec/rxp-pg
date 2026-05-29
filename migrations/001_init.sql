@@ -23,18 +23,6 @@ CREATE TABLE systems (
 , UNIQUE (uuid)
 );
 
-CREATE TABLE kinds (
-  id SERIAL NOT NULL PRIMARY KEY
-, system INT NOT NULL
-, uuid UUID NOT NULL
-, name TEXT NOT NULL
-, scope SMALLINT NOT NULL
-, last_modified_on BIGINT NOT NULL
-, last_modified_by TEXT NOT NULL
-, UNIQUE (uuid)
-, UNIQUE (system, name)
-);
-
 CREATE TABLE domains (
   id SERIAL NOT NULL PRIMARY KEY
 , system INT NOT NULL
@@ -79,8 +67,32 @@ CREATE TABLE namespaces_archived (
 , archived_by TEXT NULL
 );
 
-CREATE TABLE metas (
+CREATE TABLE kinds (
   id SERIAL NOT NULL PRIMARY KEY
+, system INT NOT NULL
+, uuid UUID NOT NULL
+, name TEXT NOT NULL
+, scope SMALLINT NOT NULL
+, last_modified_on BIGINT NOT NULL
+, last_modified_by TEXT NOT NULL
+, UNIQUE (uuid)
+, UNIQUE (system, name)
+);
+
+CREATE TABLE kinds_archived (
+  kind INT NOT NULL PRIMARY KEY
+, system INT NOT NULL
+, uuid UUID NOT NULL
+, name TEXT NOT NULL
+, scope SMALLINT NOT NULL
+, last_modified_on BIGINT NOT NULL
+, last_modified_by TEXT NOT NULL
+, archived_on BIGINT NULL
+, archived_by TEXT NULL
+);
+
+CREATE TABLE kindversions (
+  id BIGSERIAL NOT NULL PRIMARY KEY
 , system INT NOT NULL
 , kind INT NOT NULL
 , version TEXT NOT NULL
@@ -90,8 +102,8 @@ CREATE TABLE metas (
 , UNIQUE (system, kind, version)
 );
 
-CREATE TABLE metas_archived (
-  meta INT NOT NULL PRIMARY KEY
+CREATE TABLE kindversions_archived (
+  kindversion INT NOT NULL PRIMARY KEY
 , system INT NOT NULL
 , kind INT NOT NULL
 , version TEXT NOT NULL
@@ -105,7 +117,7 @@ CREATE TABLE metas_archived (
 CREATE TABLE objects (
   id BIGSERIAL NOT NULL PRIMARY KEY
 , system INT NOT NULL
-, meta INT NOT NULL
+, kindversion BIGINT NOT NULL
 , uuid UUID NOT NULL
 , generation INT NOT NULL
 , domain INT NULL
@@ -117,7 +129,7 @@ CREATE TABLE objects (
 );
 
 CREATE INDEX ix_objects_divisions
-ON objects (system, meta, domain, namespace);
+ON objects (system, kindversion, domain, namespace);
 
 CREATE TABLE system_qualified_object_names (
   object BIGINT NOT NULL PRIMARY KEY
@@ -154,7 +166,7 @@ CREATE TABLE namespace_qualified_object_names (
 CREATE TABLE objects_archived (
   object BIGINT NOT NULL PRIMARY KEY
 , system INT NOT NULL
-, meta INT NOT NULL
+, kindversion BIGINT NOT NULL
 , uuid UUID NOT NULL
 , domain INT NULL
 , namespace INT NULL
@@ -170,20 +182,20 @@ CREATE TABLE objects_archived (
 CREATE TABLE object_generations (
   object BIGINT NOT NULL
 , generation INT NOT NULL
-, meta INT NOT NULL
+, kindversion BIGINT NOT NULL
 , created_on BIGINT NOT NULL
 , created_by TEXT NOT NULL
 , spec TEXT NOT NULL
 , PRIMARY KEY (object, generation)
 );
 
-CREATE INDEX ix_object_generations_meta
-ON object_generations (meta);
+CREATE INDEX ix_object_generations_kindversion
+ON object_generations (kindversion);
 
 CREATE TABLE object_generations_archived (
   object BIGINT NOT NULL
 , generation INT NOT NULL
-, meta INT NOT NULL
+, kindversion INT NOT NULL
 , spec TEXT NOT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
@@ -208,12 +220,13 @@ DROP TABLE object_generations_archived;
 DROP TABLE object_generations;
 DROP TABLE objects_archived;
 DROP TABLE objects;
-DROP TABLE metas_archived;
-DROP TABLE metas;
+DROP TABLE kindversions_archived;
+DROP TABLE kindversions;
+DROP TABLE kinds_archived;
+DROP TABLE kinds;
 DROP TABLE namespaces_archived;
 DROP TABLE namespaces;
 DROP TABLE domains_archived;
 DROP TABLE domains;
-DROP TABLE kinds;
 DROP TABLE systems;
 DROP TABLE scopes;

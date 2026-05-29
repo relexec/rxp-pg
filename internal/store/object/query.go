@@ -81,15 +81,15 @@ func (s *Store) Query(
 			return nil, err
 		}
 		for _, rec := range dqRecords {
-			sv, err := semver.NewVersion(rec.MetaVersion)
+			sv, err := semver.NewVersion(rec.KindVersionVersion)
 			if err != nil {
 				return nil, err
 			}
-			kv := api.NewKindVersion(rec.KindName, *sv)
+			kv := api.NewKindVersionName(rec.KindName, *sv)
 			sys := system.New(system.WithUUID(rec.SystemUUID))
 			obj := object.New(
 				object.WithSystem(sys),
-				object.WithKindVersion(kv),
+				object.WithKindVersionName(kv),
 			)
 			dom := domain.New(
 				domain.WithSystem(sys),
@@ -111,15 +111,15 @@ func (s *Store) Query(
 			return nil, err
 		}
 		for _, rec := range sqRecords {
-			sv, err := semver.NewVersion(rec.MetaVersion)
+			sv, err := semver.NewVersion(rec.KindVersionVersion)
 			if err != nil {
 				return nil, err
 			}
-			kv := api.NewKindVersion(rec.KindName, *sv)
+			kv := api.NewKindVersionName(rec.KindName, *sv)
 			sys := system.New(system.WithUUID(rec.SystemUUID))
 			obj := object.New(
 				object.WithSystem(sys),
-				object.WithKindVersion(kv),
+				object.WithKindVersionName(kv),
 			)
 			entry := &Record{
 				RowID:  rec.ID,
@@ -141,18 +141,18 @@ func (s *Store) Query(
 }
 
 type domainQualifiedObjectRecord struct {
-	ID          int64          `db:"object_id"`
-	UUID        string         `db:"object_uuid"`
-	Generation  int64          `db:"object_generation"`
-	ObjectName  string         `db:"object_name"`
-	SystemID    int64          `db:"system_id"`
-	SystemUUID  string         `db:"system_uuid"`
-	KindID      int64          `db:"kind_id"`
-	KindName    api.KindName   `db:"kind_name"`
-	MetaID      int64          `db:"meta_id"`
-	MetaVersion string         `db:"meta_version"`
-	DomainID    int64          `db:"domain_id"`
-	DomainName  api.DomainName `db:"domain_name"`
+	ID                 int64          `db:"object_id"`
+	UUID               string         `db:"object_uuid"`
+	Generation         int64          `db:"object_generation"`
+	ObjectName         string         `db:"object_name"`
+	SystemID           int64          `db:"system_id"`
+	SystemUUID         string         `db:"system_uuid"`
+	KindID             int64          `db:"kind_id"`
+	KindName           api.KindName   `db:"kind_name"`
+	KindVersionID      int64          `db:"kindversion_id"`
+	KindVersionVersion string         `db:"kindversion_version"`
+	DomainID           int64          `db:"domain_id"`
+	DomainName         api.DomainName `db:"domain_name"`
 }
 
 // objectQueryDomainQualified queries zero or more Objects that have
@@ -186,7 +186,7 @@ func (s *Store) objectQueryDomainQualified(
 				if err != nil {
 					return nil, err
 				}
-				wheres = append(wheres, fmt.Sprintf("m.kind = $%d", len(qargs)+1))
+				wheres = append(wheres, fmt.Sprintf("kv.kind = $%d", len(qargs)+1))
 				qargs = append(qargs, kindRec.RowID)
 			}
 		}
@@ -203,19 +203,19 @@ SELECT
 , n.name AS object_name
 , o.system AS system_id
 , s.uuid AS system_uuid
-, o.meta AS meta_id
-, m.version AS meta_version
-, m.kind AS kind_id
+, o.kindversion AS kindversion_id
+, kv.version AS kindversion_version
+, kv.kind AS kind_id
 , k.name AS kind_name
 , o.domain AS domain_id
 , d.name AS domain_name
 FROM objects AS o
  INNER JOIN systems AS s
   ON o.system = s.id
- INNER JOIN metas AS m
-  ON o.meta = m.id
+ INNER JOIN kindversions AS kv
+  ON o.kindversion = kv.id
  INNER JOIN kinds AS k
-  ON m.kind = k.id
+  ON kv.kind = k.id
  INNER JOIN domains AS d
   ON o.domain = d.id
  INNER JOIN domain_qualified_object_names AS n
@@ -250,16 +250,16 @@ FROM objects AS o
 }
 
 type systemQualifiedObjectRecord struct {
-	ID          int64        `db:"object_id"`
-	UUID        string       `db:"object_uuid"`
-	Generation  int64        `db:"object_generation"`
-	ObjectName  string       `db:"object_name"`
-	SystemID    int64        `db:"system_id"`
-	SystemUUID  string       `db:"system_uuid"`
-	KindID      int64        `db:"kind_id"`
-	KindName    api.KindName `db:"kind_name"`
-	MetaID      int64        `db:"meta_id"`
-	MetaVersion string       `db:"meta_version"`
+	ID                 int64        `db:"object_id"`
+	UUID               string       `db:"object_uuid"`
+	Generation         int64        `db:"object_generation"`
+	ObjectName         string       `db:"object_name"`
+	SystemID           int64        `db:"system_id"`
+	SystemUUID         string       `db:"system_uuid"`
+	KindID             int64        `db:"kind_id"`
+	KindName           api.KindName `db:"kind_name"`
+	KindVersionID      int64        `db:"kindversion_id"`
+	KindVersionVersion string       `db:"kindversion_version"`
 }
 
 // objectQuerySystemQualified queries zero or more Objects that have
@@ -293,7 +293,7 @@ func (s *Store) objectQuerySystemQualified(
 				if err != nil {
 					return nil, err
 				}
-				wheres = append(wheres, fmt.Sprintf("m.kind = $%d", len(qargs)+1))
+				wheres = append(wheres, fmt.Sprintf("kv.kind = $%d", len(qargs)+1))
 				qargs = append(qargs, kindRec.RowID)
 			}
 		}
@@ -310,17 +310,17 @@ SELECT
 , n.name AS object_name
 , o.system AS system_id
 , s.uuid AS system_uuid
-, o.meta AS meta_id
-, m.version AS meta_version
-, m.kind AS kind_id
+, o.kindversion AS kindversion_id
+, kv.version AS kindversion_version
+, kv.kind AS kind_id
 , k.name AS kind_name
 FROM objects AS o
  INNER JOIN systems AS s
   ON o.system = s.id
- INNER JOIN metas AS m
-  ON o.meta = m.id
+ INNER JOIN kindversions AS kv
+  ON o.kindversion = kv.id
  INNER JOIN kinds AS k
-  ON m.kind = k.id
+  ON kv.kind = k.id
  INNER JOIN system_qualified_object_names AS n
   ON o.id = n.object
 `

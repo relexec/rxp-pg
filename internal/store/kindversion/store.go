@@ -14,7 +14,7 @@ import (
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
-// Store facilitates reading and writing Meta data.
+// Store facilitates reading and writing KindVersion data.
 type Store struct {
 	// log is the top-level logger for the Store.
 	log *logr.Logger
@@ -22,12 +22,12 @@ type Store struct {
 	cfg *config.Config
 	// pool holds the underlying pgx connection pool.
 	pool *pgxpool.Pool
-	// byKindVersion is a cache that stores known Metas keyed by System
-	// UUID+KindVersion..
-	byKindVersion *cache.Cache[byKindVersionCacheKey, *Record]
-	// byRowID is a cache that stores a lookup map of Meta System
-	// UUID+KindVersion to internal DB Row ID.
-	byRowID *cache.Cache[byRowIDCacheKey, byKindVersionCacheKey]
+	// byKindVersion is a cache that stores known KindVersions keyed by System
+	// UUID+KindVersionName..
+	byName *cache.Cache[byNameCacheKey, *Record]
+	// byRowID is a cache that stores a lookup map of System UUID +
+	// KindVersionName to internal DB Row ID.
+	byRowID *cache.Cache[byRowIDCacheKey, byNameCacheKey]
 
 	// hostSystemRecord is the host System managed by the Driver.
 	hostSystemRecord storesystem.Record

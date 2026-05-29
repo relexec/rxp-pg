@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	"github.com/relexec/rxp-pg/internal/testutil"
-	"github.com/relexec/rxp/meta"
+	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/testing/fixtures/service"
 	"github.com/stretchr/testify/require"
 )
 
-func TestMetaRead(t *testing.T) {
+func TestKindVersionRead(t *testing.T) {
 	ctx := testutil.Context(testutil.UserIdentity)
 	rxp, err := testutil.Driver(ctx)
 	require.Nil(t, err)
@@ -19,7 +19,7 @@ func TestMetaRead(t *testing.T) {
 	err = testutil.KindCreateIfNotExists(ctx, rxp, service.Kind)
 	require.Nil(t, err, err)
 
-	err = testutil.MetaCreateIfNotExists(ctx, rxp, service.FirstMeta())
+	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, service.FirstKindVersion())
 	require.Nil(t, err)
 
 	ctxMissingIdent := context.TODO()
@@ -27,15 +27,15 @@ func TestMetaRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		sel    meta.Selector
-		exp    *meta.Meta
+		sel    kindversion.Selector
+		exp    *kindversion.KindVersion
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			meta.Select(
-				meta.ByKindVersion(fixtures.UnknownKindVersion),
+			kindversion.Select(
+				kindversion.ByName(fixtures.UnknownKindVersionName),
 			),
 			nil,
 			"missing identity",
@@ -43,8 +43,8 @@ func TestMetaRead(t *testing.T) {
 		{
 			"unknown kind version",
 			ctx,
-			meta.Select(
-				meta.ByKindVersion(fixtures.UnknownKindVersion),
+			kindversion.Select(
+				kindversion.ByName(fixtures.UnknownKindVersionName),
 			),
 			nil,
 			"unknown kind version",
@@ -52,8 +52,8 @@ func TestMetaRead(t *testing.T) {
 		{
 			"invalid kind version",
 			ctx,
-			meta.Select(
-				meta.ByKindVersion(fixtures.InvalidKindVersion),
+			kindversion.Select(
+				kindversion.ByName(fixtures.InvalidKindVersionName),
 			),
 			nil,
 			"invalid kind name: invalid characters",
@@ -61,22 +61,22 @@ func TestMetaRead(t *testing.T) {
 		{
 			"happy path",
 			ctx,
-			meta.Select(
-				meta.ByKindVersion(service.FirstKindVersion()),
+			kindversion.Select(
+				kindversion.ByName(service.FirstKindVersionName()),
 			),
-			service.Meta_V1_0_0,
+			service.KindVersion_V1_0_0,
 			"",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			got, err := rxp.MetaRead(c.ctx, c.sel)
+			got, err := rxp.KindVersionRead(c.ctx, c.sel)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {
 				require.Nil(err)
-				require.Equal(c.exp.KindVersion(), got.KindVersion())
+				require.Equal(c.exp.Name(), got.Name())
 				expSchema := c.exp.Schema()
 				gotSchema := got.Schema()
 				delta, err := expSchema.Diff(gotSchema)
@@ -87,21 +87,21 @@ func TestMetaRead(t *testing.T) {
 	}
 }
 
-func TestMetaWrite(t *testing.T) {
+func TestKindVersionWrite(t *testing.T) {
 	ctx := testutil.Context(testutil.UserIdentity)
 	rxp, err := testutil.Driver(ctx)
 	require.Nil(t, err)
 
-	// NOTE(jaypipes): We ensure the author Kind here but not any Metas
+	// NOTE(jaypipes): We ensure the author Kind here but not any KindVersions
 	// (KindVersions) for it. This allows us to properly test the precondition
 	// failed for minor/patch version number of 0.
-	err = testutil.KindCreateIfNotExists(ctx, rxp, fixtures.NoMetaKind)
+	err = testutil.KindCreateIfNotExists(ctx, rxp, fixtures.NoKindVersionsKind)
 	require.Nil(t, err)
 
 	err = testutil.KindCreateIfNotExists(ctx, rxp, service.Kind)
 	require.Nil(t, err, err)
 
-	err = testutil.MetaCreateIfNotExists(ctx, rxp, service.FirstMeta())
+	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, service.FirstKindVersion())
 	require.Nil(t, err)
 
 	ctxMissingIdent := context.TODO()
@@ -109,38 +109,38 @@ func TestMetaWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject *meta.Meta
+		subject *kindversion.KindVersion
 		expErr  string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			fixtures.UnknownMeta,
+			fixtures.UnknownKindVersion,
 			"missing identity",
 		},
 		{
-			"invalid meta",
+			"invalid kindversion",
 			ctx,
-			fixtures.InvalidMeta,
+			fixtures.InvalidKindVersion,
 			"invalid kind name: invalid characters",
 		},
 		{
-			"duplicate meta",
+			"duplicate kindversion",
 			ctx,
-			service.FirstMeta(),
+			service.FirstKindVersion(),
 			"precondition failed: expected \"service.testing.rxp@1.0.0\" not to exist",
 		},
 		{
 			"expected first version in series",
 			ctx,
-			fixtures.NoMetaMeta,
-			"precondition failed: expected \"nometa.testing.rxp@1.0.1\" to have minor and patch version of 0",
+			fixtures.NoKindVersionsKindVersion,
+			"precondition failed: expected \"nokindversions.testing.rxp@1.0.1\" to have minor and patch version of 0",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			err := rxp.MetaWrite(c.ctx, c.subject)
+			err := rxp.KindVersionWrite(c.ctx, c.subject)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {

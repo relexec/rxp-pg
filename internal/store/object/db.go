@@ -20,7 +20,7 @@ import (
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
-	storemeta "github.com/relexec/rxp-pg/internal/store/meta"
+	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
 	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
@@ -90,7 +90,7 @@ func (s *Store) dbReadNamespaceQualifiedByRowID(
 	ctx context.Context,
 	sysRec *storesystem.Record,
 	kindRec *storekind.Record,
-	metaRec *storemeta.Record,
+	kvRec *storekindversion.Record,
 	nsRec *storenamespace.Record,
 	rowID int64,
 ) (*Record, error) {
@@ -114,13 +114,13 @@ INNER JOIN namespace_qualified_object_names AS n
  AND o.system = n.system
  AND n.namespace = o.namespace
 WHERE o.system = $1
-AND o.meta = $2
+AND o.kindversion = $2
 AND n.kind = $3
 AND o.id = $4
 AND o.namespace = $5
 `
 		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, metaRec.RowID, kindRec.RowID,
+			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID,
 			rowID, nsRec.RowID,
 		).Scan(&uuid, &latestGen, &name, &spec)
 		if err != nil {
@@ -134,7 +134,7 @@ AND o.namespace = $5
 		}
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
-			object.WithKindVersion(metaRec.Meta.KindVersion()),
+			object.WithKindVersionName(kvRec.KindVersion.Name()),
 			object.WithNamespace(nsRec.Namespace),
 			object.WithUUID(uuid),
 			object.WithName(name),
@@ -158,7 +158,7 @@ func (s *Store) dbReadDomainQualifiedByRowID(
 	ctx context.Context,
 	sysRec *storesystem.Record,
 	kindRec *storekind.Record,
-	metaRec *storemeta.Record,
+	kvRec *storekindversion.Record,
 	domRec *storedomain.Record,
 	rowID int64,
 ) (*Record, error) {
@@ -182,13 +182,13 @@ INNER JOIN domain_qualified_object_names AS n
  AND o.system = n.system
  AND n.domain = o.domain
 WHERE o.system = $1
-AND o.meta = $2
+AND o.kindversion = $2
 AND n.kind = $3
 AND o.id = $4
 AND o.domain = $5
 `
 		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, metaRec.RowID, kindRec.RowID,
+			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID,
 			rowID, domRec.RowID,
 		).Scan(&uuid, &latestGen, &name, &spec)
 		if err != nil {
@@ -202,7 +202,7 @@ AND o.domain = $5
 		}
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
-			object.WithKindVersion(metaRec.Meta.KindVersion()),
+			object.WithKindVersionName(kvRec.KindVersion.Name()),
 			object.WithDomain(domRec.Domain),
 			object.WithUUID(uuid),
 			object.WithName(name),
@@ -226,7 +226,7 @@ func (s *Store) dbReadSystemQualifiedByRowID(
 	ctx context.Context,
 	sysRec *storesystem.Record,
 	kindRec *storekind.Record,
-	metaRec *storemeta.Record,
+	kvRec *storekindversion.Record,
 	rowID int64,
 ) (*Record, error) {
 	var uuid string
@@ -248,12 +248,12 @@ INNER JOIN system_qualified_object_names AS n
  ON o.id = n.object
  AND o.system = n.system
 WHERE o.system = $1
-AND o.meta = $2
+AND o.kindversion = $2
 AND n.kind = $3
 AND o.id = $4
 `
 		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, metaRec.RowID, kindRec.RowID, rowID,
+			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID, rowID,
 		).Scan(&uuid, &latestGen, &name, &spec)
 		if err != nil {
 			if err == pgx.ErrNoRows {
@@ -266,7 +266,7 @@ AND o.id = $4
 		}
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
-			object.WithKindVersion(metaRec.Meta.KindVersion()),
+			object.WithKindVersionName(kvRec.KindVersion.Name()),
 			object.WithUUID(uuid),
 			object.WithName(name),
 			object.WithGeneration(latestGen),
@@ -289,7 +289,7 @@ func (s *Store) dbReadNamespaceQualifiedByUUID(
 	ctx context.Context,
 	sysRec *storesystem.Record,
 	kindRec *storekind.Record,
-	metaRec *storemeta.Record,
+	kvRec *storekindversion.Record,
 	nsRec *storenamespace.Record,
 	uuid string,
 ) (*Record, error) {
@@ -310,13 +310,13 @@ INNER JOIN namespace_qualified_object_names AS n
  AND o.system = n.system
  AND n.namespace = o.namespace
 WHERE o.system = $1
-AND o.meta = $2
+AND o.kindversion = $2
 AND n.kind = $3
 AND o.uuid = $4
 AND o.namespace = $5
 `
 		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, metaRec.RowID, kindRec.RowID,
+			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID,
 			uuid, nsRec.RowID,
 		).Scan(&out.RowID, &latestGen, &name, &spec)
 		if err != nil {
@@ -330,7 +330,7 @@ AND o.namespace = $5
 		}
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
-			object.WithKindVersion(metaRec.Meta.KindVersion()),
+			object.WithKindVersionName(kvRec.KindVersion.Name()),
 			object.WithNamespace(nsRec.Namespace),
 			object.WithUUID(uuid),
 			object.WithName(name),
@@ -354,7 +354,7 @@ func (s *Store) dbReadDomainQualifiedByUUID(
 	ctx context.Context,
 	sysRec *storesystem.Record,
 	kindRec *storekind.Record,
-	metaRec *storemeta.Record,
+	kvRec *storekindversion.Record,
 	domRec *storedomain.Record,
 	uuid string,
 ) (*Record, error) {
@@ -375,13 +375,13 @@ INNER JOIN domain_qualified_object_names AS n
  AND o.system = n.system
  AND n.domain = o.domain
 WHERE o.system = $1
-AND o.meta = $2
+AND o.kindversion = $2
 AND n.kind = $3
 AND o.uuid = $4
 AND o.domain = $5
 `
 		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, metaRec.RowID, kindRec.RowID,
+			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID,
 			uuid, domRec.RowID,
 		).Scan(&out.RowID, &latestGen, &name, &spec)
 		if err != nil {
@@ -395,7 +395,7 @@ AND o.domain = $5
 		}
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
-			object.WithKindVersion(metaRec.Meta.KindVersion()),
+			object.WithKindVersionName(kvRec.KindVersion.Name()),
 			object.WithDomain(domRec.Domain),
 			object.WithUUID(uuid),
 			object.WithName(name),
@@ -419,7 +419,7 @@ func (s *Store) dbReadSystemQualifiedByUUID(
 	ctx context.Context,
 	sysRec *storesystem.Record,
 	kindRec *storekind.Record,
-	metaRec *storemeta.Record,
+	kvRec *storekindversion.Record,
 	uuid string,
 ) (*Record, error) {
 	var name string
@@ -438,12 +438,12 @@ INNER JOIN system_qualified_object_names AS n
  ON o.id = n.object
  AND o.system = n.system
 WHERE o.system = $1
-AND o.meta = $2
+AND o.kindversion = $2
 AND n.kind = $3
 AND o.uuid = $4
 `
 		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, metaRec.RowID, kindRec.RowID, uuid,
+			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID, uuid,
 		).Scan(&out.RowID, &uuid, &latestGen, &spec)
 		if err != nil {
 			if err == pgx.ErrNoRows {
@@ -456,7 +456,7 @@ AND o.uuid = $4
 		}
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
-			object.WithKindVersion(metaRec.Meta.KindVersion()),
+			object.WithKindVersionName(kvRec.KindVersion.Name()),
 			object.WithUUID(uuid),
 			object.WithName(name),
 			object.WithGeneration(latestGen),
@@ -478,7 +478,7 @@ func (s *Store) dbReadNamespaceQualifiedByName(
 	ctx context.Context,
 	sysRec *storesystem.Record,
 	kindRec *storekind.Record,
-	metaRec *storemeta.Record,
+	kvRec *storekindversion.Record,
 	nsRec *storenamespace.Record,
 	name string,
 ) (*Record, error) {
@@ -499,13 +499,13 @@ INNER JOIN namespace_qualified_object_names AS n
  AND o.system = n.system
  AND n.namespace = o.namespace
 WHERE o.system = $1
-AND o.meta = $2
+AND o.kindversion = $2
 AND n.kind = $3
 AND n.name = $4
 AND o.namespace = $5
 `
 		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, metaRec.RowID, kindRec.RowID,
+			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID,
 			name, nsRec.RowID,
 		).Scan(&out.RowID, &uuid, &latestGen, &spec)
 		if err != nil {
@@ -519,7 +519,7 @@ AND o.namespace = $5
 		}
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
-			object.WithKindVersion(metaRec.Meta.KindVersion()),
+			object.WithKindVersionName(kvRec.KindVersion.Name()),
 			object.WithNamespace(nsRec.Namespace),
 			object.WithUUID(uuid),
 			object.WithName(name),
@@ -542,7 +542,7 @@ func (s *Store) dbReadDomainQualifiedByName(
 	ctx context.Context,
 	sysRec *storesystem.Record,
 	kindRec *storekind.Record,
-	metaRec *storemeta.Record,
+	kvRec *storekindversion.Record,
 	domRec *storedomain.Record,
 	name string,
 ) (*Record, error) {
@@ -563,13 +563,13 @@ INNER JOIN domain_qualified_object_names AS n
  AND o.system = n.system
  AND n.domain = o.domain
 WHERE o.system = $1
-AND o.meta = $2
+AND o.kindversion = $2
 AND n.kind = $3
 AND n.name = $4
 AND o.domain = $5
 `
 		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, metaRec.RowID, kindRec.RowID,
+			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID,
 			name, domRec.RowID,
 		).Scan(&out.RowID, &uuid, &latestGen, &spec)
 		if err != nil {
@@ -583,7 +583,7 @@ AND o.domain = $5
 		}
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
-			object.WithKindVersion(metaRec.Meta.KindVersion()),
+			object.WithKindVersionName(kvRec.KindVersion.Name()),
 			object.WithDomain(domRec.Domain),
 			object.WithUUID(uuid),
 			object.WithName(name),
@@ -606,7 +606,7 @@ func (s *Store) dbReadSystemQualifiedByName(
 	ctx context.Context,
 	sysRec *storesystem.Record,
 	kindRec *storekind.Record,
-	metaRec *storemeta.Record,
+	kvRec *storekindversion.Record,
 	name string,
 ) (*Record, error) {
 	var uuid string
@@ -625,12 +625,12 @@ INNER JOIN system_qualified_object_names AS n
  ON o.id = n.object
  AND o.system = n.system
 WHERE o.system = $1
-AND o.meta = $2
+AND o.kindversion = $2
 AND n.kind = $3
 AND n.name = $4
 `
 		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, metaRec.RowID, kindRec.RowID, name,
+			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID, name,
 		).Scan(&out.RowID, &uuid, &latestGen, &spec)
 		if err != nil {
 			if err == pgx.ErrNoRows {
@@ -643,7 +643,7 @@ AND n.name = $4
 		}
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
-			object.WithKindVersion(metaRec.Meta.KindVersion()),
+			object.WithKindVersionName(kvRec.KindVersion.Name()),
 			object.WithUUID(uuid),
 			object.WithName(name),
 			object.WithGeneration(latestGen),
@@ -705,13 +705,13 @@ func (s *Store) dbInsertFirst(
 	ctx context.Context,
 	sysRec *storesystem.Record,
 	kindRec *storekind.Record,
-	metaRec *storemeta.Record,
+	kvRec *storekindversion.Record,
 	domRec *storedomain.Record,
 	nsRec *storenamespace.Record,
 	obj object.Object,
 ) (*object.Object, error) {
 	kind := kindRec.Kind
-	kv := obj.KindVersion()
+	kv := obj.KindVersionName()
 	uuid := obj.UUID()
 	name := obj.Name()
 	createdOn := time.Now().UnixNano()
@@ -743,7 +743,7 @@ func (s *Store) dbInsertFirst(
 		qs := `
 INSERT INTO objects (
   system
-, meta
+, kindversion
 , uuid
 , generation
 , domain
@@ -765,7 +765,7 @@ INSERT INTO objects (
 		err = tx.QueryRow(
 			ctx, qs,
 			sysRec.RowID,
-			metaRec.RowID,
+			kvRec.RowID,
 			uuid,
 			1, /* we expect we are the first generation */
 			domainRowID,
@@ -926,7 +926,7 @@ INSERT INTO system_qualified_object_names (
 INSERT INTO object_generations (
   object
 , generation
-, meta
+, kindversion
 , spec
 , created_on
 , created_by
@@ -942,7 +942,7 @@ INSERT INTO object_generations (
 			ctx, qs,
 			objRowID,
 			1,
-			metaRec.RowID,
+			kvRec.RowID,
 			specJSON,
 			createdOn,
 			createdBy,
@@ -974,13 +974,13 @@ func (s *Store) dbInsertGeneration(
 	ctx context.Context,
 	sysRec *storesystem.Record,
 	kindRec *storekind.Record,
-	metaRec *storemeta.Record,
+	kvRec *storekindversion.Record,
 	domRec *storedomain.Record,
 	nsRec *storenamespace.Record,
 	obj object.Object,
 	expectGeneration api.Generation,
 ) (*object.Object, error) {
-	kv := obj.KindVersion()
+	kv := obj.KindVersionName()
 	uuid := obj.UUID()
 	createdOn := time.Now().UnixNano()
 	createdBy := rxpcontext.Identity(ctx)
@@ -1014,7 +1014,7 @@ func (s *Store) dbInsertGeneration(
 INSERT INTO object_generations (
   object
 , generation
-, meta
+, kindversion
 , spec
 , created_on
 , created_by
@@ -1030,7 +1030,7 @@ INSERT INTO object_generations (
 			ctx, qs,
 			objRowID,
 			expectGeneration+1,
-			metaRec.RowID,
+			kvRec.RowID,
 			specJSON,
 			createdOn,
 			createdBy,
@@ -1090,14 +1090,14 @@ AND generation = $6`
 }
 
 type objectRecord struct {
-	ID          int64          `db:"object_id"`
-	UUID        string         `db:"object_uuid"`
-	Generation  api.Generation `db:"object_generation"`
-	Name        string         `db:"object_name"`
-	Spec        sql.NullString `db:"object_spec"`
-	SystemID    int64          `db:"system_id"`
-	MetaID      int64          `db:"meta_id"`
-	NamespaceID int64          `db:"namespace_id"`
+	ID            int64          `db:"object_id"`
+	UUID          string         `db:"object_uuid"`
+	Generation    api.Generation `db:"object_generation"`
+	Name          string         `db:"object_name"`
+	Spec          sql.NullString `db:"object_spec"`
+	SystemID      int64          `db:"system_id"`
+	KindVersionID int64          `db:"kindversion_id"`
+	NamespaceID   int64          `db:"namespace_id"`
 }
 
 // dbReadNamespaceQualifiedByExpression queries zero or more Objects that have
@@ -1131,7 +1131,7 @@ func (s *Store) dbReadNamespaceQualifiedByExpression(
 				if err != nil {
 					return nil, err
 				}
-				wheres = append(wheres, fmt.Sprintf("m.kind = $%d", len(qargs)+1))
+				wheres = append(wheres, fmt.Sprintf("kv.kind = $%d", len(qargs)+1))
 				qargs = append(qargs, kindRec.RowID)
 			}
 		}
@@ -1149,11 +1149,11 @@ SELECT
 , n.name AS object_name
 , o.spec AS object_spec
 , o.system AS system_id
-, o.meta AS meta_id
+, o.kindversion AS kindversion_id
 , o.namespace AS namespace_id
 FROM objects AS o
- INNER JOIN metas AS m
-  ON o.meta = m.id
+ INNER JOIN kindversions AS kv
+  ON o.kindversion = kv.id
  INNER JOIN namespace_qualified_object_names AS n
   ON o.id = n.object
 `
@@ -1184,17 +1184,17 @@ FROM objects AS o
 	}
 	out := make([]*Record, 0, len(recs))
 	for _, rec := range recs {
-		metaRec, err := s.metaStore.ReadByRowID(ctx, rec.MetaID)
+		kvRec, err := s.kindversionStore.ReadByRowID(ctx, rec.KindVersionID)
 		if err != nil {
 			return nil, err
 		}
-		kv := metaRec.Meta.KindVersion()
+		kv := kvRec.KindVersion.Name()
 		nsRec, err := s.namespaceStore.ReadByRowID(ctx, rec.NamespaceID)
 		if err != nil {
 			return nil, err
 		}
 		obj := object.New(
-			object.WithKindVersion(kv),
+			object.WithKindVersionName(kv),
 			object.WithUUID(rec.UUID),
 			object.WithName(rec.Name),
 			object.WithGeneration(rec.Generation),

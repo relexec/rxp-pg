@@ -11,26 +11,26 @@ import (
 )
 
 type byRowIDCacheKey int64
-type byKindVersionCacheKey string
+type byNameCacheKey string
 
-func (k byKindVersionCacheKey) SystemUUID() string {
+func (k byNameCacheKey) SystemUUID() string {
 	parts := strings.Split(string(k), "|")
 	return parts[0]
 }
 
-func (k byKindVersionCacheKey) KindVersion() api.KindVersion {
+func (k byNameCacheKey) KindVersion() api.KindVersionName {
 	parts := strings.Split(string(k), "|")
-	return api.KindVersion(parts[1])
+	return api.KindVersionName(parts[1])
 }
 
-func newByKindVersionCacheKey(
+func newByNameCacheKey(
 	system *system.System,
-	kv api.KindVersion,
-) byKindVersionCacheKey {
-	return byKindVersionCacheKey(system.UUID() + "|" + string(kv))
+	kv api.KindVersionName,
+) byNameCacheKey {
+	return byNameCacheKey(system.UUID() + "|" + string(kv))
 }
 
-// cacheReadByRowID looks up a cached Meta by RowID, returning the cached
+// cacheReadByRowID looks up a cached KindVersion by RowID, returning the cached
 // Record and whether or not the entry was found.
 func (s *Store) cacheReadByRowID(
 	ctx context.Context,
@@ -43,19 +43,19 @@ func (s *Store) cacheReadByRowID(
 	if !found {
 		return nil, false
 	}
-	return s.cacheReadByKindVersion(ctx, kv)
+	return s.cacheReadByName(ctx, kv)
 }
 
-// cacheReadByKindVersion looks up a cached Meta by KindVersion, returning the cached
-// Record and whether or not the entry was found.
-func (s *Store) cacheReadByKindVersion(
+// cacheReadByName looks up a cached KindVersion by KindVersionName, returning
+// the cached Record and whether or not the entry was found.
+func (s *Store) cacheReadByName(
 	ctx context.Context,
-	key byKindVersionCacheKey,
+	key byNameCacheKey,
 ) (*Record, bool) {
-	if s.byKindVersion == nil {
+	if s.byName == nil {
 		return nil, false
 	}
-	return s.byKindVersion.Get(key)
+	return s.byName.Get(key)
 }
 
 // cacheWrite ensures the supplied Record is written to the lookup caches if
@@ -64,27 +64,29 @@ func (s *Store) cacheWrite(
 	ctx context.Context,
 	rec *Record,
 ) error {
-	if s.byKindVersion == nil {
+	if s.byName == nil {
 		return nil
 	}
-	kvKey := newByKindVersionCacheKey(
-		rec.Meta.System(),
-		rec.Meta.KindVersion(),
+	nameKey := newByNameCacheKey(
+		rec.KindVersion.System(),
+		rec.KindVersion.Name(),
 	)
-	set := s.byKindVersion.Set(kvKey, rec)
+	set := s.byName.Set(nameKey, rec)
 	if !set {
 		return errors.Internal(
 			fmt.Sprintf(
-				"failed setting meta cache kindversion key %q", kvKey,
+				"failed setting kindversion cache name key %q", nameKey,
 			),
 		)
 	}
 	// Here we populate our row ID -> kv map
 	rowIDKey := byRowIDCacheKey(rec.RowID)
-	set = s.byRowID.Set(rowIDKey, kvKey)
+	set = s.byRowID.Set(rowIDKey, nameKey)
 	if !set {
 		return errors.Internal(
-			fmt.Sprintf("failed setting meta cache rowid key %q", rowIDKey),
+			fmt.Sprintf(
+				"failed setting kindversion cache rowid key %q", rowIDKey,
+			),
 		)
 	}
 	return nil

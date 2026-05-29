@@ -8,7 +8,7 @@ import (
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
-	"github.com/relexec/rxp/meta"
+	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/namespace"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/system"
@@ -28,7 +28,7 @@ func (s *Store) ReadByRowID(
 	ctx context.Context,
 	sys *system.System,
 	k *kind.Kind,
-	m *meta.Meta,
+	kv *kindversion.KindVersion,
 	dom *domain.Domain,
 	ns *namespace.Namespace,
 	rowID int64,
@@ -50,15 +50,15 @@ func (s *Store) ReadByRowID(
 			errors.WithWrap(err),
 		)
 	}
-	metaRec, err := s.metaStore.ReadByKindVersion(
-		ctx, sys, m.KindVersion(),
+	kvRec, err := s.kindversionStore.ReadByName(
+		ctx, sys, kv.Name(),
 	)
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return nil, errors.ErrKindVersionUnknown
 		}
 		return nil, errors.Internal(
-			"failed reading meta record",
+			"failed reading kindversion record",
 			errors.WithWrap(err),
 		)
 	}
@@ -84,7 +84,7 @@ func (s *Store) ReadByRowID(
 			)
 		}
 		return s.dbReadNamespaceQualifiedByRowID(
-			ctx, sysRec, kindRec, metaRec, nsRec, rowID,
+			ctx, sysRec, kindRec, kvRec, nsRec, rowID,
 		)
 	case api.ScopeDomain:
 		if dom == nil {
@@ -101,11 +101,11 @@ func (s *Store) ReadByRowID(
 			)
 		}
 		return s.dbReadDomainQualifiedByRowID(
-			ctx, sysRec, kindRec, metaRec, domRec, rowID,
+			ctx, sysRec, kindRec, kvRec, domRec, rowID,
 		)
 	default:
 		return s.dbReadSystemQualifiedByRowID(
-			ctx, sysRec, kindRec, metaRec, rowID,
+			ctx, sysRec, kindRec, kvRec, rowID,
 		)
 	}
 }
@@ -115,7 +115,7 @@ func (s *Store) ReadByUUID(
 	ctx context.Context,
 	sys *system.System,
 	k *kind.Kind,
-	m *meta.Meta,
+	kv *kindversion.KindVersion,
 	dom *domain.Domain,
 	ns *namespace.Namespace,
 	uuid string,
@@ -137,15 +137,15 @@ func (s *Store) ReadByUUID(
 			errors.WithWrap(err),
 		)
 	}
-	metaRec, err := s.metaStore.ReadByKindVersion(
-		ctx, sys, m.KindVersion(),
+	kvRec, err := s.kindversionStore.ReadByName(
+		ctx, sys, kv.Name(),
 	)
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return nil, errors.ErrKindVersionUnknown
 		}
 		return nil, errors.Internal(
-			"failed reading meta record",
+			"failed reading kindversion record",
 			errors.WithWrap(err),
 		)
 	}
@@ -171,7 +171,7 @@ func (s *Store) ReadByUUID(
 			)
 		}
 		return s.dbReadNamespaceQualifiedByUUID(
-			ctx, sysRec, kindRec, metaRec, nsRec, uuid,
+			ctx, sysRec, kindRec, kvRec, nsRec, uuid,
 		)
 	case api.ScopeDomain:
 		if dom == nil {
@@ -188,11 +188,11 @@ func (s *Store) ReadByUUID(
 			)
 		}
 		return s.dbReadDomainQualifiedByUUID(
-			ctx, sysRec, kindRec, metaRec, domRec, uuid,
+			ctx, sysRec, kindRec, kvRec, domRec, uuid,
 		)
 	default:
 		return s.dbReadSystemQualifiedByUUID(
-			ctx, sysRec, kindRec, metaRec, uuid,
+			ctx, sysRec, kindRec, kvRec, uuid,
 		)
 	}
 }
@@ -202,7 +202,7 @@ func (s *Store) ReadByName(
 	ctx context.Context,
 	sys *system.System,
 	k *kind.Kind,
-	m *meta.Meta,
+	kv *kindversion.KindVersion,
 	dom *domain.Domain,
 	ns *namespace.Namespace,
 	name string,
@@ -224,15 +224,15 @@ func (s *Store) ReadByName(
 			errors.WithWrap(err),
 		)
 	}
-	metaRec, err := s.metaStore.ReadByKindVersion(
-		ctx, sys, m.KindVersion(),
+	kvRec, err := s.kindversionStore.ReadByName(
+		ctx, sys, kv.Name(),
 	)
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return nil, errors.ErrKindVersionUnknown
 		}
 		return nil, errors.Internal(
-			"failed reading meta record",
+			"failed reading kindversion record",
 			errors.WithWrap(err),
 		)
 	}
@@ -258,7 +258,7 @@ func (s *Store) ReadByName(
 			)
 		}
 		return s.dbReadNamespaceQualifiedByName(
-			ctx, sysRec, kindRec, metaRec, nsRec, name,
+			ctx, sysRec, kindRec, kvRec, nsRec, name,
 		)
 	case api.ScopeDomain:
 		if dom == nil {
@@ -275,11 +275,11 @@ func (s *Store) ReadByName(
 			)
 		}
 		return s.dbReadDomainQualifiedByName(
-			ctx, sysRec, kindRec, metaRec, domRec, name,
+			ctx, sysRec, kindRec, kvRec, domRec, name,
 		)
 	default:
 		return s.dbReadSystemQualifiedByName(
-			ctx, sysRec, kindRec, metaRec, name,
+			ctx, sysRec, kindRec, kvRec, name,
 		)
 	}
 }

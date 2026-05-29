@@ -14,8 +14,8 @@ import (
 	"github.com/relexec/rxp/api"
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/meta"
-	"github.com/relexec/rxp/meta/schema"
+	"github.com/relexec/rxp/kind/kindversion"
+	"github.com/relexec/rxp/kind/kindversion/schema"
 	"github.com/relexec/rxp/version"
 
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
@@ -80,8 +80,8 @@ func (s *Store) dbExec(
 	return nil
 }
 
-// dbReadByRowID performs a SELECT query to return the stored meta record
-// having the supplied internal DB RowID.
+// dbReadByRowID performs a SELECT query to return the stored kindversion
+// record having the supplied internal DB RowID.
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	rowID int64,
@@ -95,7 +95,7 @@ func (s *Store) dbReadByRowID(
 		RowID: rowID,
 	}
 	fn := func(tx pgx.Tx) error {
-		qs := "SELECT system, kind, version, schema FROM metas WHERE id = $1"
+		qs := "SELECT system, kind, version, schema FROM kindversions WHERE id = $1"
 		err := tx.QueryRow(
 			ctx, qs, rowID,
 		).Scan(
@@ -106,14 +106,14 @@ func (s *Store) dbReadByRowID(
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading metas record",
+				"failed reading kindversions record",
 				errors.WithWrap(err),
 			)
 		}
 		systemRec, err := s.systemStore.ReadByRowID(ctx, systemRowID)
 		if err != nil {
 			return errors.Internal(
-				"failed reading system record for meta",
+				"failed reading system record for kindversion",
 				errors.WithWrap(err),
 			)
 		}
@@ -123,7 +123,7 @@ func (s *Store) dbReadByRowID(
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading kind record for meta",
+				"failed reading kind record for kindversion",
 				errors.WithWrap(err),
 			)
 		}
@@ -131,7 +131,7 @@ func (s *Store) dbReadByRowID(
 			err = json.Unmarshal([]byte(schemaBytes.String), &schema)
 			if err != nil {
 				return errors.Internal(
-					"failed unmarshaling meta schema",
+					"failed unmarshaling kindversion schema",
 					errors.WithWrap(err),
 				)
 			}
@@ -139,15 +139,15 @@ func (s *Store) dbReadByRowID(
 		sv, err := semver.NewVersion(verStr)
 		if err != nil {
 			return errors.Internal(
-				"failed parsing semver for meta",
+				"failed parsing semver for kindversion",
 				errors.WithWrap(err),
 			)
 		}
-		out.Meta = meta.New(
-			meta.WithSystem(systemRec.System),
-			meta.WithKind(kindRec.Kind),
-			meta.WithVersion(*sv),
-			meta.WithSchema(&schema),
+		out.KindVersion = kindversion.New(
+			kindversion.WithSystem(systemRec.System),
+			kindversion.WithKind(kindRec.Kind),
+			kindversion.WithVersion(*sv),
+			kindversion.WithSchema(&schema),
 		)
 		return nil
 	}
@@ -157,13 +157,13 @@ func (s *Store) dbReadByRowID(
 	return &out, nil
 }
 
-// dbReadByName performs a SELECT query to return the stored meta record
+// dbReadByName performs a SELECT query to return the stored kindversion record
 // having the supplied KindVersion.
-func (s *Store) dbReadByKindVersion(
+func (s *Store) dbReadByName(
 	ctx context.Context,
 	systemRec *storesystem.Record,
 	kindRec *storekind.Record,
-	kv api.KindVersion,
+	kv api.KindVersionName,
 ) (*Record, error) {
 	sv, _ := kv.Version()
 	verStr := kv.VersionString()
@@ -175,7 +175,7 @@ func (s *Store) dbReadByKindVersion(
 SELECT
   id
 , schema
-FROM metas
+FROM kindversions
 WHERE system = $1
 AND kind = $2
 AND version = $3
@@ -191,7 +191,7 @@ AND version = $3
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading metas record",
+				"failed reading kindversions record",
 				errors.WithWrap(err),
 			)
 		}
@@ -199,16 +199,16 @@ AND version = $3
 			err = json.Unmarshal([]byte(schemaBytes.String), &schema)
 			if err != nil {
 				return errors.Internal(
-					"failed unmarshaling meta schema",
+					"failed unmarshaling kindversion schema",
 					errors.WithWrap(err),
 				)
 			}
 		}
-		out.Meta = meta.New(
-			meta.WithSystem(systemRec.System),
-			meta.WithKind(kindRec.Kind),
-			meta.WithVersion(*sv),
-			meta.WithSchema(&schema),
+		out.KindVersion = kindversion.New(
+			kindversion.WithSystem(systemRec.System),
+			kindversion.WithKind(kindRec.Kind),
+			kindversion.WithVersion(*sv),
+			kindversion.WithSchema(&schema),
 		)
 		return nil
 	}
@@ -227,11 +227,11 @@ func (s *Store) dbVersionsForKind(
 ) (version.Set, error) {
 	var versionStrs []string
 	fn := func(tx pgx.Tx) error {
-		qs := "SELECT version FROM metas WHERE system = $1 AND kind = $2"
+		qs := "SELECT version FROM kindversions WHERE system = $1 AND kind = $2"
 		rows, err := tx.Query(ctx, qs, systemRec.RowID, kindRec.RowID)
 		if err != nil {
 			return errors.Internal(
-				"failed reading meta records",
+				"failed reading kindversion records",
 				errors.WithWrap(err),
 			)
 		}
@@ -239,7 +239,7 @@ func (s *Store) dbVersionsForKind(
 		versionStrs, err = pgx.CollectRows(rows, pgx.RowTo[string])
 		if err != nil {
 			return errors.Internal(
-				"failed collecting meta versions",
+				"failed collecting kindversion versions",
 				errors.WithWrap(err),
 			)
 		}
@@ -265,18 +265,18 @@ func (s *Store) dbVersionsForKind(
 	return vs, nil
 }
 
-// dbInsert atomically writes the supplied Meta to persistent storage.
+// dbInsert atomically writes the supplied KindVersion to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
 	systemRec *storesystem.Record,
 	kindRec *storekind.Record,
-	m *meta.Meta,
+	kv *kindversion.KindVersion,
 ) error {
-	kv := m.KindVersion()
-	ver, _ := kv.Version()
+	name := kv.Name()
+	ver, _ := name.Version()
 	createdOn := time.Now().UnixNano()
 	createdBy := rxpcontext.Identity(ctx)
-	schemaJSON, err := m.SchemaJSON()
+	schemaJSON, err := kv.SchemaJSON()
 	if err != nil {
 		return err
 	}
@@ -289,18 +289,18 @@ func (s *Store) dbInsert(
 			// ensure we were given the first version in the version series OR
 			// there was a force override option.
 			if ver.Minor() != 0 || ver.Patch() != 0 {
-				return errors.ExpectedFirstVersionInSeries(kv)
+				return errors.ExpectedFirstVersionInSeries(kv.Name())
 			}
 		} else {
 			// If the supplied version already exists, return a precondition
 			// failed unless there was a force override option.
 			if versions.Contains(*ver) {
-				return errors.ExpectedNotToExist(kv)
+				return errors.ExpectedNotToExist(kv.Name())
 			}
 		}
 
 		qs := `
-INSERT INTO metas (
+INSERT INTO kindversions (
   system
 , kind
 , version
@@ -319,7 +319,7 @@ INSERT INTO metas (
 			ctx, qs,
 			systemRec.RowID,
 			kindRec.RowID,
-			kv.VersionString(),
+			name.VersionString(),
 			schemaJSON,
 			createdOn,
 			createdBy,
@@ -327,11 +327,11 @@ INSERT INTO metas (
 		if err != nil {
 			if pgErr, ok := err.(*pgconn.PgError); ok {
 				if pgErr.Code == pgerrcode.UniqueViolation {
-					return errors.ExpectedNotToExist(kv)
+					return errors.ExpectedNotToExist(kv.Name())
 				}
 			}
 			return errors.Internal(
-				"failed inserting metas record",
+				"failed inserting kindversions record",
 				errors.WithWrap(err),
 			)
 		}

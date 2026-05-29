@@ -25,7 +25,7 @@ func (s *Store) Write(
 			errors.WithWrap(err),
 		)
 	}
-	kv := obj.KindVersion()
+	kv := obj.KindVersionName()
 	kindRec, err := s.kindStore.ReadByName(ctx, sys, kv.Kind())
 	if err != nil {
 		if err == errors.ErrNotFound {
@@ -36,7 +36,7 @@ func (s *Store) Write(
 			errors.WithWrap(err),
 		)
 	}
-	metaRec, err := s.metaStore.ReadByKindVersion(
+	kvRec, err := s.kindversionStore.ReadByName(
 		ctx, sys, kv,
 	)
 	if err != nil {
@@ -44,7 +44,7 @@ func (s *Store) Write(
 			return nil, errors.ErrKindVersionUnknown
 		}
 		return nil, errors.Internal(
-			"failed reading meta record",
+			"failed reading kindversion record",
 			errors.WithWrap(err),
 		)
 	}
@@ -135,7 +135,7 @@ func (s *Store) Write(
 		// contraint violation will indicate another caller tried to create the
 		// exact same object concurrently.
 		return s.dbInsertFirst(
-			ctx, sysRec, kindRec, metaRec, domRec, nsRec, obj,
+			ctx, sysRec, kindRec, kvRec, domRec, nsRec, obj,
 		)
 	}
 	// Otherwise, the caller expects that there is an existing object with this
@@ -148,7 +148,7 @@ func (s *Store) Write(
 	// fail.
 	return s.dbInsertGeneration(
 		ctx,
-		sysRec, kindRec, metaRec, domRec, nsRec,
+		sysRec, kindRec, kvRec, domRec, nsRec,
 		obj, expectGeneration,
 	)
 }

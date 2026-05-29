@@ -6,30 +6,30 @@ import (
 
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/meta"
+	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/metrics"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
-// MetaRead reads a Meta from persistent storage.
-func (d *Driver) MetaRead(
+// KindVersionRead reads a KindVersion from persistent storage.
+func (d *Driver) KindVersionRead(
 	ctx context.Context,
-	sel meta.Selector,
-) (*meta.Meta, error) {
+	sel kindversion.Selector,
+) (*kindversion.KindVersion, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
 	}
 	start := time.Now()
 
-	var kv api.KindVersion
+	var name api.KindVersionName
 
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(api.TypeMeta),
-			metrics.AttributeKindVersion(kv),
+			metrics.AttributeType(api.TypeKindVersion),
+			metrics.AttributeKindVersion(name),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -41,7 +41,7 @@ func (d *Driver) MetaRead(
 		metrics.InstrumentReadDuration.Record(ctx, elapsed)
 	}()
 
-	err = d.metaReadValidate(ctx, sel)
+	err = d.kindversionReadValidate(ctx, sel)
 	if err != nil {
 		return nil, err
 	}
@@ -53,28 +53,28 @@ func (d *Driver) MetaRead(
 	if sys == nil {
 		sys = d.hostSystemRecord.System
 	}
-	kv = sel.KindVersion()
+	name = sel.Name()
 
-	rec, err := d.metaStore.ReadByKindVersion(ctx, sys, kv)
+	rec, err := d.kindversionStore.ReadByName(ctx, sys, name)
 	if err != nil {
 		return nil, err
 	}
-	return rec.Meta, nil
+	return rec.KindVersion, nil
 }
 
-// metaReadValidate returns an error if the supplied selector and read
-// options are not valid for reading a single Meta.
-func (d *Driver) metaReadValidate(
+// kindversionReadValidate returns an error if the supplied selector and read
+// options are not valid for reading a single KindVersion.
+func (d *Driver) kindversionReadValidate(
 	ctx context.Context,
-	sel meta.Selector,
+	sel kindversion.Selector,
 ) error {
 	return sel.Validate()
 }
 
-// MetaWrite atomically writes the supplied Meta to persistent storage.
-func (d *Driver) MetaWrite(
+// KindVersionWrite atomically writes the supplied KindVersion to persistent storage.
+func (d *Driver) KindVersionWrite(
 	ctx context.Context,
-	m *meta.Meta,
+	kv *kindversion.KindVersion,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -82,13 +82,13 @@ func (d *Driver) MetaWrite(
 	}
 	start := time.Now()
 
-	kv := m.KindVersion()
+	name := kv.Name()
 
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(api.TypeMeta),
-			metrics.AttributeKindVersion(kv),
+			metrics.AttributeType(api.TypeKindVersion),
+			metrics.AttributeKindVersion(name),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -100,29 +100,29 @@ func (d *Driver) MetaWrite(
 		metrics.InstrumentWriteDuration.Record(ctx, elapsed)
 	}()
 
-	err = d.metaWriteValidate(ctx, m)
+	err = d.kindversionWriteValidate(ctx, kv)
 	if err != nil {
 		return err
 	}
 
-	system := m.System()
+	system := kv.System()
 	if system == nil {
-		m.SetSystem(d.hostSystemRecord.System)
+		kv.SetSystem(d.hostSystemRecord.System)
 	}
-	return d.metaStore.Write(ctx, m)
+	return d.kindversionStore.Write(ctx, kv)
 }
 
-// metaWriteValidate returns an error if the supplied meta and write
-// options are not valid for writing a single Meta.
-func (d *Driver) metaWriteValidate(
+// kindversionWriteValidate returns an error if the supplied kindversion and write
+// options are not valid for writing a single KindVersion.
+func (d *Driver) kindversionWriteValidate(
 	ctx context.Context,
-	meta *meta.Meta,
+	kv *kindversion.KindVersion,
 ) error {
-	if meta == nil {
+	if kv == nil {
 		return errors.RequiredParameterNil(
-			"meta",
+			"kindversion",
 			errors.WithWrap(errors.ErrInvalidWriteRequest),
 		)
 	}
-	return meta.Validate()
+	return kv.Validate()
 }
