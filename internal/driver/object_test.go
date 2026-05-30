@@ -606,7 +606,7 @@ func TestObjectQuery(t *testing.T) {
 				application.KindName,
 			},
 			1,
-			true,
+			false,
 			"",
 		},
 		{

@@ -1089,7 +1089,7 @@ AND generation = $6`
 	return &out, nil
 }
 
-type objectRecord struct {
+type nsqObjectRecord struct {
 	ID            int64          `db:"object_id"`
 	UUID          string         `db:"object_uuid"`
 	Generation    api.Generation `db:"object_generation"`
@@ -1139,7 +1139,7 @@ func (s *Store) dbReadNamespaceQualifiedByExpression(
 	case expression.AndExpression:
 	}
 
-	var recs []objectRecord
+	var recs []nsqObjectRecord
 	fn := func(tx pgx.Tx) error {
 		qs := `
 SELECT
@@ -1169,7 +1169,7 @@ FROM objects AS o
 			)
 		}
 		defer rows.Close()
-		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[objectRecord])
+		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[nsqObjectRecord])
 		if err != nil {
 			return errors.Internal(
 				"failed collecting namespace-qualified object records",
@@ -1200,6 +1200,129 @@ FROM objects AS o
 			object.WithGeneration(rec.Generation),
 			object.WithSystem(sys),
 			object.WithNamespace(nsRec.Namespace),
+		)
+		if rec.Spec.Valid {
+			obj.SetSpec(rec.Spec.String)
+		}
+		out = append(out, &Record{
+			RowID:  rec.ID,
+			Object: obj,
+		})
+	}
+	return out, nil
+}
+
+type dqObjectRecord struct {
+	ID            int64          `db:"object_id"`
+	UUID          string         `db:"object_uuid"`
+	Generation    api.Generation `db:"object_generation"`
+	Name          string         `db:"object_name"`
+	Spec          sql.NullString `db:"object_spec"`
+	SystemID      int64          `db:"system_id"`
+	KindVersionID int64          `db:"kindversion_id"`
+	DomainID      int64          `db:"domain_id"`
+}
+
+// dbReadDomainQualifiedByExpression queries zero or more Objects that have
+// domain-qualified names from persistent storage given the pre-validated
+// expression and options.
+func (s *Store) dbReadDomainQualifiedByExpression(
+	ctx context.Context,
+	expr expression.Expression,
+	opts query.Options,
+) ([]*Record, error) {
+	sysRec := s.hostSystemRecord
+	sys := sysRec.System
+
+	qargs := []any{
+		sysRec.RowID,
+	}
+	wheres := []string{
+		"o.system = $1",
+	}
+
+	switch expr := expr.(type) {
+	case expression.UnaryExpression:
+		pred := expr.Predicate
+		switch pred := pred.(type) {
+		case expression.KindNamePredicate:
+			op := pred.Operator()
+			switch op {
+			case expression.PredicateOperatorEqual:
+				kn := pred.Value().(api.KindName)
+				kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
+				if err != nil {
+					return nil, err
+				}
+				wheres = append(wheres, fmt.Sprintf("kv.kind = $%d", len(qargs)+1))
+				qargs = append(qargs, kindRec.RowID)
+			}
+		}
+	case expression.OrExpression:
+	case expression.AndExpression:
+	}
+
+	var recs []dqObjectRecord
+	fn := func(tx pgx.Tx) error {
+		qs := `
+SELECT
+  o.id AS object_id
+, o.uuid AS object_uuid
+, o.generation AS object_generation
+, d.name AS object_name
+, o.spec AS object_spec
+, o.system AS system_id
+, o.kindversion AS kindversion_id
+, o.domain AS domain_id
+FROM objects AS o
+ INNER JOIN kindversions AS kv
+  ON o.kindversion = kv.id
+ INNER JOIN domain_qualified_object_names AS d
+  ON o.id = d.object
+`
+		if len(wheres) > 0 {
+			qs += "\nWHERE " + strings.Join(wheres, " AND ")
+		}
+		qs += fmt.Sprintf("\nORDER BY o.uuid ASC LIMIT %d", opts.Limit())
+		rows, err := tx.Query(ctx, qs, qargs...)
+		if err != nil {
+			return errors.Internal(
+				"failed reading domain-qualified object records",
+				errors.WithWrap(err),
+			)
+		}
+		defer rows.Close()
+		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[dqObjectRecord])
+		if err != nil {
+			return errors.Internal(
+				"failed collecting domain-qualified object records",
+				errors.WithWrap(err),
+			)
+		}
+
+		return nil
+	}
+	if err := s.dbExec(ctx, fn); err != nil {
+		return nil, err
+	}
+	out := make([]*Record, 0, len(recs))
+	for _, rec := range recs {
+		kvRec, err := s.kindversionStore.ReadByRowID(ctx, rec.KindVersionID)
+		if err != nil {
+			return nil, err
+		}
+		kv := kvRec.KindVersion.Name()
+		domRec, err := s.domainStore.ReadByRowID(ctx, rec.DomainID)
+		if err != nil {
+			return nil, err
+		}
+		obj := object.New(
+			object.WithKindVersionName(kv),
+			object.WithUUID(rec.UUID),
+			object.WithName(rec.Name),
+			object.WithGeneration(rec.Generation),
+			object.WithSystem(sys),
+			object.WithDomain(domRec.Domain),
 		)
 		if rec.Spec.Valid {
 			obj.SetSpec(rec.Spec.String)
