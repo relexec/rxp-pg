@@ -5,9 +5,13 @@ import (
 	"testing"
 
 	"github.com/relexec/rxp-pg/internal/testutil"
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/kind/kindversion"
+	"github.com/relexec/rxp/query"
+	"github.com/relexec/rxp/query/expression"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/testing/fixtures/service"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )
 
@@ -145,6 +149,182 @@ func TestKindVersionWrite(t *testing.T) {
 				require.ErrorContains(err, c.expErr)
 			} else {
 				require.Nil(err)
+			}
+		})
+	}
+}
+
+func TestKindVersionQuery(t *testing.T) {
+	ctx := testutil.Context(testutil.UserIdentity)
+	rxp, err := testutil.Driver(ctx)
+	require.Nil(t, err)
+
+	// NOTE(jaypipes): We ensure the author Kind here but not any KindVersions
+	// (KindVersions) for it. This allows us to properly test the precondition
+	// failed for minor/patch version number of 0.
+	err = testutil.KindCreateIfNotExists(ctx, rxp, fixtures.NoKindVersionsKind)
+	require.Nil(t, err)
+
+	err = testutil.KindCreateIfNotExists(ctx, rxp, service.Kind)
+	require.Nil(t, err, err)
+
+	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, service.FirstKindVersion())
+	require.Nil(t, err)
+
+	ctxMissingIdent := context.TODO()
+
+	cases := []struct {
+		name         string
+		ctx          context.Context
+		expr         expression.Expression
+		opts         []query.Option
+		expNumItems  int
+		expOnlyNames []api.KindVersionName
+		expOptions   query.Options
+		expMarker    string
+		expErr       string
+	}{
+		{
+			"missing identity",
+			ctxMissingIdent,
+			expression.KindVersionNameEqual(service.FirstKindVersionName()),
+			nil,
+			0,
+			nil,
+			query.Options{},
+			"",
+			"missing identity",
+		},
+		{
+			"unsupported predicate",
+			ctx,
+			expression.GenerationEqual(0),
+			nil,
+			0,
+			nil,
+			query.Options{},
+			"",
+			"unsupported predicate expression.GenerationPredicate",
+		},
+		{
+			"expression required",
+			ctx,
+			nil,
+			nil,
+			0,
+			nil,
+			query.Options{},
+			"",
+			"expression required",
+		},
+		{
+			"unsupported expression",
+			ctx,
+			expression.Or(
+				expression.KindNameEqual(service.KindName),
+				expression.KindNameEqual(fixtures.UnknownKindName),
+			),
+			nil,
+			0,
+			nil,
+			query.Options{},
+			"",
+			"unsupported expression expression.OrExpression",
+		},
+		{
+			"no results when looking up non-existing kind version name",
+			ctx,
+			expression.KindVersionNameEqual(fixtures.UnknownKindVersionName),
+			nil,
+			0,
+			[]api.KindVersionName{},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+		{
+			"no results when looking up kindversions by non-existing system",
+			ctx,
+			expression.SystemEqual(fixtures.UnknownSystem),
+			nil,
+			0,
+			[]api.KindVersionName{},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+		{
+			"no results when looking up kindversions by non-existing system UUID",
+			ctx,
+			expression.SystemUUIDEqual(fixtures.UnknownSystemUUID),
+			nil,
+			0,
+			[]api.KindVersionName{},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+		{
+			"query kindversions by name, expect one",
+			ctx,
+			expression.KindVersionNameEqual(service.FirstKindVersionName()),
+			nil,
+			1,
+			[]api.KindVersionName{
+				service.FirstKindVersionName(),
+			},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+		{
+			"query kindversions by name in set, expect one",
+			ctx,
+			expression.KindVersionNameIn(service.FirstKindVersionName(), fixtures.UnknownKindVersionName),
+			nil,
+			1,
+			[]api.KindVersionName{
+				service.FirstKindVersionName(),
+			},
+			query.NewOptions(
+				query.Limit(10), // 10 is default when not specified
+			),
+			"",
+			"",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			require := require.New(t)
+
+			got, err := rxp.KindVersionQuery(c.ctx, c.expr, c.opts...)
+			if c.expErr != "" {
+				require.ErrorContains(err, c.expErr)
+			} else {
+				require.Nil(err, err)
+				require.NotNil(got)
+				gotItems := got.Items()
+				gotOptions := got.Options()
+				gotMarker := got.Marker()
+				require.Equal(c.expOptions, gotOptions)
+				require.Equal(c.expMarker, gotMarker)
+				require.Len(gotItems, c.expNumItems)
+				gotNames := lo.Map(gotItems, func(kv *kindversion.KindVersion, _ int) api.KindVersionName {
+					return kv.Name()
+				})
+				gotNames = lo.Uniq(gotNames)
+				require.Equal(c.expOnlyNames, gotNames)
+				for _, item := range gotItems {
+					require.NotNil(item.System())
+				}
 			}
 		})
 	}

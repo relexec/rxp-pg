@@ -327,8 +327,8 @@ func TestKindQuery(t *testing.T) {
 				require.Equal(c.expOptions, gotOptions)
 				require.Equal(c.expMarker, gotMarker)
 				require.Len(gotItems, c.expNumItems)
-				gotUUIDs := lo.Map(gotItems, func(d *kind.Kind, _ int) string {
-					return d.UUID()
+				gotUUIDs := lo.Map(gotItems, func(k *kind.Kind, _ int) string {
+					return k.UUID()
 				})
 				gotUUIDs = lo.Uniq(gotUUIDs)
 				require.Equal(c.expOnlyUUIDs, gotUUIDs)
