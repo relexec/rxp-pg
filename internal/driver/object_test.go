@@ -591,7 +591,7 @@ func TestObjectQuery(t *testing.T) {
 				platform.KindName,
 			},
 			1,
-			true,
+			false,
 			"",
 		},
 		{

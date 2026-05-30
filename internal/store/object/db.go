@@ -1334,3 +1334,119 @@ FROM objects AS o
 	}
 	return out, nil
 }
+
+type sqObjectRecord struct {
+	ID            int64          `db:"object_id"`
+	UUID          string         `db:"object_uuid"`
+	Generation    api.Generation `db:"object_generation"`
+	Name          string         `db:"object_name"`
+	Spec          sql.NullString `db:"object_spec"`
+	SystemID      int64          `db:"system_id"`
+	KindVersionID int64          `db:"kindversion_id"`
+}
+
+// dbReadSystemQualifiedByExpression queries zero or more Objects that have
+// system-qualified names from persistent storage given the pre-validated
+// expression and options.
+func (s *Store) dbReadSystemQualifiedByExpression(
+	ctx context.Context,
+	expr expression.Expression,
+	opts query.Options,
+) ([]*Record, error) {
+	sysRec := s.hostSystemRecord
+	sys := sysRec.System
+
+	qargs := []any{
+		sysRec.RowID,
+	}
+	wheres := []string{
+		"o.system = $1",
+	}
+
+	switch expr := expr.(type) {
+	case expression.UnaryExpression:
+		pred := expr.Predicate
+		switch pred := pred.(type) {
+		case expression.KindNamePredicate:
+			op := pred.Operator()
+			switch op {
+			case expression.PredicateOperatorEqual:
+				kn := pred.Value().(api.KindName)
+				kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
+				if err != nil {
+					return nil, err
+				}
+				wheres = append(wheres, fmt.Sprintf("kv.kind = $%d", len(qargs)+1))
+				qargs = append(qargs, kindRec.RowID)
+			}
+		}
+	case expression.OrExpression:
+	case expression.AndExpression:
+	}
+
+	var recs []sqObjectRecord
+	fn := func(tx pgx.Tx) error {
+		qs := `
+SELECT
+  o.id AS object_id
+, o.uuid AS object_uuid
+, o.generation AS object_generation
+, s.name AS object_name
+, o.spec AS object_spec
+, o.system AS system_id
+, o.kindversion AS kindversion_id
+FROM objects AS o
+ INNER JOIN kindversions AS kv
+  ON o.kindversion = kv.id
+ INNER JOIN system_qualified_object_names AS s
+  ON o.id = s.object
+`
+		if len(wheres) > 0 {
+			qs += "\nWHERE " + strings.Join(wheres, " AND ")
+		}
+		qs += fmt.Sprintf("\nORDER BY o.uuid ASC LIMIT %d", opts.Limit())
+		rows, err := tx.Query(ctx, qs, qargs...)
+		if err != nil {
+			return errors.Internal(
+				"failed reading system-qualified object records",
+				errors.WithWrap(err),
+			)
+		}
+		defer rows.Close()
+		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[sqObjectRecord])
+		if err != nil {
+			return errors.Internal(
+				"failed collecting system-qualified object records",
+				errors.WithWrap(err),
+			)
+		}
+
+		return nil
+	}
+	if err := s.dbExec(ctx, fn); err != nil {
+		return nil, err
+	}
+	out := make([]*Record, 0, len(recs))
+	for _, rec := range recs {
+		kvRec, err := s.kindversionStore.ReadByRowID(ctx, rec.KindVersionID)
+		if err != nil {
+			return nil, err
+		}
+		kv := kvRec.KindVersion.Name()
+		obj := object.New(
+			object.WithKindVersionName(kv),
+			object.WithUUID(rec.UUID),
+			object.WithName(rec.Name),
+			object.WithGeneration(rec.Generation),
+			object.WithSystem(sys),
+		)
+		if rec.Spec.Valid {
+			obj.SetSpec(rec.Spec.String)
+		}
+		out = append(out, &Record{
+			RowID:  rec.ID,
+			Object: obj,
+		})
+	}
+	return out, nil
+}
