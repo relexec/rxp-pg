@@ -167,7 +167,7 @@ func (d *Driver) objectReadValidateScope(
 }
 
 // ObjectWrite persists a single supplied Object to backend storage, Note that
-// on successful write, the newly-create or updated Object is returned.
+// on successful write, the newly-created or updated Object is returned.
 func (d *Driver) ObjectWrite(
 	ctx context.Context,
 	obj object.Object,
