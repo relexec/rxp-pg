@@ -48,7 +48,7 @@ func WithLogger(logger logr.Logger) WithOption {
 // WithPool sets the Store's DB connection pool to the supplied value.
 func WithPool(pool *pgxpool.Pool) WithOption {
 	return func(s *Store) {
-		s.pool = pool
+		s.SetPool(pool)
 	}
 }
 

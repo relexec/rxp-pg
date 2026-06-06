@@ -25,64 +25,6 @@ import (
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
-var (
-	txOptsStrict = pgx.TxOptions{
-		IsoLevel:       pgx.RepeatableRead,
-		AccessMode:     pgx.ReadWrite,
-		DeferrableMode: pgx.NotDeferrable,
-	}
-)
-
-// dbExec executes the supplied function within the context of a database
-// transaction. If the function errors or panics, a ROLLBACK is automatically
-// issued for the transaction. If the function completes successfully, a COMMIT
-// is automatically issued for the transaction.
-func (s *Store) dbExec(
-	ctx context.Context,
-	fn func(tx pgx.Tx) error,
-) error {
-	pool := s.pool
-	if pool == nil {
-		return errors.Internal("connection pool not initialized")
-	}
-	tx, err := pool.BeginTx(ctx, txOptsStrict)
-	if err != nil {
-		return errors.Internal(
-			fmt.Sprintf("failed beginning transaction"),
-			errors.WithWrap(err),
-		)
-	}
-
-	// make sure we rollback our transaction if a panic occurs.
-	defer func() {
-		if p := recover(); p != nil {
-			tx.Rollback(ctx)
-			panic(p)
-		}
-	}()
-
-	err = fn(tx)
-	if err != nil {
-		rbErr := tx.Rollback(ctx)
-		if rbErr != nil {
-			return errors.Internal(
-				fmt.Sprintf("failed rolling back transaction"),
-				errors.WithWrap(err),
-			)
-		}
-		return err
-	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		return errors.Internal(
-			fmt.Sprintf("failed committing transaction"),
-			errors.WithWrap(err),
-		)
-	}
-	return nil
-}
-
 // dbReadNamespaceQualifiedByRowID performs a SELECT query to return the stored
 // object record having the supplied internal DB RowID with an expected
 // namespace-qualified name.
@@ -145,7 +87,7 @@ AND o.namespace = $5
 		}
 		return nil
 	}
-	if err := s.dbExec(ctx, fn); err != nil {
+	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -213,7 +155,7 @@ AND o.domain = $5
 		}
 		return nil
 	}
-	if err := s.dbExec(ctx, fn); err != nil {
+	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -276,7 +218,7 @@ AND o.id = $4
 		}
 		return nil
 	}
-	if err := s.dbExec(ctx, fn); err != nil {
+	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -341,7 +283,7 @@ AND o.namespace = $5
 		}
 		return nil
 	}
-	if err := s.dbExec(ctx, fn); err != nil {
+	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -406,7 +348,7 @@ AND o.domain = $5
 		}
 		return nil
 	}
-	if err := s.dbExec(ctx, fn); err != nil {
+	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -466,7 +408,7 @@ AND o.uuid = $4
 		}
 		return nil
 	}
-	if err := s.dbExec(ctx, fn); err != nil {
+	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -530,7 +472,7 @@ AND o.namespace = $5
 		}
 		return nil
 	}
-	if err := s.dbExec(ctx, fn); err != nil {
+	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -594,7 +536,7 @@ AND o.domain = $5
 		}
 		return nil
 	}
-	if err := s.dbExec(ctx, fn); err != nil {
+	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -653,7 +595,7 @@ AND n.name = $4
 		}
 		return nil
 	}
-	if err := s.dbExec(ctx, fn); err != nil {
+	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -692,7 +634,7 @@ func (s *Store) dbReadAtGeneration(
 		}
 		return nil
 	}
-	err := s.dbExec(ctx, fn)
+	err := s.Exec(ctx, fn)
 	if err != nil {
 		return nil, err
 	}
@@ -960,7 +902,7 @@ INSERT INTO object_generations (
 		}
 		return nil
 	}
-	if err := s.dbExec(ctx, fn); err != nil {
+	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
 	out := obj
@@ -1081,7 +1023,7 @@ AND generation = $6`
 		}
 		return nil
 	}
-	if err := s.dbExec(ctx, fn); err != nil {
+	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
 	out := obj
@@ -1179,7 +1121,7 @@ FROM objects AS o
 
 		return nil
 	}
-	if err := s.dbExec(ctx, fn); err != nil {
+	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
 	out := make([]*Record, 0, len(recs))
@@ -1302,7 +1244,7 @@ FROM objects AS o
 
 		return nil
 	}
-	if err := s.dbExec(ctx, fn); err != nil {
+	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
 	out := make([]*Record, 0, len(recs))
@@ -1423,7 +1365,7 @@ FROM objects AS o
 
 		return nil
 	}
-	if err := s.dbExec(ctx, fn); err != nil {
+	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
 	out := make([]*Record, 0, len(recs))

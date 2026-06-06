@@ -44,7 +44,7 @@ func (s *Store) initCache(ctx context.Context) error {
 			return err
 		}
 		s.byUUID = byUUID
-		s.onClose = append(s.onClose, s.byUUID.Close)
+		s.OnClose(s.byUUID.Close)
 
 		byRowID, err := cache.New[byRowIDCacheKey, byUUIDCacheKey](
 			ctx,
@@ -54,7 +54,7 @@ func (s *Store) initCache(ctx context.Context) error {
 			return err
 		}
 		s.byRowID = byRowID
-		s.onClose = append(s.onClose, s.byRowID.Close)
+		s.OnClose(s.byRowID.Close)
 		s.log.Info("initialized system cache")
 	} else {
 		s.log.V(4).Info("system cache disabled")

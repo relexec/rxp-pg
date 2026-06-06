@@ -44,7 +44,7 @@ func (s *Store) initCache(ctx context.Context) error {
 			return err
 		}
 		s.byName = byName
-		s.onClose = append(s.onClose, s.byName.Close)
+		s.OnClose(s.byName.Close)
 
 		byRowID, err := cache.New[byRowIDCacheKey, byNameCacheKey](
 			ctx,
@@ -54,7 +54,7 @@ func (s *Store) initCache(ctx context.Context) error {
 			return err
 		}
 		s.byRowID = byRowID
-		s.onClose = append(s.onClose, s.byRowID.Close)
+		s.OnClose(s.byRowID.Close)
 		s.log.Info("initialized kindversion cache")
 	} else {
 		s.log.V(4).Info("kindversion cache disabled")
