@@ -2,23 +2,12 @@ package store
 
 import (
 	"context"
-
-	"github.com/go-logr/logr"
-
-	"github.com/relexec/rxp-pg/config"
 )
 
 func (s *Store) init(ctx context.Context) error {
-	if s.cfg == nil {
-		s.cfg = config.Default()
-	}
-	if s.log == nil {
-		lc := logr.FromContextOrDiscard(ctx)
-		s.log = &lc
-	}
-	s.log.WithName("rxp.pg.store.object")
+	s.SetLogger(s.Logger().WithName("rxp.pg.store.object"))
 
-	err := s.cfg.Validate()
+	err := s.Config().Validate()
 	if err != nil {
 		return err
 	}

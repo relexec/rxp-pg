@@ -34,14 +34,14 @@ func New(
 // WithConfig sets the Store's Config to the supplied value.
 func WithConfig(cfg *config.Config) WithOption {
 	return func(s *Store) {
-		s.cfg = cfg
+		s.SetConfig(cfg)
 	}
 }
 
 // WithLogger sets the Store's Logger to the supplied value.
 func WithLogger(logger logr.Logger) WithOption {
 	return func(s *Store) {
-		s.log = &logger
+		s.SetLogger(logger)
 	}
 }
 

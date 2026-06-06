@@ -3,7 +3,9 @@ package store
 import (
 	"context"
 
+	"github.com/go-logr/logr"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/relexec/rxp-pg/config"
 )
 
 type WithOption func(*Store)
@@ -17,7 +19,28 @@ func New(
 	for _, opt := range opts {
 		opt(s)
 	}
+	if s.cfg == nil {
+		s.cfg = config.Default()
+	}
+	if s.logger.IsZero() {
+		lc := logr.FromContextOrDiscard(ctx)
+		s.logger = lc
+	}
 	return s, nil
+}
+
+// WithConfig sets the Store's Config to the supplied value.
+func WithConfig(cfg *config.Config) WithOption {
+	return func(s *Store) {
+		s.cfg = cfg
+	}
+}
+
+// WithLogger sets the Store's Logger to the supplied value.
+func WithLogger(logger logr.Logger) WithOption {
+	return func(s *Store) {
+		s.logger = logger
+	}
 }
 
 // WithPool sets the Store's DB connection pool to the supplied value.

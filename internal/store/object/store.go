@@ -1,9 +1,6 @@
 package store
 
 import (
-	"github.com/go-logr/logr"
-
-	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/store"
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
@@ -15,11 +12,6 @@ import (
 // Store facilitates reading and writing Object data.
 type Store struct {
 	store.Store
-
-	// log is the top-level logger for the Store.
-	log *logr.Logger
-	// cfg contains the configuration options for the Store.
-	cfg *config.Config
 
 	// hostSystemRecord is the host System managed by the Driver.
 	hostSystemRecord storesystem.Record

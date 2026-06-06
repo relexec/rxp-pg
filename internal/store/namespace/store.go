@@ -1,9 +1,6 @@
 package store
 
 import (
-	"github.com/go-logr/logr"
-
-	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/cache"
 	"github.com/relexec/rxp-pg/internal/store"
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
@@ -13,11 +10,6 @@ import (
 // Store facilitates reading and writing Namespace data.
 type Store struct {
 	store.Store
-
-	// log is the top-level logger for the Store.
-	log *logr.Logger
-	// cfg contains the configuration options for the Store.
-	cfg *config.Config
 
 	// byUUID is a cache that stores known Namespaces keyed by namespace UUID.
 	byUUID *cache.Cache[byUUIDCacheKey, *Record]

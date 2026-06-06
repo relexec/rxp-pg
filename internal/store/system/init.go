@@ -3,23 +3,13 @@ package store
 import (
 	"context"
 
-	"github.com/go-logr/logr"
-
-	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/cache"
 )
 
 func (s *Store) init(ctx context.Context) error {
-	if s.cfg == nil {
-		s.cfg = config.Default()
-	}
-	if s.log == nil {
-		lc := logr.FromContextOrDiscard(ctx)
-		s.log = &lc
-	}
-	s.log.WithName("rxp.pg.store.system")
+	s.SetLogger(s.Logger().WithName("rxp.pg.store.system"))
 
-	err := s.cfg.Validate()
+	err := s.Config().Validate()
 	if err != nil {
 		return err
 	}
@@ -33,9 +23,10 @@ func (s *Store) init(ctx context.Context) error {
 // initCache initializes the lookup caches if they are enabled in our
 // configuration.
 func (s *Store) initCache(ctx context.Context) error {
-	if s.cfg.Cache.System.Enabled {
-		s.log.V(4).Info("initializing system cache")
-		cacheCfg := s.cfg.Cache.System
+	cfg := s.Config()
+	if cfg.Cache.System.Enabled {
+		s.Debug("initializing system cache")
+		cacheCfg := cfg.Cache.System
 		byUUID, err := cache.New[byUUIDCacheKey, *Record](
 			ctx,
 			cache.WithConfig[byUUIDCacheKey, *Record](cacheCfg),
@@ -55,9 +46,9 @@ func (s *Store) initCache(ctx context.Context) error {
 		}
 		s.byRowID = byRowID
 		s.OnClose(s.byRowID.Close)
-		s.log.Info("initialized system cache")
+		s.Info("initialized system cache")
 	} else {
-		s.log.V(4).Info("system cache disabled")
+		s.Debug("system cache disabled")
 	}
 	return nil
 }
