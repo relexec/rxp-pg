@@ -135,16 +135,19 @@ func (d *Driver) initMetrics(ctx context.Context) error {
 
 // initDBPool initializates the pgx pool connectiond.
 func (d *Driver) initDBPool(ctx context.Context) error {
-	d.log.V(4).Info("initializing pgxpool connections")
+	d.log.V(4).Info("initializing db connection pool")
 	poolConfig, err := d.cfg.PGXPoolConfig()
 	if err != nil {
 		return err
 	}
-	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
-		return fmt.Errorf("failed connecting to postgres: %w", err)
+		return fmt.Errorf("failed creating db connection pool: %w", err)
 	}
-	d.log.Info("initialized pgxpool connections")
+	if err = pool.Ping(ctx); err != nil {
+		return fmt.Errorf("failed pinging db: %w", err)
+	}
+	d.log.Info("initialized db connection pool")
 	d.pool = pool
 	return nil
 }
