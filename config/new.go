@@ -11,6 +11,7 @@ func New(opts ...WithOption) *Config {
 	for _, opt := range opts {
 		opt(c)
 	}
+	c.SetDefaults()
 	return c
 }
 

@@ -2,21 +2,19 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	rxpconfig "github.com/relexec/rxp/config"
 	"github.com/spf13/pflag"
 )
 
 const (
-	flagSystemUUID     = "rxp-system-uuid"
-	flagSystemUUIDDesc = "Contains the rxp host system UUID. If empty, the value of RXP_SYSTEM_UUID environs variable is used."
-	flagSystemTag      = "rxp-system-tag"
-	flagSystemTagDesc  = "Contains the rxp host system tag. If empty, the value of RXP_SYSTEM_TAG environs variable is used."
-
-	flagConnect     = "rxp-postgres-connect"
+	flagConnect     = "rxp-pg-connect"
 	flagConnectDesc = "Contains the libpq connection string in either key=value or URL format. If not empty, all connection parameters are set from the supplied string."
+	EnvVarConnect   = "RXP_PG_CONNECT"
 )
 
 var (
@@ -24,16 +22,13 @@ var (
 )
 
 const (
-	flagMaxConnections     = "rxp-postgres-max-connections"
+	flagMaxConnections     = "rxp-pg-max-connections"
 	flagMaxConnectionsDesc = "The max size of the connection pool. Defaults to the greater of 4 or runtime.NumCPU()."
 )
 
 // Config contains configuration options for the rxp-pg library.
 type Config struct {
-	// SystemUUID contains the rxp host system UUID.
-	SystemUUID string `json:"system_uuid,omitempty"`
-	// SystemTag contains the rxp host system Name, if any.
-	SystemTag string `json:"system_name,omitempty"`
+	rxpconfig.Config
 	// Connect contains the libpq connection string in either key=value or URL
 	// format.
 	//
@@ -51,6 +46,18 @@ type Config struct {
 	MaxConnections int `json:"max_connections,omitempty"`
 	// Cache contains the configuration options for the rxp-pg's caches.
 	Cache CacheConfigs `json:"cache,omitempty"`
+}
+
+// SetDefaults sets any missing values to their defaults or environs variable
+// values.
+func (c *Config) SetDefaults() {
+	c.Config.SetDefaults()
+	if c.Connect == "" {
+		c.Connect = os.Getenv(EnvVarConnect)
+	}
+	if c.MaxConnections == 0 {
+		c.MaxConnections = DefaultMaxConnections
+	}
 }
 
 // PGXPoolConfig returns the Config as a [pgxpool.Config]
@@ -78,18 +85,7 @@ func (c Config) Validate() error {
 
 // BindFlags bings the supplied flagset to the Config's fields.
 func (c *Config) BindFlags(fs *pflag.FlagSet) {
-	pflag.StringVar(
-		&c.SystemUUID,
-		flagSystemUUID,
-		"",
-		flagSystemUUIDDesc,
-	)
-	pflag.StringVar(
-		&c.SystemTag,
-		flagSystemTag,
-		"",
-		flagSystemTagDesc,
-	)
+	c.Config.BindFlags(fs)
 	pflag.StringVar(
 		&c.Connect,
 		flagConnect,
