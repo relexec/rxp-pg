@@ -88,12 +88,12 @@ func TestObjectRead(t *testing.T) {
 			"missing identity",
 		},
 		{
-			"unknown kind version",
+			"unknown kind",
 			ctx,
 			fixtures.UnknownKindVersionName,
 			object.Select(object.ByUUID(svc1.UUID())),
 			nil,
-			"unknown kind version",
+			"unknown kind",
 		},
 		{
 			"invalid kind version",
@@ -375,11 +375,11 @@ func TestObjectWrite(t *testing.T) {
 			"invalid object: namespace required",
 		},
 		{
-			"unknown kind version",
+			"unknown kind",
 			ctx,
 			fixtures.UnknownObject,
 			nil,
-			"unknown kind version",
+			"unknown kind",
 		},
 		{
 			"happy path system-scoped object",
