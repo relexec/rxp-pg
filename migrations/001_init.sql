@@ -17,7 +17,6 @@ CREATE TABLE systems (
   id SERIAL NOT NULL PRIMARY KEY
 , uuid UUID NOT NULL
 , tag TEXT NULL
-, host BOOLEAN DEFAULT FALSE
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
 , UNIQUE (uuid)

@@ -55,6 +55,13 @@ func (d *Driver) KindVersionRead(
 	if sys == nil {
 		sys = d.hostSystemRecord.System
 	}
+
+	if sys.UUID() != d.hostSystemUUID {
+		_, err := d.systemStore.ReadByUUID(ctx, sys.UUID())
+		if err != nil {
+			return nil, err
+		}
+	}
 	name = sel.Name()
 
 	rec, err := d.kindversionStore.ReadByName(ctx, sys, name)

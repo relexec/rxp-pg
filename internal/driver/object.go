@@ -74,9 +74,24 @@ func (d *Driver) ObjectRead(
 		sys = d.hostSystemRecord.System
 	}
 
+	if sys.UUID() != d.hostSystemUUID {
+		_, err := d.systemStore.ReadByUUID(ctx, sys.UUID())
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return nil, errors.ErrSystemUnknown
+			}
+			return nil, err
+		}
+	}
+
 	kindRec, err := d.kindStore.ReadByName(ctx, sys, kv.Kind())
 	if err != nil {
-		return nil, errors.ErrKindVersionUnknown
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return nil, errors.ErrKindUnknown
+			}
+			return nil, err
+		}
 	}
 
 	err = d.objectReadValidateScope(ctx, kindRec, sel)
@@ -86,7 +101,12 @@ func (d *Driver) ObjectRead(
 
 	kvRec, err := d.kindversionStore.ReadByName(ctx, sys, kv)
 	if err != nil {
-		return nil, errors.ErrKindVersionUnknown
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return nil, errors.ErrKindVersionUnknown
+			}
+			return nil, err
+		}
 	}
 
 	objGen := sel.Generation()
@@ -217,13 +237,29 @@ func (d *Driver) ObjectWrite(
 	if sys == nil {
 		sys = d.hostSystemRecord.System
 	}
+
+	if sys.UUID() != d.hostSystemUUID {
+		_, err := d.systemStore.ReadByUUID(ctx, sys.UUID())
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return nil, errors.ErrSystemUnknown
+			}
+			return nil, err
+		}
+	}
+
 	if obj.System() == nil {
 		obj.SetSystem(sys)
 	}
 
 	kindRec, err := d.kindStore.ReadByName(ctx, sys, kv.Kind())
 	if err != nil {
-		return nil, errors.ErrKindVersionUnknown
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return nil, errors.ErrKindUnknown
+			}
+			return nil, err
+		}
 	}
 	err = d.objectWriteValidateScope(ctx, kindRec, obj)
 	if err != nil {

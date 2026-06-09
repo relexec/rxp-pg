@@ -21,6 +21,20 @@ func WithFlags(fs *pflag.FlagSet) WithOption {
 	}
 }
 
+// WithSystemUUID sets the Config's host System UUID.
+func WithSystemUUID(uuid string) WithOption {
+	return func(c *Config) {
+		c.SystemUUID = uuid
+	}
+}
+
+// WithSystemTag sets the Config's host System tag.
+func WithSystemTag(tag string) WithOption {
+	return func(c *Config) {
+		c.SystemTag = tag
+	}
+}
+
 // WithConnect sets the Config's Connect field.
 func WithConnect(connect string) WithOption {
 	return func(c *Config) {

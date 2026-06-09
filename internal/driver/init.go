@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/jackc/pgx/v5/pgxpool"
+	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/metrics"
 	"github.com/relexec/rxp/system"
@@ -219,8 +220,9 @@ func (d *Driver) initHostSystemRecord(ctx context.Context) error {
 				return err
 			}
 			d.log.V(4).Info("creating host system record")
+			initCtx := rxpcontext.SetIdentity(ctx, "rxp.system")
 			err = d.systemStore.Write(
-				ctx,
+				initCtx,
 				system.New(
 					system.WithUUID(d.hostSystemUUID),
 					system.WithTag(d.hostSystemTag),
