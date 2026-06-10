@@ -86,7 +86,7 @@ func (s *Store) Query(
 		}
 	}
 
-	if len(out) > opts.Limit() {
+	if len(out) > int(opts.Limit()) {
 		// We may have more than the limit because we read
 		// differently-qualified object records with the same limit.
 		slices.SortFunc(out, func(a, b *Record) int {

@@ -188,7 +188,7 @@ func (d *Driver) DomainQuery(
 	resOpts := query.NewOptions(
 		query.Limit(boundedOpts.Limit()),
 	)
-	if len(recs) == boundedOpts.Limit() {
+	if len(recs) == int(boundedOpts.Limit()) {
 		resOpts = query.NewOptions(
 			query.ContinueFrom(recs[len(recs)-1].Domain.UUID()),
 			query.Limit(boundedOpts.Limit()),

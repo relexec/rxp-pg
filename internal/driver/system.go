@@ -164,7 +164,7 @@ func (d *Driver) SystemQuery(
 	resOpts := query.NewOptions(
 		query.Limit(boundedOpts.Limit()),
 	)
-	if len(recs) == boundedOpts.Limit() {
+	if len(recs) == int(boundedOpts.Limit()) {
 		resOpts = query.NewOptions(
 			query.ContinueFrom(recs[len(recs)-1].System.UUID()),
 			query.Limit(boundedOpts.Limit()),

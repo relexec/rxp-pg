@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -386,7 +385,7 @@ AND o.uuid = $4
 `
 		err := tx.QueryRow(
 			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID, uuid,
-		).Scan(&out.RowID, &uuid, &latestGen, &spec)
+		).Scan(&out.RowID, &latestGen, &name, &spec)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -659,15 +658,7 @@ func (s *Store) dbInsertFirst(
 	createdOn := time.Now().UnixNano()
 	createdBy := rxpcontext.Identity(ctx)
 
-	spec := obj.Spec()
-	specBytes, err := json.Marshal(spec)
-	if err != nil {
-		return nil, errors.Internal(
-			"failed marshaling spec",
-			errors.WithWrap(err),
-		)
-	}
-	specJSON := string(specBytes)
+	specJSON := obj.Spec()
 
 	var domainRowID *int64
 	var nsRowID *int64
@@ -704,7 +695,7 @@ INSERT INTO objects (
 , $8
 , $9
 ) RETURNING id`
-		err = tx.QueryRow(
+		err := tx.QueryRow(
 			ctx, qs,
 			sysRec.RowID,
 			kvRec.RowID,
@@ -927,15 +918,7 @@ func (s *Store) dbInsertGeneration(
 	createdOn := time.Now().UnixNano()
 	createdBy := rxpcontext.Identity(ctx)
 
-	spec := obj.Spec()
-	specBytes, err := json.Marshal(spec)
-	if err != nil {
-		return nil, errors.Internal(
-			"failed marshaling spec",
-			errors.WithWrap(err),
-		)
-	}
-	specJSON := string(specBytes)
+	specJSON := obj.Spec()
 
 	fn := func(tx pgx.Tx) error {
 		var objRowID int64

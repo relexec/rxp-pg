@@ -542,7 +542,7 @@ func TestObjectQuery(t *testing.T) {
 		opts             []query.Option
 		expNumObjs       int
 		expOnlyKindNames []api.KindName
-		expOptionLimit   int
+		expOptionLimit   uint
 		expMarkerEmpty   bool
 		expErr           string
 	}{

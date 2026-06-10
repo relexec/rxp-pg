@@ -189,7 +189,7 @@ func (d *Driver) KindVersionQuery(
 	resOpts := query.NewOptions(
 		query.Limit(boundedOpts.Limit()),
 	)
-	if len(recs) == boundedOpts.Limit() {
+	if len(recs) == int(boundedOpts.Limit()) {
 		resOpts = query.NewOptions(
 			query.ContinueFrom(string(recs[len(recs)-1].KindVersion.Name())),
 			query.Limit(boundedOpts.Limit()),

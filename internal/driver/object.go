@@ -369,7 +369,7 @@ func (d *Driver) ObjectQuery(
 		query.ResultWithItems(objs),
 		query.ResultWithOptions[*object.Object](boundedOpts),
 	}
-	if len(recs) == boundedOpts.Limit() {
+	if len(recs) == int(boundedOpts.Limit()) {
 		resNewOpts = append(
 			resNewOpts,
 			query.ResultWithMarker[*object.Object](
