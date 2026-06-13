@@ -29,9 +29,17 @@ CREATE TABLE domains (
 , name TEXT NOT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
+, root INT NOT NULL
+, parent INT NULL
+, left_side INT NOT NULL
+, right_side INT NOT NULL
 , UNIQUE (uuid)
 , UNIQUE (system, name)
+, UNIQUE (root, left_side, right_side)
 );
+
+CREATE INDEX ix_domains_parent
+ON domains (parent);
 
 CREATE TABLE domains_archived (
   domain INT NOT NULL PRIMARY KEY
@@ -42,6 +50,9 @@ CREATE TABLE domains_archived (
 , last_modified_by TEXT NOT NULL
 , archived_on BIGINT NULL
 , archived_by TEXT NULL
+, parent INT NULL
+, left_side INT NOT NULL
+, right_side INT NOT NULL
 );
 
 CREATE TABLE namespaces (

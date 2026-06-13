@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -32,8 +33,31 @@ func (s *Store) dbReadByRowID(
 		var systemRowID int64
 		var name api.DomainName
 		var uuid string
-		qs := "SELECT system, uuid, name FROM domains WHERE id = $1"
-		err := tx.QueryRow(ctx, qs, rowID).Scan(&systemRowID, &uuid, &name)
+		var rootRowID int64
+		var parentRowID sql.NullInt64
+		var left int64
+		var right int64
+		qs := `
+SELECT
+  system
+, uuid
+, name
+, root
+, parent
+, left_side
+, right_side
+FROM domains
+WHERE id = $1
+`
+		err := tx.QueryRow(ctx, qs, rowID).Scan(
+			&systemRowID,
+			&uuid,
+			&name,
+			&rootRowID,
+			&parentRowID,
+			&left,
+			&right,
+		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -58,6 +82,16 @@ func (s *Store) dbReadByRowID(
 			domain.WithUUID(uuid),
 			domain.WithName(name),
 		)
+		if parentRowID.Valid {
+			parentRec, err := s.ReadByRowID(ctx, parentRowID.Int64)
+			if err != nil {
+				return err
+			}
+			out.Domain.SetParent(parentRec.Domain)
+		}
+		out.Root = rootRowID
+		out.Left = left
+		out.Right = right
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
@@ -78,9 +112,33 @@ func (s *Store) dbReadByUUID(
 		),
 	}
 	fn := func(tx pgx.Tx) error {
+		var systemRowID int64
 		var name api.DomainName
-		qs := "SELECT id, name FROM domains WHERE uuid = $1"
-		err := tx.QueryRow(ctx, qs, uuid).Scan(&out.RowID, &name)
+		var rootRowID int64
+		var parentRowID sql.NullInt64
+		var left int64
+		var right int64
+		qs := `
+SELECT
+  id
+, system
+, name
+, root
+, parent
+, left_side
+, right_side
+FROM domains
+WHERE uuid = $1
+`
+		err := tx.QueryRow(ctx, qs, uuid).Scan(
+			&out.RowID,
+			&systemRowID,
+			&name,
+			&rootRowID,
+			&parentRowID,
+			&left,
+			&right,
+		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -90,7 +148,28 @@ func (s *Store) dbReadByUUID(
 				errors.WithWrap(err),
 			)
 		}
+		systemRec, err := s.systemStore.ReadByRowID(ctx, systemRowID)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				return errors.ErrNotFound
+			}
+			return errors.Internal(
+				"failed reading system record for domain",
+				errors.WithWrap(err),
+			)
+		}
+		if parentRowID.Valid {
+			parentRec, err := s.ReadByRowID(ctx, parentRowID.Int64)
+			if err != nil {
+				return err
+			}
+			out.Domain.SetParent(parentRec.Domain)
+		}
 		out.Domain.SetName(name)
+		out.Domain.SetSystem(systemRec.System)
+		out.Root = rootRowID
+		out.Left = left
+		out.Right = right
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
@@ -114,8 +193,30 @@ func (s *Store) dbReadByName(
 	}
 	fn := func(tx pgx.Tx) error {
 		var uuid string
-		qs := "SELECT id, uuid FROM domains WHERE system = $1 AND name = $2"
-		err := tx.QueryRow(ctx, qs, systemRec.RowID, name).Scan(&out.RowID, &uuid)
+		var rootRowID int64
+		var parentRowID sql.NullInt64
+		var left int64
+		var right int64
+		qs := `
+SELECT
+  id
+, uuid
+, root
+, parent
+, left_side
+, right_side
+FROM domains
+WHERE system = $1
+AND name = $2
+`
+		err := tx.QueryRow(ctx, qs, systemRec.RowID, name).Scan(
+			&out.RowID,
+			&uuid,
+			&rootRowID,
+			&parentRowID,
+			&left,
+			&right,
+		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -125,7 +226,17 @@ func (s *Store) dbReadByName(
 				errors.WithWrap(err),
 			)
 		}
+		if parentRowID.Valid {
+			parentRec, err := s.ReadByRowID(ctx, parentRowID.Int64)
+			if err != nil {
+				return err
+			}
+			out.Domain.SetParent(parentRec.Domain)
+		}
 		out.Domain.SetUUID(uuid)
+		out.Root = rootRowID
+		out.Left = left
+		out.Right = right
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
@@ -140,6 +251,21 @@ func (s *Store) dbInsert(
 	systemRec *storesystem.Record,
 	dom *domain.Domain,
 ) error {
+	parent := dom.Parent()
+	if parent == nil {
+		return s.dbInsertRoot(ctx, systemRec, dom)
+	}
+	return s.dbInsertNonRoot(ctx, systemRec, parent, dom)
+}
+
+// dbInsertRoot creates a new domain record for a root node in a "domain tree".
+func (s *Store) dbInsertRoot(
+	ctx context.Context,
+	systemRec *storesystem.Record,
+	dom *domain.Domain,
+) error {
+	left := 1
+	right := 2
 	createdOn := time.Now().UnixNano()
 	createdBy := rxpcontext.Identity(ctx)
 	uuid := dom.UUID()
@@ -150,20 +276,28 @@ INSERT INTO domains (
   system
 , uuid
 , name
+, root
+, left_side
+, right_side
 , last_modified_on
 , last_modified_by
 ) VALUES (
   $1
 , $2
 , $3
+, lastval()
 , $4
 , $5
+, $6
+, $7
 )`
 		_, err := tx.Exec(
 			ctx, qs,
 			systemRec.RowID,
 			uuid,
 			name,
+			left,
+			right,
 			createdOn,
 			createdBy,
 		)
@@ -183,7 +317,114 @@ INSERT INTO domains (
 	}
 	if err := s.Exec(ctx, fn); err != nil {
 		return errors.Internal(
-			"failed inserting domains record",
+			"failed inserting root domains record",
+			errors.WithWrap(err),
+		)
+	}
+	return nil
+}
+
+// dbInsertNonRoot inserts a non-root domain and atomically adjusts the nested
+// set model values for the domain tree.
+func (s *Store) dbInsertNonRoot(
+	ctx context.Context,
+	systemRec *storesystem.Record,
+	parent *domain.Domain,
+	dom *domain.Domain,
+) error {
+	parentRec, err := s.ReadByUUID(ctx, parent.UUID())
+	if err != nil {
+		if err == errors.ErrNotFound {
+			return errors.ErrDomainParentNotFound
+		}
+	}
+
+	rootRowID := parentRec.Root
+	parentRowID := parentRec.RowID
+	parentRight := parentRec.Right
+	thisLeft := parentRight
+	thisRight := thisLeft + 1
+
+	createdOn := time.Now().UnixNano()
+	createdBy := rxpcontext.Identity(ctx)
+	uuid := dom.UUID()
+	name := dom.Name()
+	fn := func(tx pgx.Tx) error {
+		// Before inserting the new node in the domain tree, we need to make
+		// spec in the nested sets for our new node.
+		qs := `
+UPDATE domains SET right_side = right_side + 2
+WHERE root = $1 AND right_side >= $2
+`
+		_, err := tx.Exec(ctx, qs, rootRowID, parentRight)
+		if err != nil {
+			return fmt.Errorf(
+				"failed shifting nested set rights for root domain %d: %w",
+				rootRowID, err,
+			)
+		}
+		qs = `
+UPDATE domains SET left_side = left_side + 2
+WHERE root = $1 AND left_side >= $2
+`
+		_, err = tx.Exec(ctx, qs, rootRowID, parentRight)
+		if err != nil {
+			return fmt.Errorf(
+				"failed shifting nested set lefts for root domain %d: %w",
+				rootRowID, err,
+			)
+		}
+		qs = `
+INSERT INTO domains (
+  system
+, uuid
+, name
+, root
+, parent
+, left_side
+, right_side
+, last_modified_on
+, last_modified_by
+) VALUES (
+  $1
+, $2
+, $3
+, $4
+, $5
+, $6
+, $7
+, $8
+, $9
+)`
+		_, err = tx.Exec(
+			ctx, qs,
+			systemRec.RowID,
+			uuid,
+			name,
+			rootRowID,
+			parentRowID,
+			thisLeft,
+			thisRight,
+			createdOn,
+			createdBy,
+		)
+		if err != nil {
+			if pgErr, ok := err.(*pgconn.PgError); ok {
+				if pgErr.Code == pgerrcode.UniqueViolation {
+					conName := pgErr.ConstraintName
+					if strings.Contains(conName, "uuid") {
+						return errors.DuplicateKey("domain", "uuid", uuid)
+					} else {
+						return errors.DuplicateName("domain", name)
+					}
+				}
+			}
+		}
+		return err
+	}
+	if err := s.Exec(ctx, fn); err != nil {
+		return errors.Internal(
+			"failed inserting non-root domains record",
 			errors.WithWrap(err),
 		)
 	}

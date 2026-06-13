@@ -13,6 +13,13 @@ import (
 type Record struct {
 	// RowID is the internal database SERIAL for the domains record.
 	RowID int64
+	// Root is the internal database SERIAL for the domains record that is the
+	// root of this "domain tree".
+	Root int64
+	// Left is the nested set model's left side value for this node.
+	Left int64
+	// Right is the nested set model's right side value for this node.
+	Right int64
 	// Domain is the publicly-exposed Domain object.
 	Domain *domain.Domain
 }

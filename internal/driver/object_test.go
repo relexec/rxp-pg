@@ -2,6 +2,7 @@ package driver_test
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -538,6 +539,7 @@ func TestObjectQuery(t *testing.T) {
 	cases := []struct {
 		name             string
 		ctx              context.Context
+		kv               api.KindVersionName
 		expr             expression.Expression
 		opts             []query.Option
 		expNumObjs       int
@@ -549,7 +551,8 @@ func TestObjectQuery(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			expression.KindNameEqual(platform.KindName),
+			api.KindVersionName(platform.KindName),
+			nil,
 			nil,
 			0,
 			nil,
@@ -558,31 +561,34 @@ func TestObjectQuery(t *testing.T) {
 			"missing identity",
 		},
 		{
-			"expression required",
+			"invalid kindversion",
 			ctx,
-			nil,
-			nil,
-			0,
-			nil,
-			0,
-			true,
-			"expression required",
-		},
-		{
-			"at least one kind is required",
-			ctx,
+			api.KindVersionName(fixtures.InvalidKindName),
 			expression.DomainNameEqual(domain.Name()),
 			nil,
 			0,
 			nil,
 			0,
 			true,
-			"invalid query expression: at least one kind required",
+			"invalid kind name",
+		},
+		{
+			"invalid query expression kind predicate",
+			ctx,
+			api.KindVersionName(platform.KindName),
+			expression.KindNameEqual(application.KindName),
+			nil,
+			0,
+			nil,
+			0,
+			true,
+			"invalid query expression: kind predicate not allowed",
 		},
 		{
 			"query system-qualified objects limit of 1",
 			ctx,
-			expression.KindNameEqual(platform.KindName),
+			api.KindVersionName(platform.KindName),
+			nil,
 			[]query.Option{
 				query.Limit(1),
 			},
@@ -597,7 +603,8 @@ func TestObjectQuery(t *testing.T) {
 		{
 			"query domain-qualified objects limit of 1",
 			ctx,
-			expression.KindNameEqual(application.KindName),
+			api.KindVersionName(application.KindName),
+			nil,
 			[]query.Option{
 				query.Limit(1),
 			},
@@ -612,7 +619,8 @@ func TestObjectQuery(t *testing.T) {
 		{
 			"query namespace-qualified objects limit of 1",
 			ctx,
-			expression.KindNameEqual(service.KindName),
+			api.KindVersionName(service.KindName),
+			nil,
 			[]query.Option{
 				query.Limit(1),
 			},
@@ -629,7 +637,7 @@ func TestObjectQuery(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
 
-			got, err := rxp.ObjectQuery(c.ctx, c.expr, c.opts...)
+			got, err := rxp.ObjectQuery(c.ctx, c.kv, c.expr, c.opts...)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {
@@ -646,6 +654,199 @@ func TestObjectQuery(t *testing.T) {
 				})
 				gotKindNames = lo.Uniq(gotKindNames)
 				require.Equal(c.expOnlyKindNames, gotKindNames)
+			}
+		})
+	}
+}
+
+func TestObjectQuery_SystemQualified(t *testing.T) {
+	ctx := testutil.Context(testutil.UserIdentity)
+	rxp, err := testutil.Driver(ctx)
+	require.Nil(t, err)
+
+	err = testutil.KindCreateIfNotExists(ctx, rxp, platform.Kind)
+	require.Nil(t, err, err)
+
+	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, platform.FirstKindVersion())
+	require.Nil(t, err)
+
+	// NOTE: Platform is NamescopeSystem which allows us to test the
+	// system-qualified name constraints.
+	plat1 := object.New(
+		object.WithKindVersionName(platform.FirstKindVersionName()),
+		object.WithUUID(uuid.NewString()),
+		object.WithName(testutil.RandomName()),
+	)
+	err = testutil.ObjectCreateIfNotExists(ctx, rxp, plat1)
+	require.Nil(t, err)
+
+	plat2 := object.New(
+		object.WithKindVersionName(platform.FirstKindVersionName()),
+		object.WithUUID(uuid.NewString()),
+		object.WithName(testutil.RandomName()),
+	)
+	err = testutil.ObjectCreateIfNotExists(ctx, rxp, plat2)
+	require.Nil(t, err)
+
+	cases := []struct {
+		name     string
+		ctx      context.Context
+		kv       api.KindVersionName
+		expr     expression.Expression
+		opts     []query.Option
+		expUUIDs []string
+		expErr   string
+	}{
+		{
+			"by UUID",
+			ctx,
+			api.KindVersionName(platform.KindName),
+			expression.UUIDEqual(plat1.UUID()),
+			[]query.Option{
+				query.Limit(1),
+			},
+			[]string{plat1.UUID()},
+			"",
+		},
+		{
+			"in set of UUIDs",
+			ctx,
+			api.KindVersionName(platform.KindName),
+			expression.UUIDIn(plat1.UUID(), plat2.UUID()),
+			[]query.Option{
+				query.Limit(2),
+			},
+			[]string{plat1.UUID(), plat2.UUID()},
+			"",
+		},
+		{
+			"by name",
+			ctx,
+			api.KindVersionName(platform.KindName),
+			expression.NameEqual(plat1.Name()),
+			[]query.Option{
+				query.Limit(1),
+			},
+			[]string{plat1.UUID()},
+			"",
+		},
+		{
+			"in set of names",
+			ctx,
+			api.KindVersionName(platform.KindName),
+			expression.NameIn(plat1.Name(), plat2.Name()),
+			[]query.Option{
+				query.Limit(2),
+			},
+			[]string{plat1.UUID(), plat2.UUID()},
+			"",
+		},
+		{
+			"OR expression UUIDs",
+			ctx,
+			api.KindVersionName(platform.KindName),
+			expression.Or(
+				expression.UUIDEqual(plat1.UUID()),
+				expression.UUIDEqual(plat2.UUID()),
+			),
+			[]query.Option{
+				query.Limit(2),
+			},
+			[]string{plat1.UUID(), plat2.UUID()},
+			"",
+		},
+		{
+			"OR expression names",
+			ctx,
+			api.KindVersionName(platform.KindName),
+			expression.Or(
+				expression.NameEqual(plat1.Name()),
+				expression.NameEqual(plat2.Name()),
+			),
+			[]query.Option{
+				query.Limit(2),
+			},
+			[]string{plat1.UUID(), plat2.UUID()},
+			"",
+		},
+		{
+			"OR expression uuid and name",
+			ctx,
+			api.KindVersionName(platform.KindName),
+			expression.Or(
+				expression.UUIDEqual(plat1.UUID()),
+				expression.NameEqual(plat2.Name()),
+			),
+			[]query.Option{
+				query.Limit(2),
+			},
+			[]string{plat1.UUID(), plat2.UUID()},
+			"",
+		},
+		{
+			"OR expression uuid and name and unknown",
+			ctx,
+			api.KindVersionName(platform.KindName),
+			expression.Or(
+				expression.UUIDEqual(plat1.UUID()),
+				expression.NameEqual(plat2.Name()),
+				expression.UUIDEqual(uuid.NewString()),
+			),
+			[]query.Option{
+				query.Limit(2),
+			},
+			[]string{plat1.UUID(), plat2.UUID()},
+			"",
+		},
+		{
+			"AND expression UUIDs",
+			ctx,
+			api.KindVersionName(platform.KindName),
+			expression.And(
+				expression.UUIDEqual(plat1.UUID()),
+				expression.UUIDEqual(plat2.UUID()),
+			),
+			[]query.Option{
+				query.Limit(2),
+			},
+			[]string{},
+			"",
+		},
+		{
+			"AND expression uuid and name",
+			ctx,
+			api.KindVersionName(platform.KindName),
+			expression.And(
+				expression.UUIDEqual(plat1.UUID()),
+				expression.NameEqual(plat1.Name()),
+			),
+			[]query.Option{
+				query.Limit(2),
+			},
+			[]string{plat1.UUID()},
+			"",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			require := require.New(t)
+
+			got, err := rxp.ObjectQuery(c.ctx, c.kv, c.expr, c.opts...)
+			if c.expErr != "" {
+				require.ErrorContains(err, c.expErr)
+			} else {
+				require.Nil(err, err)
+				require.NotNil(got)
+				gotObjs := got.Items()
+				expUUIDs := c.expUUIDs
+				expNumObjs := len(c.expUUIDs)
+				require.Len(gotObjs, expNumObjs)
+				gotUUIDs := lo.Map(gotObjs, func(o *object.Object, _ int) string {
+					return o.UUID()
+				})
+				sort.Strings(expUUIDs)
+				sort.Strings(gotUUIDs)
+				require.Equal(expUUIDs, gotUUIDs)
 			}
 		})
 	}

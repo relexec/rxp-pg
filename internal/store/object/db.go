@@ -1030,6 +1030,8 @@ type nsqObjectRecord struct {
 // expression and options.
 func (s *Store) dbReadNamespaceQualifiedByExpression(
 	ctx context.Context,
+	kv api.KindVersionName,
+	kindRec *storekind.Record,
 	expr expression.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
@@ -1038,9 +1040,17 @@ func (s *Store) dbReadNamespaceQualifiedByExpression(
 
 	qargs := []any{
 		sysRec.RowID,
+		kindRec.RowID,
 	}
 	wheres := []string{
 		"o.system = $1",
+		"kv.kind = $2",
+	}
+
+	kvVerStr := kv.VersionString()
+	if kvVerStr != "" {
+		wheres = append(wheres, "kv.version = $3")
+		qargs = append(qargs, kvVerStr)
 	}
 
 	switch expr := expr.(type) {
@@ -1153,6 +1163,8 @@ type dqObjectRecord struct {
 // expression and options.
 func (s *Store) dbReadDomainQualifiedByExpression(
 	ctx context.Context,
+	kv api.KindVersionName,
+	kindRec *storekind.Record,
 	expr expression.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
@@ -1161,9 +1173,17 @@ func (s *Store) dbReadDomainQualifiedByExpression(
 
 	qargs := []any{
 		sysRec.RowID,
+		kindRec.RowID,
 	}
 	wheres := []string{
 		"o.system = $1",
+		"kv.kind = $2",
+	}
+
+	kvVerStr := kv.VersionString()
+	if kvVerStr != "" {
+		wheres = append(wheres, "kv.version = $3")
+		qargs = append(qargs, kvVerStr)
 	}
 
 	switch expr := expr.(type) {
@@ -1275,6 +1295,8 @@ type sqObjectRecord struct {
 // expression and options.
 func (s *Store) dbReadSystemQualifiedByExpression(
 	ctx context.Context,
+	kv api.KindVersionName,
+	kindRec *storekind.Record,
 	expr expression.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
@@ -1283,30 +1305,124 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 
 	qargs := []any{
 		sysRec.RowID,
+		kindRec.RowID,
 	}
 	wheres := []string{
 		"o.system = $1",
+		"kv.kind = $2",
+	}
+
+	kvVerStr := kv.VersionString()
+	if kvVerStr != "" {
+		wheres = append(wheres, "kv.version = $3")
+		qargs = append(qargs, kvVerStr)
 	}
 
 	switch expr := expr.(type) {
 	case expression.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case expression.KindNamePredicate:
+		case expression.KindNamePredicate,
+			expression.KindUUIDPredicate,
+			expression.KindPredicate:
+			return nil, errors.ErrInvalidQueryKindPredicate
+		case expression.UUIDPredicate:
 			op := pred.Operator()
 			switch op {
 			case expression.PredicateOperatorEqual:
-				kn := pred.Value().(api.KindName)
-				kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
-				if err != nil {
-					return nil, err
-				}
-				wheres = append(wheres, fmt.Sprintf("kv.kind = $%d", len(qargs)+1))
-				qargs = append(qargs, kindRec.RowID)
+				u := pred.Value().(string)
+				wheres = append(wheres, fmt.Sprintf("o.uuid = $%d", len(qargs)+1))
+				qargs = append(qargs, u)
+			case expression.PredicateOperatorIn:
+				us := pred.Value().([]string)
+				wheres = append(wheres, fmt.Sprintf("o.uuid = ANY($%d)", len(qargs)+1))
+				qargs = append(qargs, us)
+			}
+		case expression.NamePredicate:
+			op := pred.Operator()
+			switch op {
+			case expression.PredicateOperatorEqual:
+				name := pred.Value().(string)
+				wheres = append(wheres, fmt.Sprintf("n.name = $%d", len(qargs)+1))
+				qargs = append(qargs, name)
+			case expression.PredicateOperatorIn:
+				names := pred.Value().([]string)
+				wheres = append(wheres, fmt.Sprintf("n.name = ANY($%d)", len(qargs)+1))
+				qargs = append(qargs, names)
 			}
 		}
 	case expression.OrExpression:
+		subexprs := expr.Expressions()
+		ors := make([]string, 0, len(subexprs))
+		for _, subexpr := range subexprs {
+			switch subexpr := subexpr.(type) {
+			case expression.UnaryExpression:
+				pred := subexpr.Predicate
+				switch pred := pred.(type) {
+				case expression.KindNamePredicate,
+					expression.KindUUIDPredicate,
+					expression.KindPredicate:
+					return nil, errors.ErrInvalidQueryKindPredicate
+				case expression.UUIDPredicate:
+					op := pred.Operator()
+					switch op {
+					case expression.PredicateOperatorEqual:
+						u := pred.Value().(string)
+						ors = append(ors, fmt.Sprintf("o.uuid = $%d", len(qargs)+1))
+						qargs = append(qargs, u)
+					case expression.PredicateOperatorIn:
+						us := pred.Value().([]string)
+						ors = append(ors, fmt.Sprintf("o.uuid = ANY($%d)", len(qargs)+1))
+						qargs = append(qargs, us)
+					}
+				case expression.NamePredicate:
+					op := pred.Operator()
+					switch op {
+					case expression.PredicateOperatorEqual:
+						name := pred.Value().(string)
+						ors = append(ors, fmt.Sprintf("n.name = $%d", len(qargs)+1))
+						qargs = append(qargs, name)
+					case expression.PredicateOperatorIn:
+						names := pred.Value().([]string)
+						ors = append(ors, fmt.Sprintf("n.name = ANY($%d)", len(qargs)+1))
+						qargs = append(qargs, names)
+					}
+				}
+			}
+		}
+		wheres = append(wheres, "("+strings.Join(ors, ") OR (")+")")
 	case expression.AndExpression:
+		subexprs := expr.Expressions()
+		ands := make([]string, 0, len(subexprs))
+		for _, subexpr := range subexprs {
+			switch subexpr := subexpr.(type) {
+			case expression.UnaryExpression:
+				pred := subexpr.Predicate
+				switch pred := pred.(type) {
+				case expression.KindNamePredicate,
+					expression.KindUUIDPredicate,
+					expression.KindPredicate:
+					return nil, errors.ErrInvalidQueryKindPredicate
+				case expression.UUIDPredicate:
+					op := pred.Operator()
+					switch op {
+					case expression.PredicateOperatorEqual:
+						u := pred.Value().(string)
+						ands = append(ands, fmt.Sprintf("o.uuid = $%d", len(qargs)+1))
+						qargs = append(qargs, u)
+					}
+				case expression.NamePredicate:
+					op := pred.Operator()
+					switch op {
+					case expression.PredicateOperatorEqual:
+						name := pred.Value().(string)
+						ands = append(ands, fmt.Sprintf("n.name = $%d", len(qargs)+1))
+						qargs = append(qargs, name)
+					}
+				}
+			}
+		}
+		wheres = append(wheres, "("+strings.Join(ands, ") AND (")+")")
 	}
 
 	var recs []sqObjectRecord
@@ -1316,18 +1432,18 @@ SELECT
   o.id AS object_id
 , o.uuid AS object_uuid
 , o.generation AS object_generation
-, s.name AS object_name
+, n.name AS object_name
 , o.spec AS object_spec
 , o.system AS system_id
 , o.kindversion AS kindversion_id
 FROM objects AS o
  INNER JOIN kindversions AS kv
   ON o.kindversion = kv.id
- INNER JOIN system_qualified_object_names AS s
-  ON o.id = s.object
+ INNER JOIN system_qualified_object_names AS n
+  ON o.id = n.object
 `
 		if len(wheres) > 0 {
-			qs += "\nWHERE " + strings.Join(wheres, " AND ")
+			qs += "WHERE " + strings.Join(wheres, " AND ")
 		}
 		qs += fmt.Sprintf("\nORDER BY o.uuid ASC LIMIT %d", opts.Limit())
 		rows, err := tx.Query(ctx, qs, qargs...)

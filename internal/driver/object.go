@@ -320,9 +320,11 @@ const (
 	MaxObjectQueryLimit     = 100
 )
 
-// ObjectQuery queries zero or more Objects from persistent storage.
+// ObjectQuery queries zero or more Objects of a specified kind or kindversion
+// from persistent storage.
 func (d *Driver) ObjectQuery(
 	ctx context.Context,
+	kv api.KindVersionName,
 	expr expression.Expression,
 	opts ...query.Option,
 ) (*query.Result[*object.Object], error) {
@@ -336,6 +338,7 @@ func (d *Driver) ObjectQuery(
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
 			metrics.AttributeType(api.TypeObject),
+			metrics.AttributeKindVersion(kv),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -348,7 +351,7 @@ func (d *Driver) ObjectQuery(
 	}()
 
 	qopts := query.NewOptions(opts...)
-	err = d.objectQueryValidate(ctx, expr, qopts)
+	err = d.objectQueryValidate(ctx, kv, expr, qopts)
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +359,7 @@ func (d *Driver) ObjectQuery(
 	boundedOpts := d.objectQueryBoundedOptions(ctx, qopts)
 
 	recs, err := d.objectStore.Query(
-		ctx, expr, boundedOpts,
+		ctx, kv, expr, boundedOpts,
 	)
 	if err != nil {
 		return nil, err
@@ -384,14 +387,12 @@ func (d *Driver) ObjectQuery(
 // options are not valid.
 func (d *Driver) objectQueryValidate(
 	ctx context.Context,
+	kv api.KindVersionName,
 	expr expression.Expression,
 	opts query.Options,
 ) error {
-	if expr == nil {
-		return errors.ErrQueryExpressionRequired
-	}
-	if !expression.ContainsKindPredicate(expr) {
-		return errors.ErrInvalidQueryExpressionKindRequired
+	if err := kv.Validate(); err != nil {
+		return err
 	}
 	return nil
 }
