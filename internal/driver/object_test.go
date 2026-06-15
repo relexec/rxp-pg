@@ -12,7 +12,6 @@ import (
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/query/expression"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/testing/fixtures/application"
 	"github.com/relexec/rxp/testing/fixtures/platform"
@@ -542,7 +541,7 @@ func TestObjectQuery(t *testing.T) {
 		name             string
 		ctx              context.Context
 		kv               api.KindVersionName
-		expr             expression.Expression
+		expr             query.Expression
 		opts             []query.Option
 		expNumObjs       int
 		expOnlyKindNames []api.KindName
@@ -694,7 +693,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 		name     string
 		ctx      context.Context
 		kv       api.KindVersionName
-		expr     expression.Expression
+		expr     query.Expression
 		opts     []query.Option
 		expUUIDs []string
 		expErr   string
@@ -747,7 +746,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"OR expression UUIDs",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			expression.Or(
+			query.Or(
 				object.UUIDEqual(plat1.UUID()),
 				object.UUIDEqual(plat2.UUID()),
 			),
@@ -761,7 +760,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"OR expression names",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			expression.Or(
+			query.Or(
 				object.NameEqual(plat1.Name()),
 				object.NameEqual(plat2.Name()),
 			),
@@ -775,7 +774,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"OR expression uuid and name",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			expression.Or(
+			query.Or(
 				object.UUIDEqual(plat1.UUID()),
 				object.NameEqual(plat2.Name()),
 			),
@@ -789,7 +788,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"OR expression uuid and name and unknown",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			expression.Or(
+			query.Or(
 				object.UUIDEqual(plat1.UUID()),
 				object.NameEqual(plat2.Name()),
 				object.UUIDEqual(uuid.NewString()),
@@ -804,7 +803,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"AND expression UUIDs",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			expression.And(
+			query.And(
 				object.UUIDEqual(plat1.UUID()),
 				object.UUIDEqual(plat2.UUID()),
 			),
@@ -818,7 +817,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"AND expression uuid and name",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			expression.And(
+			query.And(
 				object.UUIDEqual(plat1.UUID()),
 				object.NameEqual(plat1.Name()),
 			),

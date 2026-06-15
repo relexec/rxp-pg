@@ -9,7 +9,6 @@ import (
 	"github.com/relexec/rxp/metrics"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/query/expression"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
@@ -325,7 +324,7 @@ const (
 func (d *Driver) ObjectQuery(
 	ctx context.Context,
 	kv api.KindVersionName,
-	expr expression.Expression,
+	expr query.Expression,
 	opts ...query.Option,
 ) (*query.Result[*object.Object], error) {
 	err := d.requestValidate(ctx)
@@ -388,7 +387,7 @@ func (d *Driver) ObjectQuery(
 func (d *Driver) objectQueryValidate(
 	ctx context.Context,
 	kv api.KindVersionName,
-	expr expression.Expression,
+	expr query.Expression,
 	opts query.Options,
 ) error {
 	if err := kv.Validate(); err != nil {

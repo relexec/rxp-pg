@@ -15,7 +15,6 @@ import (
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/namespace"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/query/expression"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 )
@@ -211,23 +210,23 @@ type namespaceRecord struct {
 // pre-validated expression and options.
 func (s *Store) dbReadByExpression(
 	ctx context.Context,
-	expr expression.Expression,
+	expr query.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
 	qargs := []any{}
 	wheres := []string{}
 
 	switch expr := expr.(type) {
-	case expression.UnaryExpression:
+	case query.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
 		case namespace.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case expression.PredicateOperatorEqual:
+			case query.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("n.uuid = $%d", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
-			case expression.PredicateOperatorIn:
+			case query.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("n.uuid = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
@@ -236,10 +235,10 @@ func (s *Store) dbReadByExpression(
 		case namespace.NamePredicate:
 			op := pred.Op
 			switch op {
-			case expression.PredicateOperatorEqual:
+			case query.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("n.name = $%d", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
-			case expression.PredicateOperatorIn:
+			case query.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("n.name = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
@@ -248,7 +247,7 @@ func (s *Store) dbReadByExpression(
 		case domain.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case expression.PredicateOperatorEqual:
+			case query.PredicateOperatorEqual:
 				domUUID := pred.Value.(string)
 				domRec, err := s.domainStore.ReadByUUID(ctx, domUUID)
 				if err != nil {
@@ -262,7 +261,7 @@ func (s *Store) dbReadByExpression(
 				}
 				wheres = append(wheres, fmt.Sprintf("n.domain = $%d", len(qargs)+1))
 				qargs = append(qargs, domRec.RowID)
-			case expression.PredicateOperatorIn:
+			case query.PredicateOperatorIn:
 				domRowIDs := []int64{}
 				domUUIDs := pred.Value.([]string)
 				for _, domUUID := range domUUIDs {
@@ -296,7 +295,7 @@ func (s *Store) dbReadByExpression(
 			sys := s.hostSystemRecord.System
 			op := pred.Op
 			switch op {
-			case expression.PredicateOperatorEqual:
+			case query.PredicateOperatorEqual:
 				domName := pred.Value.(api.DomainName)
 				domRec, err := s.domainStore.ReadByName(ctx, sys, domName)
 				if err != nil {
@@ -310,7 +309,7 @@ func (s *Store) dbReadByExpression(
 				}
 				wheres = append(wheres, fmt.Sprintf("n.domain = $%d", len(qargs)+1))
 				qargs = append(qargs, domRec.RowID)
-			case expression.PredicateOperatorIn:
+			case query.PredicateOperatorIn:
 				domRowIDs := []int64{}
 				domNames := pred.Value.([]api.DomainName)
 				for _, domName := range domNames {
@@ -340,7 +339,7 @@ func (s *Store) dbReadByExpression(
 			// UUID.
 			op := pred.Op
 			switch op {
-			case expression.PredicateOperatorEqual:
+			case query.PredicateOperatorEqual:
 				dom := pred.Value.(*domain.Domain)
 				sys := dom.System()
 				if sys == nil {
@@ -358,7 +357,7 @@ func (s *Store) dbReadByExpression(
 				}
 				wheres = append(wheres, fmt.Sprintf("n.domain = $%d", len(qargs)+1))
 				qargs = append(qargs, domRec.RowID)
-			case expression.PredicateOperatorIn:
+			case query.PredicateOperatorIn:
 				domRowIDs := []int64{}
 				doms := pred.Value.([]*domain.Domain)
 				for _, dom := range doms {

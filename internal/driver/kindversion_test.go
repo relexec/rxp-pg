@@ -10,7 +10,6 @@ import (
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/query/expression"
 	"github.com/relexec/rxp/system"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/testing/fixtures/service"
@@ -179,7 +178,7 @@ func TestKindVersionQuery(t *testing.T) {
 	cases := []struct {
 		name         string
 		ctx          context.Context
-		expr         expression.Expression
+		expr         query.Expression
 		opts         []query.Option
 		expNumItems  int
 		expOnlyNames []api.KindVersionName
@@ -223,7 +222,7 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"unsupported expression",
 			ctx,
-			expression.Or(
+			query.Or(
 				kind.NameEqual(service.KindName),
 				kind.NameEqual(fixtures.UnknownKindName),
 			),
@@ -232,7 +231,7 @@ func TestKindVersionQuery(t *testing.T) {
 			nil,
 			query.Options{},
 			"",
-			"unsupported expression expression.OrExpression",
+			"unsupported expression query.OrExpression",
 		},
 		{
 			"no results when looking up non-existing kind version name",

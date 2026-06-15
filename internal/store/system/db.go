@@ -13,7 +13,6 @@ import (
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/query/expression"
 	"github.com/relexec/rxp/system"
 )
 
@@ -142,23 +141,23 @@ type systemRecord struct {
 // pre-validated expression and options.
 func (s *Store) dbReadByExpression(
 	ctx context.Context,
-	expr expression.Expression,
+	expr query.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
 	qargs := []any{}
 	wheres := []string{}
 
 	switch expr := expr.(type) {
-	case expression.UnaryExpression:
+	case query.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
 		case system.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case expression.PredicateOperatorEqual:
+			case query.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("s.uuid = $%d", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
-			case expression.PredicateOperatorIn:
+			case query.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("s.uuid = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:

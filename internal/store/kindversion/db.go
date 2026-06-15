@@ -18,7 +18,6 @@ import (
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/kind/kindversion/schema"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/query/expression"
 	"github.com/relexec/rxp/system"
 	"github.com/relexec/rxp/version"
 
@@ -298,20 +297,20 @@ type kindversionRecord struct {
 // pre-validated expression and options.
 func (s *Store) dbReadByExpression(
 	ctx context.Context,
-	expr expression.Expression,
+	expr query.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
 	qargs := []any{}
 	wheres := []string{}
 
 	switch expr := expr.(type) {
-	case expression.UnaryExpression:
+	case query.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
 		case kindversion.NamePredicate:
 			op := pred.Op
 			switch op {
-			case expression.PredicateOperatorEqual:
+			case query.PredicateOperatorEqual:
 				kvName := pred.Value.(api.KindVersionName)
 				kindName := kvName.Kind()
 				kindRec, err := s.kindStore.ReadByName(
@@ -330,7 +329,7 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("(kv.kind = $%d AND kv.version = $%d)", len(qargs)+1, len(qargs)+2))
 				qargs = append(qargs, kindRec.RowID)
 				qargs = append(qargs, verStr)
-			case expression.PredicateOperatorIn:
+			case query.PredicateOperatorIn:
 				ors := []string{}
 				kvNames := pred.Value.([]api.KindVersionName)
 				for _, kvName := range kvNames {
@@ -356,7 +355,7 @@ func (s *Store) dbReadByExpression(
 		case system.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case expression.PredicateOperatorEqual:
+			case query.PredicateOperatorEqual:
 				sysUUID := pred.Value.(string)
 				sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 				if err != nil {
@@ -370,7 +369,7 @@ func (s *Store) dbReadByExpression(
 				}
 				wheres = append(wheres, fmt.Sprintf("kv.system = $%d", len(qargs)+1))
 				qargs = append(qargs, sysRec.RowID)
-			case expression.PredicateOperatorIn:
+			case query.PredicateOperatorIn:
 				sysRowIDs := []int64{}
 				sysUUIDs := pred.Value.([]string)
 				for _, sysUUID := range sysUUIDs {

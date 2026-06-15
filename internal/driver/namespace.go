@@ -9,7 +9,6 @@ import (
 	"github.com/relexec/rxp/metrics"
 	"github.com/relexec/rxp/namespace"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/query/expression"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -141,7 +140,7 @@ const (
 // NamespaceQuery queries zero or more Namespaces from persistent storage.
 func (d *Driver) NamespaceQuery(
 	ctx context.Context,
-	expr expression.Expression,
+	expr query.Expression,
 	opts ...query.Option,
 ) (*query.Result[*namespace.Namespace], error) {
 	err := d.requestValidate(ctx)
@@ -203,7 +202,7 @@ func (d *Driver) NamespaceQuery(
 // options are not valid.
 func (d *Driver) namespaceQueryValidate(
 	ctx context.Context,
-	expr expression.Expression,
+	expr query.Expression,
 	opts query.Options,
 ) error {
 	if expr == nil {

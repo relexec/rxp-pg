@@ -7,7 +7,6 @@ import (
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/query/expression"
 	"github.com/relexec/rxp/system"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/samber/lo"
@@ -122,7 +121,7 @@ func TestSystemQuery(t *testing.T) {
 	cases := []struct {
 		name         string
 		ctx          context.Context
-		expr         expression.Expression
+		expr         query.Expression
 		opts         []query.Option
 		expNumItems  int
 		expOnlyUUIDs []string
@@ -166,7 +165,7 @@ func TestSystemQuery(t *testing.T) {
 		{
 			"unsupported expression",
 			ctx,
-			expression.Or(
+			query.Or(
 				domain.NameEqual(fixtures.DomainName),
 				domain.NameEqual(fixtures.UnknownDomainName),
 			),
@@ -175,7 +174,7 @@ func TestSystemQuery(t *testing.T) {
 			nil,
 			query.Options{},
 			"",
-			"unsupported expression expression.OrExpression",
+			"unsupported expression query.OrExpression",
 		},
 		{
 			"no results when looking up non-existing system UUID",

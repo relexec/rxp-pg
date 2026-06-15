@@ -8,7 +8,6 @@ import (
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/metrics"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/query/expression"
 	"github.com/relexec/rxp/system"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -119,7 +118,7 @@ const (
 // SystemQuery queries zero or more Systems from persistent storage.
 func (d *Driver) SystemQuery(
 	ctx context.Context,
-	expr expression.Expression,
+	expr query.Expression,
 	opts ...query.Option,
 ) (*query.Result[*system.System], error) {
 	err := d.requestValidate(ctx)
@@ -181,7 +180,7 @@ func (d *Driver) SystemQuery(
 // options are not valid.
 func (d *Driver) systemQueryValidate(
 	ctx context.Context,
-	expr expression.Expression,
+	expr query.Expression,
 	opts query.Options,
 ) error {
 	if expr == nil {

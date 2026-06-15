@@ -9,7 +9,6 @@ import (
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/metrics"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/query/expression"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -144,7 +143,7 @@ const (
 // KindVersionQuery queries zero or more KindVersions from persistent storage.
 func (d *Driver) KindVersionQuery(
 	ctx context.Context,
-	expr expression.Expression,
+	expr query.Expression,
 	opts ...query.Option,
 ) (*query.Result[*kindversion.KindVersion], error) {
 	err := d.requestValidate(ctx)
@@ -206,7 +205,7 @@ func (d *Driver) KindVersionQuery(
 // options are not valid.
 func (d *Driver) kindversionQueryValidate(
 	ctx context.Context,
-	expr expression.Expression,
+	expr query.Expression,
 	opts query.Options,
 ) error {
 	if expr == nil {

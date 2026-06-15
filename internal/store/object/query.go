@@ -5,14 +5,13 @@ import (
 
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/query/expression"
 )
 
 // Query queries zero or more Objects from persistent storage.
 func (s *Store) Query(
 	ctx context.Context,
 	kv api.KindVersionName,
-	expr expression.Expression,
+	expr query.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
 
