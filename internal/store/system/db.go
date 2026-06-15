@@ -152,15 +152,15 @@ func (s *Store) dbReadByExpression(
 	case expression.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case expression.UUIDPredicate:
-			op := pred.Operator()
+		case system.UUIDPredicate:
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("s.uuid = $%d", len(qargs)+1))
-				qargs = append(qargs, pred.Value())
+				qargs = append(qargs, pred.Value)
 			case expression.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("s.uuid = ANY ($%d)", len(qargs)+1))
-				qargs = append(qargs, pred.Value())
+				qargs = append(qargs, pred.Value)
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}

@@ -8,8 +8,10 @@ import (
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp/cmp/fieldpath"
 	"github.com/relexec/rxp/domain"
+	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/query/expression"
+	"github.com/relexec/rxp/system"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -154,6 +156,16 @@ func TestDomainWrite(t *testing.T) {
 			),
 			"conflict: \"domain\" already exists",
 		},
+		{
+			"parent domain does not exist",
+			ctx,
+			domain.New(
+				domain.WithUUID(uuid.NewString()),
+				domain.WithName("parent.not.exist"),
+				domain.WithParent(fixtures.UnknownDomain),
+			),
+			"invalid domain: parent not found",
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -166,6 +178,35 @@ func TestDomainWrite(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDomainTree(t *testing.T) {
+	ctx := testutil.Context(testutil.UserIdentity)
+	rxp, err := testutil.Driver(ctx)
+	require.Nil(t, err)
+
+	for _, dom := range []*domain.Domain{
+		fixtures.DomainTree_Root,
+		fixtures.DomainTree_Group1,
+		fixtures.DomainTree_Group2,
+		fixtures.DomainTree_Group1Leaf1,
+		fixtures.DomainTree_Group1Leaf2,
+		fixtures.DomainTree_Group2Leaf1,
+		fixtures.DomainTree_Group2Leaf2,
+	} {
+		err = testutil.DomainCreateIfNotExists(ctx, rxp, dom)
+		require.Nil(t, err, err)
+	}
+
+	got, err := rxp.DomainQuery(
+		ctx, domain.UUIDEqual(
+			fixtures.DomainTree_RootUUID,
+		),
+	)
+	require.Nil(t, err)
+	items := got.Items()
+	require.Len(t, items, 1)
+	require.Nil(t, items[0].Parent())
 }
 
 func TestDomainQuery(t *testing.T) {
@@ -192,7 +233,7 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			expression.UUIDEqual(fixtures.DomainUUID),
+			domain.UUIDEqual(fixtures.DomainUUID),
 			nil,
 			0,
 			nil,
@@ -203,13 +244,13 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"unsupported predicate",
 			ctx,
-			expression.GenerationEqual(0),
+			object.GenerationEqual(0),
 			nil,
 			0,
 			nil,
 			query.Options{},
 			"",
-			"unsupported predicate expression.GenerationPredicate",
+			"unsupported predicate object.GenerationPredicate",
 		},
 		{
 			"expression required",
@@ -226,8 +267,8 @@ func TestDomainQuery(t *testing.T) {
 			"unsupported expression",
 			ctx,
 			expression.Or(
-				expression.DomainNameEqual(fixtures.DomainName),
-				expression.DomainNameEqual(fixtures.UnknownDomainName),
+				domain.NameEqual(fixtures.DomainName),
+				domain.NameEqual(fixtures.UnknownDomainName),
 			),
 			nil,
 			0,
@@ -239,7 +280,7 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"no results when looking up non-existing domain UUID",
 			ctx,
-			expression.UUIDEqual(fixtures.UnknownDomainUUID),
+			domain.UUIDEqual(fixtures.UnknownDomainUUID),
 			nil,
 			0,
 			[]string{},
@@ -252,7 +293,7 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"no results when looking up non-existing domain name",
 			ctx,
-			expression.DomainNameEqual(fixtures.UnknownDomainName),
+			domain.NameEqual(fixtures.UnknownDomainName),
 			nil,
 			0,
 			[]string{},
@@ -265,7 +306,7 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"no results when looking up domains by non-existing system",
 			ctx,
-			expression.SystemEqual(fixtures.UnknownSystem),
+			system.Equal(fixtures.UnknownSystem),
 			nil,
 			0,
 			[]string{},
@@ -278,7 +319,7 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"no results when looking up domains by non-existing system UUID",
 			ctx,
-			expression.SystemUUIDEqual(fixtures.UnknownSystemUUID),
+			system.UUIDEqual(fixtures.UnknownSystemUUID),
 			nil,
 			0,
 			[]string{},
@@ -291,7 +332,7 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"query domains by name, expect one",
 			ctx,
-			expression.DomainNameEqual(fixtures.DomainName),
+			domain.NameEqual(fixtures.DomainName),
 			nil,
 			1,
 			[]string{
@@ -306,7 +347,7 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"query domains by UUID, expect one",
 			ctx,
-			expression.UUIDEqual(fixtures.DomainUUID),
+			domain.UUIDEqual(fixtures.DomainUUID),
 			nil,
 			1,
 			[]string{
@@ -321,7 +362,7 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"query domains by UUID in, expect one",
 			ctx,
-			expression.UUIDIn(fixtures.DomainUUID, fixtures.UnknownDomainUUID),
+			domain.UUIDIn(fixtures.DomainUUID, fixtures.UnknownDomainUUID),
 			nil,
 			1,
 			[]string{
@@ -336,7 +377,7 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"query domains by domain UUID, expect one",
 			ctx,
-			expression.DomainUUIDEqual(fixtures.DomainUUID),
+			domain.UUIDEqual(fixtures.DomainUUID),
 			nil,
 			1,
 			[]string{

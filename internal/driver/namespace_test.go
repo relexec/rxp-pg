@@ -9,6 +9,7 @@ import (
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/namespace"
+	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/query/expression"
 	"github.com/relexec/rxp/testing/fixtures"
@@ -204,7 +205,7 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			expression.UUIDEqual(fixtures.NamespaceUUID),
+			namespace.UUIDEqual(fixtures.NamespaceUUID),
 			nil,
 			0,
 			nil,
@@ -215,13 +216,13 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"unsupported predicate",
 			ctx,
-			expression.GenerationEqual(0),
+			object.GenerationEqual(0),
 			nil,
 			0,
 			nil,
 			query.Options{},
 			"",
-			"unsupported predicate expression.GenerationPredicate",
+			"unsupported predicate object.GenerationPredicate",
 		},
 		{
 			"expression required",
@@ -238,8 +239,8 @@ func TestNamespaceQuery(t *testing.T) {
 			"unsupported expression",
 			ctx,
 			expression.Or(
-				expression.DomainNameEqual(fixtures.DomainName),
-				expression.DomainNameEqual(fixtures.UnknownDomainName),
+				domain.NameEqual(fixtures.DomainName),
+				domain.NameEqual(fixtures.UnknownDomainName),
 			),
 			nil,
 			0,
@@ -251,7 +252,7 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"no results when looking up non-existing namespace UUID",
 			ctx,
-			expression.UUIDEqual(fixtures.UnknownNamespaceUUID),
+			namespace.UUIDEqual(fixtures.UnknownNamespaceUUID),
 			nil,
 			0,
 			[]string{},
@@ -264,7 +265,7 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"no results when looking up non-existing namespace name",
 			ctx,
-			expression.NamespaceNameEqual(fixtures.UnknownNamespaceName),
+			namespace.NameEqual(fixtures.UnknownNamespaceName),
 			nil,
 			0,
 			[]string{},
@@ -277,7 +278,7 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"no results when looking up namespaces by non-existing domain name",
 			ctx,
-			expression.DomainNameEqual(fixtures.UnknownDomainName),
+			domain.NameEqual(fixtures.UnknownDomainName),
 			nil,
 			0,
 			[]string{},
@@ -290,7 +291,7 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"no results when looking up namespaces by non-existing domain UUID",
 			ctx,
-			expression.DomainUUIDEqual(fixtures.UnknownDomainUUID),
+			domain.UUIDEqual(fixtures.UnknownDomainUUID),
 			nil,
 			0,
 			[]string{},
@@ -303,7 +304,7 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"no results when looking up namespaces by non-existing domain",
 			ctx,
-			expression.DomainEqual(fixtures.UnknownDomain),
+			domain.Equal(fixtures.UnknownDomain),
 			nil,
 			0,
 			[]string{},
@@ -316,7 +317,7 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"query namespaces by name, expect one",
 			ctx,
-			expression.NamespaceNameEqual(fixtures.NamespaceName),
+			namespace.NameEqual(fixtures.NamespaceName),
 			nil,
 			1,
 			[]string{
@@ -331,7 +332,7 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"query namespaces by UUID, expect one",
 			ctx,
-			expression.UUIDEqual(fixtures.NamespaceUUID),
+			namespace.UUIDEqual(fixtures.NamespaceUUID),
 			nil,
 			1,
 			[]string{
@@ -346,7 +347,7 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"query namespaces by UUID in, expect one",
 			ctx,
-			expression.UUIDIn(fixtures.NamespaceUUID, fixtures.UnknownNamespaceUUID),
+			namespace.UUIDIn(fixtures.NamespaceUUID, fixtures.UnknownNamespaceUUID),
 			nil,
 			1,
 			[]string{
@@ -361,7 +362,7 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"query namespaces by domain UUID, expect one",
 			ctx,
-			expression.DomainUUIDEqual(fixtures.DomainUUID),
+			domain.UUIDEqual(fixtures.DomainUUID),
 			nil,
 			1,
 			[]string{
@@ -376,7 +377,7 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"query namespaces by domain name, expect one",
 			ctx,
-			expression.DomainNameEqual(fixtures.DomainName),
+			domain.NameEqual(fixtures.DomainName),
 			nil,
 			1,
 			[]string{
@@ -391,7 +392,7 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"query namespaces by domain, expect one",
 			ctx,
-			expression.DomainEqual(fixtures.Domain),
+			domain.Equal(fixtures.Domain),
 			nil,
 			1,
 			[]string{
@@ -406,7 +407,7 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"query namespaces by domain with no system only name, expect one",
 			ctx,
-			expression.DomainEqual(
+			domain.Equal(
 				domain.New(
 					domain.WithName(fixtures.DomainName),
 				),
@@ -425,7 +426,7 @@ func TestNamespaceQuery(t *testing.T) {
 		{
 			"no results when query namespaces by domain with non existent system",
 			ctx,
-			expression.DomainEqual(
+			domain.Equal(
 				domain.New(
 					domain.WithName(fixtures.DomainName),
 					domain.WithSystem(fixtures.UnknownSystem),

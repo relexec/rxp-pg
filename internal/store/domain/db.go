@@ -16,6 +16,7 @@ import (
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/query/expression"
+	"github.com/relexec/rxp/system"
 
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
@@ -452,35 +453,35 @@ func (s *Store) dbReadByExpression(
 	case expression.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case expression.UUIDPredicate, expression.DomainUUIDPredicate:
-			op := pred.Operator()
+		case domain.UUIDPredicate:
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("d.uuid = $%d", len(qargs)+1))
-				qargs = append(qargs, pred.Value())
+				qargs = append(qargs, pred.Value)
 			case expression.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("d.uuid = ANY ($%d)", len(qargs)+1))
-				qargs = append(qargs, pred.Value())
+				qargs = append(qargs, pred.Value)
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case expression.DomainNamePredicate:
-			op := pred.Operator()
+		case domain.NamePredicate:
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("d.name = $%d", len(qargs)+1))
-				qargs = append(qargs, pred.Value())
+				qargs = append(qargs, pred.Value)
 			case expression.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("d.name = ANY ($%d)", len(qargs)+1))
-				qargs = append(qargs, pred.Value())
+				qargs = append(qargs, pred.Value)
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case expression.SystemUUIDPredicate:
-			op := pred.Operator()
+		case system.UUIDPredicate:
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
-				sysUUID := pred.Value().(string)
+				sysUUID := pred.Value.(string)
 				sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 				if err != nil {
 					// If we're looking up domains by a non-existent system,
@@ -495,7 +496,7 @@ func (s *Store) dbReadByExpression(
 				qargs = append(qargs, sysRec.RowID)
 			case expression.PredicateOperatorIn:
 				sysRowIDs := []int64{}
-				sysUUIDs := pred.Value().([]string)
+				sysUUIDs := pred.Value.([]string)
 				for _, sysUUID := range sysUUIDs {
 					sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 					if err != nil {

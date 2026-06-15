@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 	testutil "github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp/api"
+	"github.com/relexec/rxp/domain"
+	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/query/expression"
@@ -491,8 +493,8 @@ func TestObjectQuery(t *testing.T) {
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, plat1)
 	require.Nil(t, err)
 
-	domain := fixtures.Domain
-	err = testutil.DomainCreateIfNotExists(ctx, rxp, domain)
+	dom := fixtures.Domain
+	err = testutil.DomainCreateIfNotExists(ctx, rxp, dom)
 	require.Nil(t, err)
 
 	ns := fixtures.Namespace
@@ -510,7 +512,7 @@ func TestObjectQuery(t *testing.T) {
 	app1 := object.New(
 		object.WithKindVersionName(application.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
-		object.WithDomain(domain),
+		object.WithDomain(dom),
 		object.WithName(testutil.RandomName()),
 	)
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, app1)
@@ -527,7 +529,7 @@ func TestObjectQuery(t *testing.T) {
 	svc1 := object.New(
 		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
-		object.WithDomain(domain),
+		object.WithDomain(dom),
 		object.WithNamespace(ns),
 		object.WithName(testutil.RandomName()),
 	)
@@ -564,7 +566,7 @@ func TestObjectQuery(t *testing.T) {
 			"invalid kindversion",
 			ctx,
 			api.KindVersionName(fixtures.InvalidKindName),
-			expression.DomainNameEqual(domain.Name()),
+			domain.NameEqual(dom.Name()),
 			nil,
 			0,
 			nil,
@@ -576,7 +578,7 @@ func TestObjectQuery(t *testing.T) {
 			"invalid query expression kind predicate",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			expression.KindNameEqual(application.KindName),
+			kind.NameEqual(application.KindName),
 			nil,
 			0,
 			nil,
@@ -701,7 +703,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"by UUID",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			expression.UUIDEqual(plat1.UUID()),
+			object.UUIDEqual(plat1.UUID()),
 			[]query.Option{
 				query.Limit(1),
 			},
@@ -712,7 +714,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"in set of UUIDs",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			expression.UUIDIn(plat1.UUID(), plat2.UUID()),
+			object.UUIDIn(plat1.UUID(), plat2.UUID()),
 			[]query.Option{
 				query.Limit(2),
 			},
@@ -723,7 +725,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"by name",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			expression.NameEqual(plat1.Name()),
+			object.NameEqual(plat1.Name()),
 			[]query.Option{
 				query.Limit(1),
 			},
@@ -734,7 +736,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"in set of names",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			expression.NameIn(plat1.Name(), plat2.Name()),
+			object.NameIn(plat1.Name(), plat2.Name()),
 			[]query.Option{
 				query.Limit(2),
 			},
@@ -746,8 +748,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			expression.Or(
-				expression.UUIDEqual(plat1.UUID()),
-				expression.UUIDEqual(plat2.UUID()),
+				object.UUIDEqual(plat1.UUID()),
+				object.UUIDEqual(plat2.UUID()),
 			),
 			[]query.Option{
 				query.Limit(2),
@@ -760,8 +762,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			expression.Or(
-				expression.NameEqual(plat1.Name()),
-				expression.NameEqual(plat2.Name()),
+				object.NameEqual(plat1.Name()),
+				object.NameEqual(plat2.Name()),
 			),
 			[]query.Option{
 				query.Limit(2),
@@ -774,8 +776,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			expression.Or(
-				expression.UUIDEqual(plat1.UUID()),
-				expression.NameEqual(plat2.Name()),
+				object.UUIDEqual(plat1.UUID()),
+				object.NameEqual(plat2.Name()),
 			),
 			[]query.Option{
 				query.Limit(2),
@@ -788,9 +790,9 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			expression.Or(
-				expression.UUIDEqual(plat1.UUID()),
-				expression.NameEqual(plat2.Name()),
-				expression.UUIDEqual(uuid.NewString()),
+				object.UUIDEqual(plat1.UUID()),
+				object.NameEqual(plat2.Name()),
+				object.UUIDEqual(uuid.NewString()),
 			),
 			[]query.Option{
 				query.Limit(2),
@@ -803,8 +805,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			expression.And(
-				expression.UUIDEqual(plat1.UUID()),
-				expression.UUIDEqual(plat2.UUID()),
+				object.UUIDEqual(plat1.UUID()),
+				object.UUIDEqual(plat2.UUID()),
 			),
 			[]query.Option{
 				query.Limit(2),
@@ -817,8 +819,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			expression.And(
-				expression.UUIDEqual(plat1.UUID()),
-				expression.NameEqual(plat1.Name()),
+				object.UUIDEqual(plat1.UUID()),
+				object.NameEqual(plat1.Name()),
 			),
 			[]query.Option{
 				query.Limit(2),

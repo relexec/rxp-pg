@@ -7,8 +7,10 @@ import (
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp/cmp/fieldpath"
 	"github.com/relexec/rxp/kind"
+	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/query/expression"
+	"github.com/relexec/rxp/system"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/testing/fixtures/service"
 	"github.com/samber/lo"
@@ -154,7 +156,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			expression.UUIDEqual(service.KindUUID),
+			kind.UUIDEqual(service.KindUUID),
 			nil,
 			0,
 			nil,
@@ -165,13 +167,13 @@ func TestKindQuery(t *testing.T) {
 		{
 			"unsupported predicate",
 			ctx,
-			expression.GenerationEqual(0),
+			object.GenerationEqual(0),
 			nil,
 			0,
 			nil,
 			query.Options{},
 			"",
-			"unsupported predicate expression.GenerationPredicate",
+			"unsupported predicate object.GenerationPredicate",
 		},
 		{
 			"expression required",
@@ -188,8 +190,8 @@ func TestKindQuery(t *testing.T) {
 			"unsupported expression",
 			ctx,
 			expression.Or(
-				expression.KindNameEqual(service.KindName),
-				expression.KindNameEqual(fixtures.UnknownKindName),
+				kind.NameEqual(service.KindName),
+				kind.NameEqual(fixtures.UnknownKindName),
 			),
 			nil,
 			0,
@@ -201,7 +203,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"no results when looking up non-existing kind UUID",
 			ctx,
-			expression.UUIDEqual(fixtures.UnknownKindUUID),
+			kind.UUIDEqual(fixtures.UnknownKindUUID),
 			nil,
 			0,
 			[]string{},
@@ -214,7 +216,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"no results when looking up non-existing kind name",
 			ctx,
-			expression.KindNameEqual(fixtures.UnknownKindName),
+			kind.NameEqual(fixtures.UnknownKindName),
 			nil,
 			0,
 			[]string{},
@@ -227,7 +229,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"no results when looking up kinds by non-existing system",
 			ctx,
-			expression.SystemEqual(fixtures.UnknownSystem),
+			system.Equal(fixtures.UnknownSystem),
 			nil,
 			0,
 			[]string{},
@@ -240,7 +242,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"no results when looking up kinds by non-existing system UUID",
 			ctx,
-			expression.SystemUUIDEqual(fixtures.UnknownSystemUUID),
+			system.UUIDEqual(fixtures.UnknownSystemUUID),
 			nil,
 			0,
 			[]string{},
@@ -253,7 +255,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"query kinds by name, expect one",
 			ctx,
-			expression.KindNameEqual(service.KindName),
+			kind.NameEqual(service.KindName),
 			nil,
 			1,
 			[]string{
@@ -268,7 +270,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"query kinds by UUID, expect one",
 			ctx,
-			expression.UUIDEqual(service.KindUUID),
+			kind.UUIDEqual(service.KindUUID),
 			nil,
 			1,
 			[]string{
@@ -283,7 +285,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"query kinds by UUID in, expect one",
 			ctx,
-			expression.UUIDIn(service.KindUUID, fixtures.UnknownKindUUID),
+			kind.UUIDIn(service.KindUUID, fixtures.UnknownKindUUID),
 			nil,
 			1,
 			[]string{
@@ -298,7 +300,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"query kinds by kind UUID, expect one",
 			ctx,
-			expression.KindUUIDEqual(service.KindUUID),
+			kind.UUIDEqual(service.KindUUID),
 			nil,
 			1,
 			[]string{

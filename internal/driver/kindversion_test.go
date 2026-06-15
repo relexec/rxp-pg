@@ -6,9 +6,12 @@ import (
 
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp/api"
+	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/kind/kindversion"
+	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/query/expression"
+	"github.com/relexec/rxp/system"
 	"github.com/relexec/rxp/testing/fixtures"
 	"github.com/relexec/rxp/testing/fixtures/service"
 	"github.com/samber/lo"
@@ -187,7 +190,7 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			expression.KindVersionNameEqual(service.FirstKindVersionName()),
+			kindversion.NameEqual(service.FirstKindVersionName()),
 			nil,
 			0,
 			nil,
@@ -198,13 +201,13 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"unsupported predicate",
 			ctx,
-			expression.GenerationEqual(0),
+			object.GenerationEqual(0),
 			nil,
 			0,
 			nil,
 			query.Options{},
 			"",
-			"unsupported predicate expression.GenerationPredicate",
+			"unsupported predicate object.GenerationPredicate",
 		},
 		{
 			"expression required",
@@ -221,8 +224,8 @@ func TestKindVersionQuery(t *testing.T) {
 			"unsupported expression",
 			ctx,
 			expression.Or(
-				expression.KindNameEqual(service.KindName),
-				expression.KindNameEqual(fixtures.UnknownKindName),
+				kind.NameEqual(service.KindName),
+				kind.NameEqual(fixtures.UnknownKindName),
 			),
 			nil,
 			0,
@@ -234,7 +237,7 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"no results when looking up non-existing kind version name",
 			ctx,
-			expression.KindVersionNameEqual(fixtures.UnknownKindVersionName),
+			kindversion.NameEqual(fixtures.UnknownKindVersionName),
 			nil,
 			0,
 			[]api.KindVersionName{},
@@ -247,7 +250,7 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"no results when looking up kindversions by non-existing system",
 			ctx,
-			expression.SystemEqual(fixtures.UnknownSystem),
+			system.Equal(fixtures.UnknownSystem),
 			nil,
 			0,
 			[]api.KindVersionName{},
@@ -260,7 +263,7 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"no results when looking up kindversions by non-existing system UUID",
 			ctx,
-			expression.SystemUUIDEqual(fixtures.UnknownSystemUUID),
+			system.UUIDEqual(fixtures.UnknownSystemUUID),
 			nil,
 			0,
 			[]api.KindVersionName{},
@@ -273,7 +276,7 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"query kindversions by name, expect one",
 			ctx,
-			expression.KindVersionNameEqual(service.FirstKindVersionName()),
+			kindversion.NameEqual(service.FirstKindVersionName()),
 			nil,
 			1,
 			[]api.KindVersionName{
@@ -288,7 +291,7 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"query kindversions by name in set, expect one",
 			ctx,
-			expression.KindVersionNameIn(service.FirstKindVersionName(), fixtures.UnknownKindVersionName),
+			kindversion.NameIn(service.FirstKindVersionName(), fixtures.UnknownKindVersionName),
 			nil,
 			1,
 			[]api.KindVersionName{

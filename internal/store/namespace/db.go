@@ -221,35 +221,35 @@ func (s *Store) dbReadByExpression(
 	case expression.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case expression.UUIDPredicate:
-			op := pred.Operator()
+		case namespace.UUIDPredicate:
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("n.uuid = $%d", len(qargs)+1))
-				qargs = append(qargs, pred.Value())
+				qargs = append(qargs, pred.Value)
 			case expression.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("n.uuid = ANY ($%d)", len(qargs)+1))
-				qargs = append(qargs, pred.Value())
+				qargs = append(qargs, pred.Value)
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case expression.NamespaceNamePredicate:
-			op := pred.Operator()
+		case namespace.NamePredicate:
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("n.name = $%d", len(qargs)+1))
-				qargs = append(qargs, pred.Value())
+				qargs = append(qargs, pred.Value)
 			case expression.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("n.name = ANY ($%d)", len(qargs)+1))
-				qargs = append(qargs, pred.Value())
+				qargs = append(qargs, pred.Value)
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case expression.DomainUUIDPredicate:
-			op := pred.Operator()
+		case domain.UUIDPredicate:
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
-				domUUID := pred.Value().(string)
+				domUUID := pred.Value.(string)
 				domRec, err := s.domainStore.ReadByUUID(ctx, domUUID)
 				if err != nil {
 					// If we're looking up namespaces by a non-existent domain,
@@ -264,7 +264,7 @@ func (s *Store) dbReadByExpression(
 				qargs = append(qargs, domRec.RowID)
 			case expression.PredicateOperatorIn:
 				domRowIDs := []int64{}
-				domUUIDs := pred.Value().([]string)
+				domUUIDs := pred.Value.([]string)
 				for _, domUUID := range domUUIDs {
 					domRec, err := s.domainStore.ReadByUUID(ctx, domUUID)
 					if err != nil {
@@ -286,7 +286,7 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case expression.DomainNamePredicate:
+		case domain.NamePredicate:
 			// NOTE(jaypipes): DomainNamePredicate is used when the caller only
 			// knows the domain name and not the domain's UUID and domain's
 			// System. Therefore, we assume the host system for these cases. In
@@ -294,10 +294,10 @@ func (s *Store) dbReadByExpression(
 			// the domain's UUID, the DomainPredicate is used and we don't need
 			// to assume the host system.
 			sys := s.hostSystemRecord.System
-			op := pred.Operator()
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
-				domName := pred.Value().(api.DomainName)
+				domName := pred.Value.(api.DomainName)
 				domRec, err := s.domainStore.ReadByName(ctx, sys, domName)
 				if err != nil {
 					// If we're looking up namespaces by a non-existent domain,
@@ -312,7 +312,7 @@ func (s *Store) dbReadByExpression(
 				qargs = append(qargs, domRec.RowID)
 			case expression.PredicateOperatorIn:
 				domRowIDs := []int64{}
-				domNames := pred.Value().([]api.DomainName)
+				domNames := pred.Value.([]api.DomainName)
 				for _, domName := range domNames {
 					domRec, err := s.domainStore.ReadByName(ctx, sys, domName)
 					if err != nil {
@@ -334,14 +334,14 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case expression.DomainPredicate:
+		case domain.DomainPredicate:
 			// NOTE(jaypipes): DomainPredicate is used when the caller only
 			// knows the domain name AND system but does NOT know the domain's
 			// UUID.
-			op := pred.Operator()
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
-				dom := pred.Value().(*domain.Domain)
+				dom := pred.Value.(*domain.Domain)
 				sys := dom.System()
 				if sys == nil {
 					sys = s.hostSystemRecord.System
@@ -360,7 +360,7 @@ func (s *Store) dbReadByExpression(
 				qargs = append(qargs, domRec.RowID)
 			case expression.PredicateOperatorIn:
 				domRowIDs := []int64{}
-				doms := pred.Value().([]*domain.Domain)
+				doms := pred.Value.([]*domain.Domain)
 				for _, dom := range doms {
 					sys := dom.System()
 					if sys == nil {

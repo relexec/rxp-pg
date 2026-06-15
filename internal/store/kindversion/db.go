@@ -19,6 +19,7 @@ import (
 	"github.com/relexec/rxp/kind/kindversion/schema"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/query/expression"
+	"github.com/relexec/rxp/system"
 	"github.com/relexec/rxp/version"
 
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
@@ -307,11 +308,11 @@ func (s *Store) dbReadByExpression(
 	case expression.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case expression.KindVersionNamePredicate:
-			op := pred.Operator()
+		case kindversion.NamePredicate:
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
-				kvName := pred.Value().(api.KindVersionName)
+				kvName := pred.Value.(api.KindVersionName)
 				kindName := kvName.Kind()
 				kindRec, err := s.kindStore.ReadByName(
 					ctx, s.hostSystemRecord.System, kindName,
@@ -331,7 +332,7 @@ func (s *Store) dbReadByExpression(
 				qargs = append(qargs, verStr)
 			case expression.PredicateOperatorIn:
 				ors := []string{}
-				kvNames := pred.Value().([]api.KindVersionName)
+				kvNames := pred.Value.([]api.KindVersionName)
 				for _, kvName := range kvNames {
 					kindName := kvName.Kind()
 					kindRec, err := s.kindStore.ReadByName(
@@ -352,11 +353,11 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case expression.SystemUUIDPredicate:
-			op := pred.Operator()
+		case system.UUIDPredicate:
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
-				sysUUID := pred.Value().(string)
+				sysUUID := pred.Value.(string)
 				sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 				if err != nil {
 					// If we're looking up kindversions by a non-existent system,
@@ -371,7 +372,7 @@ func (s *Store) dbReadByExpression(
 				qargs = append(qargs, sysRec.RowID)
 			case expression.PredicateOperatorIn:
 				sysRowIDs := []int64{}
-				sysUUIDs := pred.Value().([]string)
+				sysUUIDs := pred.Value.([]string)
 				for _, sysUUID := range sysUUIDs {
 					sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 					if err != nil {

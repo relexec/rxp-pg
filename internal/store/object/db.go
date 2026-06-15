@@ -13,6 +13,8 @@ import (
 	"github.com/relexec/rxp/api"
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
+	"github.com/relexec/rxp/kind"
+	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/query/expression"
@@ -23,6 +25,20 @@ import (
 	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
+
+func isKindishPredicate(p expression.Predicate) bool {
+	switch p.(type) {
+	case
+		kind.NamePredicate,
+		kind.UUIDPredicate,
+		kind.KindPredicate,
+		kindversion.KindVersionPredicate,
+		kindversion.NamePredicate:
+		return true
+	default:
+		return false
+	}
+}
 
 // dbReadNamespaceQualifiedByRowID performs a SELECT query to return the stored
 // object record having the supplied internal DB RowID with an expected
@@ -1057,11 +1073,11 @@ func (s *Store) dbReadNamespaceQualifiedByExpression(
 	case expression.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case expression.KindNamePredicate:
-			op := pred.Operator()
+		case kind.NamePredicate:
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
-				kn := pred.Value().(api.KindName)
+				kn := pred.Value.(api.KindName)
 				kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
 				if err != nil {
 					return nil, err
@@ -1190,11 +1206,11 @@ func (s *Store) dbReadDomainQualifiedByExpression(
 	case expression.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case expression.KindNamePredicate:
-			op := pred.Operator()
+		case kind.NamePredicate:
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
-				kn := pred.Value().(api.KindName)
+				kn := pred.Value.(api.KindName)
 				kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
 				if err != nil {
 					return nil, err
@@ -1300,6 +1316,9 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 	expr expression.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
+	if expression.ContainsPredicate(expr, isKindishPredicate) {
+		return nil, errors.ErrInvalidQueryKindPredicate
+	}
 	sysRec := s.hostSystemRecord
 	sys := sysRec.System
 
@@ -1322,31 +1341,27 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 	case expression.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case expression.KindNamePredicate,
-			expression.KindUUIDPredicate,
-			expression.KindPredicate:
-			return nil, errors.ErrInvalidQueryKindPredicate
-		case expression.UUIDPredicate:
-			op := pred.Operator()
+		case object.UUIDPredicate:
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
-				u := pred.Value().(string)
+				u := pred.Value.(string)
 				wheres = append(wheres, fmt.Sprintf("o.uuid = $%d", len(qargs)+1))
 				qargs = append(qargs, u)
 			case expression.PredicateOperatorIn:
-				us := pred.Value().([]string)
+				us := pred.Value.([]string)
 				wheres = append(wheres, fmt.Sprintf("o.uuid = ANY($%d)", len(qargs)+1))
 				qargs = append(qargs, us)
 			}
-		case expression.NamePredicate:
-			op := pred.Operator()
+		case object.NamePredicate:
+			op := pred.Op
 			switch op {
 			case expression.PredicateOperatorEqual:
-				name := pred.Value().(string)
+				name := pred.Value.(string)
 				wheres = append(wheres, fmt.Sprintf("n.name = $%d", len(qargs)+1))
 				qargs = append(qargs, name)
 			case expression.PredicateOperatorIn:
-				names := pred.Value().([]string)
+				names := pred.Value.([]string)
 				wheres = append(wheres, fmt.Sprintf("n.name = ANY($%d)", len(qargs)+1))
 				qargs = append(qargs, names)
 			}
@@ -1359,31 +1374,27 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 			case expression.UnaryExpression:
 				pred := subexpr.Predicate
 				switch pred := pred.(type) {
-				case expression.KindNamePredicate,
-					expression.KindUUIDPredicate,
-					expression.KindPredicate:
-					return nil, errors.ErrInvalidQueryKindPredicate
-				case expression.UUIDPredicate:
-					op := pred.Operator()
+				case object.UUIDPredicate:
+					op := pred.Op
 					switch op {
 					case expression.PredicateOperatorEqual:
-						u := pred.Value().(string)
+						u := pred.Value.(string)
 						ors = append(ors, fmt.Sprintf("o.uuid = $%d", len(qargs)+1))
 						qargs = append(qargs, u)
 					case expression.PredicateOperatorIn:
-						us := pred.Value().([]string)
+						us := pred.Value.([]string)
 						ors = append(ors, fmt.Sprintf("o.uuid = ANY($%d)", len(qargs)+1))
 						qargs = append(qargs, us)
 					}
-				case expression.NamePredicate:
-					op := pred.Operator()
+				case object.NamePredicate:
+					op := pred.Op
 					switch op {
 					case expression.PredicateOperatorEqual:
-						name := pred.Value().(string)
+						name := pred.Value.(string)
 						ors = append(ors, fmt.Sprintf("n.name = $%d", len(qargs)+1))
 						qargs = append(qargs, name)
 					case expression.PredicateOperatorIn:
-						names := pred.Value().([]string)
+						names := pred.Value.([]string)
 						ors = append(ors, fmt.Sprintf("n.name = ANY($%d)", len(qargs)+1))
 						qargs = append(qargs, names)
 					}
@@ -1399,23 +1410,19 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 			case expression.UnaryExpression:
 				pred := subexpr.Predicate
 				switch pred := pred.(type) {
-				case expression.KindNamePredicate,
-					expression.KindUUIDPredicate,
-					expression.KindPredicate:
-					return nil, errors.ErrInvalidQueryKindPredicate
-				case expression.UUIDPredicate:
-					op := pred.Operator()
+				case object.UUIDPredicate:
+					op := pred.Op
 					switch op {
 					case expression.PredicateOperatorEqual:
-						u := pred.Value().(string)
+						u := pred.Value.(string)
 						ands = append(ands, fmt.Sprintf("o.uuid = $%d", len(qargs)+1))
 						qargs = append(qargs, u)
 					}
-				case expression.NamePredicate:
-					op := pred.Operator()
+				case object.NamePredicate:
+					op := pred.Op
 					switch op {
 					case expression.PredicateOperatorEqual:
-						name := pred.Value().(string)
+						name := pred.Value.(string)
 						ands = append(ands, fmt.Sprintf("n.name = $%d", len(qargs)+1))
 						qargs = append(qargs, name)
 					}

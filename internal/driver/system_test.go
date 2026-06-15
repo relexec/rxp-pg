@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/relexec/rxp-pg/internal/testutil"
+	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/query/expression"
 	"github.com/relexec/rxp/system"
@@ -132,7 +133,7 @@ func TestSystemQuery(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			expression.UUIDEqual(fixtures.SystemUUID),
+			system.UUIDEqual(fixtures.SystemUUID),
 			nil,
 			0,
 			nil,
@@ -143,13 +144,13 @@ func TestSystemQuery(t *testing.T) {
 		{
 			"unsupported predicate",
 			ctx,
-			expression.DomainNameEqual(fixtures.DomainName),
+			domain.NameEqual(fixtures.DomainName),
 			nil,
 			0,
 			nil,
 			query.Options{},
 			"",
-			"unsupported predicate expression.DomainNamePredicate",
+			"unsupported predicate domain.NamePredicate",
 		},
 		{
 			"expression required",
@@ -166,8 +167,8 @@ func TestSystemQuery(t *testing.T) {
 			"unsupported expression",
 			ctx,
 			expression.Or(
-				expression.DomainNameEqual(fixtures.DomainName),
-				expression.DomainNameEqual(fixtures.UnknownDomainName),
+				domain.NameEqual(fixtures.DomainName),
+				domain.NameEqual(fixtures.UnknownDomainName),
 			),
 			nil,
 			0,
@@ -179,7 +180,7 @@ func TestSystemQuery(t *testing.T) {
 		{
 			"no results when looking up non-existing system UUID",
 			ctx,
-			expression.UUIDEqual(fixtures.UnknownSystemUUID),
+			system.UUIDEqual(fixtures.UnknownSystemUUID),
 			nil,
 			0,
 			[]string{},
@@ -192,7 +193,7 @@ func TestSystemQuery(t *testing.T) {
 		{
 			"query systems by UUID, expect one",
 			ctx,
-			expression.UUIDEqual(fixtures.SystemUUID),
+			system.UUIDEqual(fixtures.SystemUUID),
 			nil,
 			1,
 			[]string{
@@ -207,7 +208,7 @@ func TestSystemQuery(t *testing.T) {
 		{
 			"query systems by UUID in, expect one",
 			ctx,
-			expression.UUIDIn(fixtures.SystemUUID, fixtures.UnknownSystemUUID),
+			system.UUIDIn(fixtures.SystemUUID, fixtures.UnknownSystemUUID),
 			nil,
 			1,
 			[]string{
