@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/relexec/rxp/api"
+	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/system"
 )
@@ -40,11 +41,15 @@ func (s *Store) cacheReadByRowID(
 	if s.byRowID == nil {
 		return nil, false
 	}
+
+	s.cacheLock.RLock()
+	defer s.cacheLock.RUnlock()
+
 	uuid, found := s.byRowID.Get(key)
 	if !found {
 		return nil, false
 	}
-	return s.cacheReadByUUID(ctx, uuid)
+	return s.cacheReadByUUIDNoLock(ctx, uuid)
 }
 
 // cacheReadByUUID looks up a cached Domain by UUID, returning the cached
@@ -56,6 +61,20 @@ func (s *Store) cacheReadByUUID(
 	if s.byUUID == nil {
 		return nil, false
 	}
+
+	s.cacheLock.RLock()
+	defer s.cacheLock.RUnlock()
+
+	return s.cacheReadByUUIDNoLock(ctx, key)
+}
+
+// cacheReadByUUIDNoLock looks up a cached Domain by UUID, returning the cached
+// Record and whether or not the entry was found. This method assumes the cache
+// lock is already held.
+func (s *Store) cacheReadByUUIDNoLock(
+	ctx context.Context,
+	key byUUIDCacheKey,
+) (*Record, bool) {
 	return s.byUUID.Get(key)
 }
 
@@ -68,11 +87,15 @@ func (s *Store) cacheReadByName(
 	if s.byName == nil {
 		return nil, false
 	}
+
+	s.cacheLock.RLock()
+	defer s.cacheLock.RUnlock()
+
 	uuid, found := s.byName.Get(key)
 	if !found {
 		return nil, false
 	}
-	return s.cacheReadByUUID(ctx, uuid)
+	return s.cacheReadByUUIDNoLock(ctx, uuid)
 }
 
 // cacheWrite ensures the supplied Record is written to the lookup caches if
@@ -84,6 +107,10 @@ func (s *Store) cacheWrite(
 	if s.byUUID == nil {
 		return nil
 	}
+
+	s.cacheLock.Lock()
+	defer s.cacheLock.Unlock()
+
 	uuidKey := byUUIDCacheKey(rec.Domain.UUID())
 	set := s.byUUID.Set(uuidKey, rec)
 	if !set {
@@ -107,5 +134,53 @@ func (s *Store) cacheWrite(
 			fmt.Sprintf("failed setting domain cache rowid key %q", rowIDKey),
 		)
 	}
+	return nil
+}
+
+// cacheEvict purges the caches of all Domains in the supplied Domain's tree.
+func (s *Store) cacheEvict(
+	ctx context.Context,
+	dom *domain.Domain,
+) error {
+	if s.byUUID == nil {
+		return nil
+	}
+
+	s.cacheLock.Lock()
+	defer s.cacheLock.Unlock()
+
+	uuid := dom.UUID()
+	rec, found := s.cacheReadByUUIDNoLock(ctx, byUUIDCacheKey(uuid))
+	if !found {
+		return nil
+	}
+
+	recsInTree, err := s.dbReadDomainsInTreeByRootRowID(ctx, rec.Root)
+	if err != nil {
+		return fmt.Errorf(
+			"failed reading domain records in tree by root: %w", err)
+	}
+
+	for _, treeRec := range recsInTree {
+		if err = s.cacheEvictNoLock(ctx, treeRec); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// cacheEvictNoLock purges the caches of the specific Domain. This method
+// assumes the cache lock is already held.
+func (s *Store) cacheEvictNoLock(
+	ctx context.Context,
+	rec *Record,
+) error {
+	uuidKey := byUUIDCacheKey(rec.Domain.UUID())
+	s.byUUID.Del(uuidKey)
+	// Here we populate our row ID -> uuid and name -> uuid maps
+	nameKey := newByNameCacheKey(rec.Domain.System(), rec.Domain.Name())
+	s.byName.Del(nameKey)
+	rowIDKey := byRowIDCacheKey(rec.RowID)
+	s.byRowID.Del(rowIDKey)
 	return nil
 }

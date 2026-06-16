@@ -1,6 +1,8 @@
 package store
 
 import (
+	"sync"
+
 	"github.com/relexec/rxp-pg/internal/cache"
 	"github.com/relexec/rxp-pg/internal/store"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
@@ -10,6 +12,8 @@ import (
 type Store struct {
 	store.Store
 
+	// cacheLock protects the set of lookup caches.
+	cacheLock sync.RWMutex
 	// byUUID is a cache that stores known Domains keyed by domain UUID.
 	byUUID *cache.Cache[byUUIDCacheKey, *Record]
 	// byName is a cache that stores a lookup map of System UUID+DomainName to

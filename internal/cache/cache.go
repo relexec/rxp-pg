@@ -38,6 +38,11 @@ func (c *Cache[K, V]) Close(ctx context.Context) error {
 	return nil
 }
 
+// Del deletes the value at the given Key.
+func (c Cache[K, V]) Del(k K) {
+	c.cache.Del(k)
+}
+
 // Get returns the value at the given Key.
 func (c Cache[K, V]) Get(k K) (V, bool) {
 	return c.cache.Get(k)

@@ -83,6 +83,9 @@ WHERE id = $1
 			domain.WithName(name),
 		)
 		if parentRowID.Valid {
+			// NOTE(jaypipes): This has the potential to do N queries where N
+			// is the depth of the domain tree. Consider constraining the
+			// behaviour here if we know there is a deep tree.
 			parentRec, err := s.ReadByRowID(ctx, parentRowID.Int64)
 			if err != nil {
 				return err
@@ -159,6 +162,9 @@ WHERE uuid = $1
 			)
 		}
 		if parentRowID.Valid {
+			// NOTE(jaypipes): This has the potential to do N queries where N
+			// is the depth of the domain tree. Consider constraining the
+			// behaviour here if we know there is a deep tree.
 			parentRec, err := s.ReadByRowID(ctx, parentRowID.Int64)
 			if err != nil {
 				return err
@@ -227,6 +233,9 @@ AND name = $2
 			)
 		}
 		if parentRowID.Valid {
+			// NOTE(jaypipes): This has the potential to do N queries where N
+			// is the depth of the domain tree. Consider constraining the
+			// behaviour here if we know there is a deep tree.
 			parentRec, err := s.ReadByRowID(ctx, parentRowID.Int64)
 			if err != nil {
 				return err
@@ -432,10 +441,14 @@ INSERT INTO domains (
 }
 
 type domainRecord struct {
-	SystemID int64          `db:"system_id"`
-	ID       int64          `db:"domain_id"`
-	UUID     string         `db:"domain_uuid"`
-	Name     api.DomainName `db:"domain_name"`
+	SystemID  int64          `db:"system_id"`
+	ID        int64          `db:"domain_id"`
+	UUID      string         `db:"domain_uuid"`
+	Name      api.DomainName `db:"domain_name"`
+	RootID    int64          `db:"root_id"`
+	ParentID  sql.NullInt64  `db:"parent_id"`
+	LeftSide  int64          `db:"left_side"`
+	RightSide int64          `db:"right_side"`
 }
 
 // dbReadByExpression queries zero or more Domains that match the given
@@ -532,6 +545,10 @@ SELECT
 , d.id AS domain_id
 , d.uuid AS domain_uuid
 , d.name AS domain_name
+, d.root AS root_id
+, d.parent AS parent_id
+, d.left_side
+, d.right_side
 FROM domains AS d
 `
 		if len(wheres) > 0 {
@@ -573,8 +590,100 @@ FROM domains AS d
 			domain.WithName(rec.Name),
 			domain.WithSystem(sysRec.System),
 		)
+		if rec.ParentID.Valid {
+			// NOTE(jaypipes): This has the potential to do N*M queries where N
+			// is the limit of records fetched and M is the the depth of the
+			// domain tree of that domain record. Consider constraining the
+			// behaviour here if we know there is a deep tree.
+			parentRec, err := s.ReadByRowID(ctx, rec.ParentID.Int64)
+			if err != nil {
+				return nil, err
+			}
+			dom.SetParent(parentRec.Domain)
+		}
 		out = append(out, &Record{
 			RowID:  rec.ID,
+			Root:   rec.RootID,
+			Left:   rec.LeftSide,
+			Right:  rec.RightSide,
+			Domain: dom,
+		})
+	}
+
+	return out, nil
+}
+
+// dbReadDomainsInTreeByRootRowID returns the set of Records comprising the
+// "domain tree" rooted at the supplied root domain row ID.
+func (s *Store) dbReadDomainsInTreeByRootRowID(
+	ctx context.Context,
+	rootRowID int64,
+) ([]*Record, error) {
+	var recs []domainRecord
+	fn := func(tx pgx.Tx) error {
+		qs := `
+SELECT
+  d.system AS system_id
+, d.id AS domain_id
+, d.uuid AS domain_uuid
+, d.name AS domain_name
+, d.root AS root_id
+, d.parent AS parent_id
+, d.left_side
+, d.right_side
+FROM domains AS d
+WHERE d.root = $1
+`
+		rows, err := tx.Query(ctx, qs, rootRowID)
+		if err != nil {
+			return errors.Internal(
+				"failed reading domain records",
+				errors.WithWrap(err),
+			)
+		}
+		defer rows.Close()
+		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[domainRecord])
+		if err != nil {
+			return errors.Internal(
+				"failed collecting domain records",
+				errors.WithWrap(err),
+			)
+		}
+		return nil
+	}
+	if err := s.Exec(ctx, fn); err != nil {
+		return nil, err
+	}
+
+	out := make([]*Record, 0, len(recs))
+	for _, rec := range recs {
+		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
+		if err != nil {
+			return nil, errors.Internal(
+				"failed reading system record by rowid",
+				errors.WithWrap(err),
+			)
+		}
+		dom := domain.New(
+			domain.WithUUID(rec.UUID),
+			domain.WithName(rec.Name),
+			domain.WithSystem(sysRec.System),
+		)
+		if rec.ParentID.Valid {
+			// NOTE(jaypipes): This has the potential to do N queries where N
+			// is the depth of the domain tree. Consider constraining the
+			// behaviour here if we know there is a deep tree.
+			parentRec, err := s.ReadByRowID(ctx, rec.ParentID.Int64)
+			if err != nil {
+				return nil, err
+			}
+			dom.SetParent(parentRec.Domain)
+		}
+		out = append(out, &Record{
+			RowID:  rec.ID,
+			Root:   rootRowID,
+			Left:   rec.LeftSide,
+			Right:  rec.RightSide,
 			Domain: dom,
 		})
 	}

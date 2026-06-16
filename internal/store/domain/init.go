@@ -26,6 +26,10 @@ func (s *Store) initCache(ctx context.Context) error {
 	cfg := s.Config()
 	if cfg.Cache.Domain.Enabled {
 		s.Debug("initializing domain cache")
+
+		s.cacheLock.Lock()
+		defer s.cacheLock.Unlock()
+
 		cacheCfg := cfg.Cache.Domain
 		byUUID, err := cache.New[byUUIDCacheKey, *Record](
 			ctx,
