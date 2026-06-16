@@ -2,6 +2,7 @@ package driver_test
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -184,7 +185,7 @@ func TestDomainTree(t *testing.T) {
 	rxp, err := testutil.Driver(ctx)
 	require.Nil(t, err)
 
-	for _, dom := range []*domain.Domain{
+	treeDoms := []*domain.Domain{
 		fixtures.DomainTree_Root,
 		fixtures.DomainTree_Group1,
 		fixtures.DomainTree_Group2,
@@ -192,7 +193,13 @@ func TestDomainTree(t *testing.T) {
 		fixtures.DomainTree_Group1Leaf2,
 		fixtures.DomainTree_Group2Leaf1,
 		fixtures.DomainTree_Group2Leaf2,
-	} {
+	}
+	treeDomUUIDs := lo.Map(treeDoms, func(d *domain.Domain, _ int) string {
+		return d.UUID()
+	})
+	sort.Strings(treeDomUUIDs)
+
+	for _, dom := range treeDoms {
 		err = testutil.DomainCreateIfNotExists(ctx, rxp, dom)
 		require.Nil(t, err, err)
 	}
@@ -206,6 +213,99 @@ func TestDomainTree(t *testing.T) {
 	items := got.Items()
 	require.Len(t, items, 1)
 	require.Nil(t, items[0].Parent())
+
+	// Grabbing all domains in the domain tree should yield all domains in the
+	// tree.
+	got, err = rxp.DomainQuery(
+		ctx, domain.RootUUIDEqual(
+			fixtures.DomainTree_RootUUID,
+		),
+	)
+	require.Nil(t, err)
+	items = got.Items()
+	require.Len(t, items, len(treeDoms))
+
+	gotDomUUIDs := lo.Map(items, func(d *domain.Domain, _ int) string {
+		return d.UUID()
+	})
+	sort.Strings(gotDomUUIDs)
+
+	require.Equal(t, treeDomUUIDs, gotDomUUIDs)
+
+	// Querying by root name should also yield all domaisn in the tree.
+	got, err = rxp.DomainQuery(
+		ctx, domain.RootNameEqual(
+			fixtures.DomainTree_RootName,
+		),
+	)
+	require.Nil(t, err)
+	items = got.Items()
+	require.Len(t, items, len(treeDoms))
+
+	gotDomUUIDs = lo.Map(items, func(d *domain.Domain, _ int) string {
+		return d.UUID()
+	})
+	sort.Strings(gotDomUUIDs)
+
+	require.Equal(t, treeDomUUIDs, gotDomUUIDs)
+
+	// Grabbing domains having a parent equal to the root should yield all
+	// domains in the tree.
+	got, err = rxp.DomainQuery(
+		ctx, domain.ParentUUIDEqual(
+			fixtures.DomainTree_RootUUID,
+		),
+	)
+	require.Nil(t, err)
+	items = got.Items()
+	require.Len(t, items, len(treeDoms))
+
+	gotDomUUIDs = lo.Map(items, func(d *domain.Domain, _ int) string {
+		return d.UUID()
+	})
+	sort.Strings(gotDomUUIDs)
+
+	require.Equal(t, treeDomUUIDs, gotDomUUIDs)
+
+	// Grabbing domains within a subdomain should yield only that subdomain and
+	// its child domains.
+	groupDoms := []*domain.Domain{
+		fixtures.DomainTree_Group1,
+		fixtures.DomainTree_Group1Leaf1,
+		fixtures.DomainTree_Group1Leaf2,
+	}
+	got, err = rxp.DomainQuery(
+		ctx, domain.ParentUUIDEqual(
+			fixtures.DomainTree_Group1UUID,
+		),
+	)
+	require.Nil(t, err)
+	items = got.Items()
+	require.Len(t, items, len(groupDoms))
+
+	groupDomUUIDs := lo.Map(groupDoms, func(d *domain.Domain, _ int) string {
+		return d.UUID()
+	})
+	sort.Strings(groupDomUUIDs)
+	gotDomUUIDs = lo.Map(items, func(d *domain.Domain, _ int) string {
+		return d.UUID()
+	})
+	sort.Strings(gotDomUUIDs)
+
+	require.Equal(t, groupDomUUIDs, gotDomUUIDs)
+
+	// Grabbing domains parented by a leaf domain should yield only the leaf
+	// domain.
+	got, err = rxp.DomainQuery(
+		ctx, domain.ParentUUIDEqual(
+			fixtures.DomainTree_Group1Leaf1UUID,
+		),
+	)
+	require.Nil(t, err)
+	items = got.Items()
+	require.Len(t, items, 1)
+
+	require.Equal(t, fixtures.DomainTree_Group1Leaf1UUID, items[0].UUID())
 }
 
 func TestDomainQuery(t *testing.T) {

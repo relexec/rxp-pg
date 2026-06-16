@@ -460,6 +460,7 @@ func (s *Store) dbReadByExpression(
 ) ([]*Record, error) {
 	qargs := []any{}
 	wheres := []string{}
+	treeOp := false
 
 	switch expr := expr.(type) {
 	case query.UnaryExpression:
@@ -530,6 +531,41 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
+		case domain.RootUUIDPredicate:
+			op := pred.Op
+			switch op {
+			case query.PredicateOperatorEqual:
+				wheres = append(wheres, fmt.Sprintf("d.root = (SELECT id FROM domains WHERE uuid = $%d)", len(qargs)+1))
+				qargs = append(qargs, pred.Value)
+			default:
+				return nil, errors.UnsupportedPredicateOperator(op)
+			}
+		case domain.RootNamePredicate:
+			op := pred.Op
+			switch op {
+			case query.PredicateOperatorEqual:
+				wheres = append(wheres, fmt.Sprintf("d.root = (SELECT id FROM domains WHERE name = $%d)", len(qargs)+1))
+				qargs = append(qargs, pred.Value)
+			default:
+				return nil, errors.UnsupportedPredicateOperator(op)
+			}
+		case domain.ParentUUIDPredicate:
+			op := pred.Op
+			switch op {
+			case query.PredicateOperatorEqual:
+				treeOp = true
+				wheres = append(
+					wheres,
+					fmt.Sprintf(
+						"dset.uuid = $%d AND "+
+							"d.left_side BETWEEN dset.left_side AND dset.right_side",
+						len(qargs)+1,
+					),
+				)
+				qargs = append(qargs, pred.Value)
+			default:
+				return nil, errors.UnsupportedPredicateOperator(op)
+			}
 		default:
 			return nil, errors.UnsupportedPredicate(pred)
 		}
@@ -549,8 +585,12 @@ SELECT
 , d.parent AS parent_id
 , d.left_side
 , d.right_side
-FROM domains AS d
-`
+FROM domains AS d`
+		if treeOp {
+			qs += `
+ INNER JOIN domains AS dset
+  ON d.root = dset.root`
+		}
 		if len(wheres) > 0 {
 			qs += "\nWHERE " + strings.Join(wheres, " AND ")
 		}
