@@ -47,10 +47,6 @@ func TestObjectRead(t *testing.T) {
 	err = testutil.DomainCreateIfNotExists(ctx, rxp, dom)
 	require.Nil(t, err)
 
-	ns := fixtures.Namespace
-	err = testutil.NamespaceCreateIfNotExists(ctx, rxp, ns)
-	require.Nil(t, err)
-
 	ctxMissingIdent := context.TODO()
 
 	app1 := object.New(
@@ -66,7 +62,7 @@ func TestObjectRead(t *testing.T) {
 	svc1 := object.New(
 		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
-		object.WithNamespace(ns),
+		object.WithDomain(fixtures.DomainTree_Group1),
 		object.WithName(testutil.RandomName()),
 	)
 
@@ -122,26 +118,13 @@ func TestObjectRead(t *testing.T) {
 			"invalid selector: domain required",
 		},
 		{
-			"missing namespace with uuid",
-			ctx,
-			service.FirstKindVersionName(),
-			object.Select(object.ByUUID(svc1.UUID())),
-			nil,
-			"invalid selector: namespace required",
-		},
-		{
-			"missing namespace with name",
-			ctx,
-			service.FirstKindVersionName(),
-			object.Select(object.ByName(testutil.RandomName())),
-			nil,
-			"invalid selector: namespace required",
-		},
-		{
 			"mismatched kind",
 			ctx,
 			application.FirstKindVersionName(),
-			object.Select(object.ByDomain(dom), object.ByUUID(svc1.UUID())),
+			object.Select(
+				object.ByDomain(dom),
+				object.ByUUID(svc1.UUID()),
+			),
 			nil,
 			"not found",
 		},
@@ -158,34 +141,54 @@ func TestObjectRead(t *testing.T) {
 			"not found",
 		},
 		{
-			"happy path by domain and uuid",
+			"happy path domain-scoped with only uuid",
 			ctx,
 			application.FirstKindVersionName(),
-			object.Select(object.ByDomain(dom), object.ByUUID(app1.UUID())),
+			object.Select(object.ByUUID(app1.UUID())),
 			app1,
 			"",
 		},
 		{
-			"happy path by domain-qualified name",
+			"happy path domain-scoped with uuid and root domain",
 			ctx,
 			application.FirstKindVersionName(),
-			object.Select(object.ByDomain(dom), object.ByName(app1.Name())),
+			object.Select(
+				object.ByDomain(dom),
+				object.ByUUID(app1.UUID()),
+			),
 			app1,
 			"",
 		},
 		{
-			"happy path by namespace and uuid",
+			"happy path domain-scoped by name with root domain",
+			ctx,
+			application.FirstKindVersionName(),
+			object.Select(
+				object.ByDomain(dom),
+				object.ByName(app1.Name()),
+			),
+			app1,
+			"",
+		},
+		{
+			"happy path domain-scoped with uuid and parent domain",
 			ctx,
 			service.FirstKindVersionName(),
-			object.Select(object.ByNamespace(ns), object.ByUUID(svc1.UUID())),
+			object.Select(
+				object.ByDomain(fixtures.DomainTree_Group1),
+				object.ByUUID(svc1.UUID()),
+			),
 			svc1,
 			"",
 		},
 		{
-			"happy path by namespace-qualified name",
+			"happy path domain-scoped by name with parent domain",
 			ctx,
 			service.FirstKindVersionName(),
-			object.Select(object.ByNamespace(ns), object.ByName(svc1.Name())),
+			object.Select(
+				object.ByDomain(fixtures.DomainTree_Group1),
+				object.ByName(svc1.Name()),
+			),
 			svc1,
 			"",
 		},
@@ -203,10 +206,6 @@ func TestObjectRead(t *testing.T) {
 				if c.exp.Domain() != nil {
 					require.NotNil(got.Domain())
 					require.Equal(c.exp.Domain().Name(), got.Domain().Name())
-				}
-				if c.exp.Namespace() != nil {
-					require.NotNil(got.Namespace())
-					require.Equal(c.exp.Namespace().Name(), got.Namespace().Name())
 				}
 				require.Equal(c.exp.Name(), got.Name())
 				require.Equal(c.exp.UUID(), got.UUID())
@@ -232,10 +231,6 @@ func TestObjectWrite(t *testing.T) {
 	err = testutil.DomainCreateIfNotExists(ctx, rxp, domain)
 	require.Nil(t, err)
 
-	ns := fixtures.Namespace
-	err = testutil.NamespaceCreateIfNotExists(ctx, rxp, ns)
-	require.Nil(t, err)
-
 	err = testutil.KindCreateIfNotExists(ctx, rxp, application.Kind)
 	require.Nil(t, err, err)
 
@@ -248,7 +243,7 @@ func TestObjectWrite(t *testing.T) {
 	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, service.FirstKindVersion())
 	require.Nil(t, err)
 
-	// NOTE: Platform is NamescopeSystem which allows us to test the
+	// NOTE: Platform is ScopeSystem which allows us to test the
 	// system-qualified name constraints.
 	plat1 := object.New(
 		object.WithKindVersionName(platform.FirstKindVersionName()),
@@ -264,7 +259,7 @@ func TestObjectWrite(t *testing.T) {
 	plat1Gen1 := plat1.Clone()
 	plat1Gen1.SetGeneration(1)
 
-	// NOTE: Application is NamescopeDomain which allows us to test the
+	// NOTE: Application is ScopeDomain which allows us to test the
 	// domain-qualified name constraints.
 	appMissingDomain := object.New(
 		object.WithKindVersionName(application.FirstKindVersionName()),
@@ -287,19 +282,19 @@ func TestObjectWrite(t *testing.T) {
 	app1Gen1 := app1.Clone()
 	app1Gen1.SetGeneration(1)
 
-	// NOTE: Service is NamescopeNamespace which allows us to test the
-	// namespace-qualified name constraints.
+	// We test domain hierarchy management with the Service object by using a
+	// Domain with a parent Domain.
 	svc1 := object.New(
 		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
-		object.WithNamespace(ns),
+		object.WithDomain(fixtures.DomainTree_Group1),
 		object.WithName(testutil.RandomName()),
 	)
 	svc1Name := svc1.Name()
 	svcDuplicateName := object.New(
 		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
-		object.WithNamespace(ns),
+		object.WithDomain(fixtures.DomainTree_Group1),
 		object.WithName(svc1Name),
 	)
 
@@ -307,18 +302,11 @@ func TestObjectWrite(t *testing.T) {
 
 	svcMissingUUID := object.New(
 		object.WithKindVersionName(service.FirstKindVersionName()),
-		object.WithNamespace(ns),
 		object.WithName(testutil.RandomName()),
 	)
 	svcMissingName := object.New(
 		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
-		object.WithNamespace(ns),
-	)
-	svcMissingNamespace := object.New(
-		object.WithKindVersionName(service.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithName(testutil.RandomName()),
 	)
 
 	svc1Gen1 := svc1.Clone()
@@ -362,13 +350,6 @@ func TestObjectWrite(t *testing.T) {
 			"invalid object: domain required",
 		},
 		{
-			"namespace required",
-			ctx,
-			svcMissingNamespace,
-			nil,
-			"invalid object: namespace required",
-		},
-		{
 			"unknown kind",
 			ctx,
 			fixtures.UnknownObject,
@@ -390,28 +371,28 @@ func TestObjectWrite(t *testing.T) {
 			"conflict: \"platform.testing.rxp\" already exists with name",
 		},
 		{
-			"happy path domain-scoped object",
+			"happy path domain-scoped object root domain",
 			ctx,
 			app1,
 			&app1Gen1,
 			"",
 		},
 		{
-			"domain-qualified name collision",
+			"domain-qualified name collision root domain",
 			ctx,
 			appDuplicateName,
 			nil,
 			"conflict: \"application.testing.rxp\" already exists with name",
 		},
 		{
-			"happy path namespace-scoped object",
+			"happy path domain-scoped object parent domain",
 			ctx,
 			svc1,
 			&svc1Gen1,
 			"",
 		},
 		{
-			"namespace-qualified name collision",
+			"domain-qualified name collision parent domain",
 			ctx,
 			svcDuplicateName,
 			nil,
@@ -449,10 +430,6 @@ func TestObjectWrite(t *testing.T) {
 					require.NotNil(got.Domain())
 					require.Equal(c.exp.Domain().Name(), got.Domain().Name())
 				}
-				if c.exp.Namespace() != nil {
-					require.NotNil(got.Namespace())
-					require.Equal(c.exp.Namespace().Name(), got.Namespace().Name())
-				}
 				require.Equal(c.exp.Name(), got.Name())
 				require.Equal(c.exp.UUID(), got.UUID())
 				require.Equal(c.exp.Generation(), got.Generation())
@@ -488,10 +465,6 @@ func TestObjectQuery(t *testing.T) {
 	err = testutil.DomainCreateIfNotExists(ctx, rxp, dom)
 	require.Nil(t, err)
 
-	ns := fixtures.Namespace
-	err = testutil.NamespaceCreateIfNotExists(ctx, rxp, ns)
-	require.Nil(t, err)
-
 	err = testutil.KindCreateIfNotExists(ctx, rxp, application.Kind)
 	require.Nil(t, err, err)
 
@@ -515,13 +488,10 @@ func TestObjectQuery(t *testing.T) {
 	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, service.FirstKindVersion())
 	require.Nil(t, err)
 
-	// NOTE: Service is NamescopeNamespace which allows us to test the
-	// namespace-qualified name constraints.
 	svc1 := object.New(
 		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
 		object.WithDomain(dom),
-		object.WithNamespace(ns),
 		object.WithName(testutil.RandomName()),
 	)
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, svc1)
@@ -604,22 +574,6 @@ func TestObjectQuery(t *testing.T) {
 			1,
 			[]api.KindName{
 				application.KindName,
-			},
-			1,
-			false,
-			"",
-		},
-		{
-			"query namespace-qualified objects limit of 1",
-			ctx,
-			api.KindVersionName(service.KindName),
-			nil,
-			[]query.Option{
-				query.Limit(1),
-			},
-			1,
-			[]api.KindName{
-				service.KindName,
 			},
 			1,
 			false,

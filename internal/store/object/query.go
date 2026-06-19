@@ -24,10 +24,6 @@ func (s *Store) Query(
 
 	scope := kindRec.Kind.Scope()
 	switch scope {
-	case api.ScopeNamespace:
-		return s.dbReadNamespaceQualifiedByExpression(
-			ctx, kv, kindRec, expr, opts,
-		)
 	case api.ScopeDomain:
 		return s.dbReadDomainQualifiedByExpression(
 			ctx, kv, kindRec, expr, opts,

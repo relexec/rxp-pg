@@ -51,21 +51,8 @@ func (d *Driver) ObjectRead(
 
 	sys := sel.System()
 	dom := sel.Domain()
-	ns := sel.Namespace()
 
-	if ns != nil {
-		dom = ns.Domain()
-		if dom != nil && dom.System() != nil {
-			sys = dom.System()
-		}
-	}
-
-	if ns != nil {
-		dom = ns.Domain()
-		if dom != nil {
-			sys = dom.System()
-		}
-	} else if dom != nil {
+	if dom != nil {
 		sys = dom.System()
 	}
 	// Default the system to the host system if it hasn't been specified.
@@ -116,12 +103,12 @@ func (d *Driver) ObjectRead(
 	if uuid != "" {
 		rec, err = d.objectStore.ReadByUUID(
 			ctx, sys, kindRec.Kind, kvRec.KindVersion,
-			dom, ns, uuid,
+			dom, uuid,
 		)
 	} else {
 		rec, err = d.objectStore.ReadByName(
 			ctx, sys, kindRec.Kind, kvRec.KindVersion,
-			dom, ns, name,
+			dom, name,
 		)
 	}
 	if err != nil {
@@ -156,9 +143,8 @@ func (d *Driver) objectReadValidate(
 	return sel.Validate()
 }
 
-// objectReadValidateScope verifies that the object being read has the
-// required namespace and domain in the selector if the scope of kindversions is
-// either ScopeNamespace or ScopeDomain.
+// objectReadValidateScope verifies that the object being read has the required
+// domain in the selector if the scope of Kind is ScopeDomain.
 func (d *Driver) objectReadValidateScope(
 	ctx context.Context,
 	kindRec *storekind.Record,
@@ -169,12 +155,6 @@ func (d *Driver) objectReadValidateScope(
 	}
 	scope := kindRec.Kind.Scope()
 	switch scope {
-	case api.ScopeNamespace:
-		ns := sel.Namespace()
-		if ns == nil {
-			return errors.ErrSelectorNamespaceRequired
-		}
-		return ns.Validate()
 	case api.ScopeDomain:
 		domain := sel.Domain()
 		if domain == nil {
@@ -222,14 +202,8 @@ func (d *Driver) ObjectWrite(
 
 	sys := obj.System()
 	dom := obj.Domain()
-	ns := obj.Namespace()
 
-	if ns != nil {
-		dom = ns.Domain()
-		if dom != nil {
-			sys = dom.System()
-		}
-	} else if dom != nil {
+	if dom != nil {
 		sys = dom.System()
 	}
 	// Default the system to the host system if it hasn't been specified.
@@ -289,8 +263,7 @@ func (d *Driver) objectWriteValidate(
 }
 
 // objectWriteValidateScope verifies that the object being written has the
-// required namespace and domain qualification if the scope of kindversions is
-// either ScopeNamespace or ScopeDomain.
+// required domain qualification if the scope of Kind is ScopeDomain.
 func (d *Driver) objectWriteValidateScope(
 	ctx context.Context,
 	kindRec *storekind.Record,
@@ -298,12 +271,6 @@ func (d *Driver) objectWriteValidateScope(
 ) error {
 	scope := kindRec.Kind.Scope()
 	switch scope {
-	case api.ScopeNamespace:
-		ns := obj.Namespace()
-		if ns == nil {
-			return errors.ErrObjectNamespaceRequired
-		}
-		return ns.Validate()
 	case api.ScopeDomain:
 		domain := obj.Domain()
 		if domain == nil {

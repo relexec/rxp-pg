@@ -7,10 +7,9 @@ CREATE TABLE scopes (
 
 INSERT INTO scopes (id, name, description)
 VALUES
-  (0, 'namespace', 'The name is unique within the scope of the kind and namespace.')
-, (1, 'domain', 'The name is unique within the scope of the kind and domain.')
-, (2, 'system', 'The name is unique within the scope of the kind and system.')
-, (3, 'global', 'The type of thing can only be identified by UUID.')
+  (0, 'domain', 'The name is unique within the scope of the kind and domain.')
+, (1, 'system', 'The name is unique within the scope of the kind and system.')
+, (2, 'global', 'The type of thing can only be identified by UUID.')
 ;
 
 CREATE TABLE systems (
@@ -53,28 +52,6 @@ CREATE TABLE domains_archived (
 , parent INT NULL
 , left_side INT NOT NULL
 , right_side INT NOT NULL
-);
-
-CREATE TABLE namespaces (
-  id SERIAL NOT NULL PRIMARY KEY
-, domain INT NOT NULL
-, uuid UUID NOT NULL
-, name TEXT NOT NULL
-, last_modified_on BIGINT NOT NULL
-, last_modified_by TEXT NOT NULL
-, UNIQUE (uuid)
-, UNIQUE (domain, name)
-);
-
-CREATE TABLE namespaces_archived (
-  namespace INT NOT NULL PRIMARY KEY
-, domain INT NOT NULL
-, uuid UUID NOT NULL
-, name TEXT NOT NULL
-, last_modified_on BIGINT NOT NULL
-, last_modified_by TEXT NOT NULL
-, archived_on BIGINT NULL
-, archived_by TEXT NULL
 );
 
 CREATE TABLE kinds (
@@ -131,7 +108,6 @@ CREATE TABLE objects (
 , uuid UUID NOT NULL
 , generation INT NOT NULL
 , domain INT NULL
-, namespace INT NULL
 , spec TEXT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
@@ -139,7 +115,7 @@ CREATE TABLE objects (
 );
 
 CREATE INDEX ix_objects_divisions
-ON objects (system, kindversion, domain, namespace);
+ON objects (system, kindversion, domain);
 
 CREATE TABLE system_qualified_object_names (
   object BIGINT NOT NULL PRIMARY KEY
@@ -162,24 +138,12 @@ CREATE TABLE domain_qualified_object_names (
 , UNIQUE (system, kind, domain, name)
 );
 
-CREATE TABLE namespace_qualified_object_names (
-  object BIGINT NOT NULL PRIMARY KEY
-, system INT NOT NULL
-, kind INT NOT NULL
-, namespace INT NOT NULL
-, name TEXT NOT NULL
-, last_modified_on BIGINT NOT NULL
-, last_modified_by TEXT NOT NULL
-, UNIQUE (system, kind, namespace, name)
-);
-
 CREATE TABLE objects_archived (
   object BIGINT NOT NULL PRIMARY KEY
 , system INT NOT NULL
 , kindversion BIGINT NOT NULL
 , uuid UUID NOT NULL
 , domain INT NULL
-, namespace INT NULL
 , name TEXT NOT NULL
 , spec TEXT NULL
 , last_modified_on BIGINT NOT NULL
@@ -225,7 +189,6 @@ CREATE TABLE object_labels (
 DROP TABLE object_labels;
 DROP TABLE system_qualified_object_names;
 DROP TABLE domain_qualified_object_names;
-DROP TABLE namespace_qualified_object_names;
 DROP TABLE object_generations_archived;
 DROP TABLE object_generations;
 DROP TABLE objects_archived;
@@ -234,8 +197,6 @@ DROP TABLE kindversions_archived;
 DROP TABLE kindversions;
 DROP TABLE kinds_archived;
 DROP TABLE kinds;
-DROP TABLE namespaces_archived;
-DROP TABLE namespaces;
 DROP TABLE domains_archived;
 DROP TABLE domains;
 DROP TABLE systems;

@@ -13,7 +13,6 @@ import (
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
-	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
@@ -45,15 +44,9 @@ type Driver struct {
 	// kindversionStore contains the Store for reading and writing KindVersion
 	// data.
 	kindversionStore *storekindversion.Store
-
 	// domainStore contains the Store for reading and writing Domain data.
 	domainStore *storedomain.Store
-	// namespaceStore contains the Store for reading and writing Namespace
-	// data.
-	namespaceStore *storenamespace.Store
-
-	// objectStore contains the Store for reading and writing Namespace
-	// data.
+	// objectStore contains the Store for reading and writing Object data.
 	objectStore *storeobject.Store
 
 	// onClose are a set of callbacks that will be executed in reverse

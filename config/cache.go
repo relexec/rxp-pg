@@ -19,16 +19,9 @@ const (
 	DefaultCacheDomainEnabled  = true
 	flagCacheDomainEnabled     = "rxp-cache-domain-enabled"
 	flagCacheDomainEnabledDesc = "Enable the Domain cache."
-	DefaultCacheDomainMaxSize  = "2Mb"
+	DefaultCacheDomainMaxSize  = "4Mb"
 	flagCacheDomainMaxSize     = "rxp-cache-domain-max-size"
 	flagCacheDomainMaxSizeDesc = "Maximum size (in bytes) for the Domain cache. Specify with common size strings, e.g. '1MB' or '10Gb'"
-
-	DefaultCacheNamespaceEnabled  = true
-	flagCacheNamespaceEnabled     = "rxp-cache-namespace-enabled"
-	flagCacheNamespaceEnabledDesc = "Enable the Namespace cache."
-	DefaultCacheNamespaceMaxSize  = "8Mb"
-	flagCacheNamespaceMaxSize     = "rxp-cache-namespace-max-size"
-	flagCacheNamespaceMaxSizeDesc = "Maximum size (in bytes) for the Namespace cache. Specify with common size strings, e.g. '1MB' or '10Gb'"
 
 	DefaultCacheKindEnabled  = true
 	flagCacheKindEnabled     = "rxp-cache-kind-enabled"
@@ -40,7 +33,7 @@ const (
 	DefaultCacheKindVersionEnabled  = true
 	flagCacheKindVersionEnabled     = "rxp-cache-kindversion-enabled"
 	flagCacheKindVersionEnabledDesc = "Enable the KindVersion cache."
-	DefaultCacheKindVersionMaxSize  = "32Mb"
+	DefaultCacheKindVersionMaxSize  = "4Mb"
 	flagCacheKindVersionMaxSize     = "rxp-cache-kindversion-max-size"
 	flagCacheKindVersionMaxSizeDesc = "Maximum size (in bytes) for the KindVersion cache. Specify with common size strings, e.g. '1MB' or '10Gb'"
 )
@@ -53,9 +46,6 @@ type CacheConfigs struct {
 	// Domain contains the configuration options for the rxp-pg library's
 	// domain cache.
 	Domain CacheConfig `json:"domain"`
-	// Namespace contains the configuration options for the rxp-pg library's
-	// namespace cache.
-	Namespace CacheConfig `json:"namespace"`
 	// Kind contains the configuration options for the rxp-pg library's
 	// kind cache.
 	Kind CacheConfig `json:"kind"`
@@ -76,12 +66,6 @@ func (c CacheConfigs) Validate() error {
 		_, err := c.Domain.MaxSizeBytes()
 		if err != nil {
 			return fmt.Errorf("invalid domain cache max size: %w", err)
-		}
-	}
-	if c.Namespace.Enabled {
-		_, err := c.Namespace.MaxSizeBytes()
-		if err != nil {
-			return fmt.Errorf("invalid namespace cache max size: %w", err)
 		}
 	}
 	if c.Kind.Enabled {
@@ -155,18 +139,6 @@ func (c *CacheConfigs) BindFlags(fs *pflag.FlagSet) {
 		flagCacheDomainMaxSize,
 		DefaultCacheDomainMaxSize,
 		flagCacheDomainMaxSizeDesc,
-	)
-	pflag.BoolVar(
-		&c.Namespace.Enabled,
-		flagCacheNamespaceEnabled,
-		DefaultCacheNamespaceEnabled,
-		flagCacheNamespaceEnabledDesc,
-	)
-	pflag.StringVar(
-		&c.Namespace.MaxSize,
-		flagCacheNamespaceMaxSize,
-		DefaultCacheNamespaceMaxSize,
-		flagCacheNamespaceMaxSizeDesc,
 	)
 	pflag.BoolVar(
 		&c.KindVersion.Enabled,

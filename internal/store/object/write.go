@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
-	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/object"
@@ -50,57 +49,10 @@ func (s *Store) Write(
 	}
 
 	var domRec *storedomain.Record
-	var nsRec *storenamespace.Record
 
 	k := kindRec.Kind
 	scope := k.Scope()
 	switch scope {
-	case api.ScopeNamespace:
-		ns := obj.Namespace()
-		if ns == nil {
-			return nil, errors.Internal(
-				fmt.Sprintf(
-					"expected to have namespace for object %q",
-					obj.UUID(),
-				),
-			)
-		}
-		dom := obj.Domain()
-		if dom == nil {
-			dom = ns.Domain()
-		}
-		if dom == nil {
-			return nil, errors.Internal(
-				fmt.Sprintf(
-					"expected to have domain for namespace %q",
-					ns.Name(),
-				),
-			)
-		}
-		if dom.UUID() != "" {
-			domRec, err = s.domainStore.ReadByUUID(
-				ctx, dom.UUID(),
-			)
-		} else {
-			domRec, err = s.domainStore.ReadByName(
-				ctx, sys, dom.Name(),
-			)
-		}
-		if err != nil {
-			return nil, errors.Internal(
-				"failed reading domain record",
-				errors.WithWrap(err),
-			)
-		}
-		nsRec, err = s.namespaceStore.ReadByName(
-			ctx, dom, ns.Name(),
-		)
-		if err != nil {
-			return nil, errors.Internal(
-				"failed reading namespace record",
-				errors.WithWrap(err),
-			)
-		}
 	case api.ScopeDomain:
 		dom := obj.Domain()
 		if dom == nil {
@@ -135,7 +87,7 @@ func (s *Store) Write(
 		// contraint violation will indicate another caller tried to create the
 		// exact same object concurrently.
 		return s.dbInsertFirst(
-			ctx, sysRec, kindRec, kvRec, domRec, nsRec, obj,
+			ctx, sysRec, kindRec, kvRec, domRec, obj,
 		)
 	}
 	// Otherwise, the caller expects that there is an existing object with this
@@ -148,7 +100,7 @@ func (s *Store) Write(
 	// fail.
 	return s.dbInsertGeneration(
 		ctx,
-		sysRec, kindRec, kvRec, domRec, nsRec,
+		sysRec, kindRec, kvRec, domRec,
 		obj, expectGeneration,
 	)
 }

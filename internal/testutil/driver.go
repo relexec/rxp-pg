@@ -8,7 +8,6 @@ import (
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/kind/kindversion"
-	"github.com/relexec/rxp/namespace"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/testing/fixtures"
 
@@ -107,28 +106,6 @@ func DomainCreateIfNotExists(
 	return nil
 }
 
-// NamespaceCreateIfNotExists ensures that the supplied Namespace exists in the
-// database.
-func NamespaceCreateIfNotExists(
-	ctx context.Context,
-	d *driver.Driver,
-	ns *namespace.Namespace,
-) error {
-	_, err := d.NamespaceRead(
-		ctx, namespace.Select(
-			namespace.ByDomain(ns.Domain()),
-			namespace.ByName(ns.Name()),
-		),
-	)
-	if err != nil {
-		if err != errors.ErrNotFound {
-			return err
-		}
-		return d.NamespaceWrite(ctx, ns)
-	}
-	return nil
-}
-
 // ObjectCreateIfNotExists ensures that the supplied Object exists in the
 // database.
 func ObjectCreateIfNotExists(
@@ -142,9 +119,7 @@ func ObjectCreateIfNotExists(
 	} else if o.Name() != "" {
 		selopts = append(selopts, object.ByName(o.Name()))
 	}
-	if o.Namespace() != nil {
-		selopts = append(selopts, object.ByNamespace(o.Namespace()))
-	} else if o.Domain() != nil {
+	if o.Domain() != nil {
 		selopts = append(selopts, object.ByDomain(o.Domain()))
 	}
 	_, err := d.ObjectRead(ctx, o.KindVersionName(), object.Select(selopts...))

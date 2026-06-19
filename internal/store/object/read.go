@@ -9,7 +9,6 @@ import (
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/kind/kindversion"
-	"github.com/relexec/rxp/namespace"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/system"
 )
@@ -30,7 +29,6 @@ func (s *Store) ReadByRowID(
 	k *kind.Kind,
 	kv *kindversion.KindVersion,
 	dom *domain.Domain,
-	ns *namespace.Namespace,
 	rowID int64,
 ) (*Record, error) {
 	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
@@ -64,28 +62,6 @@ func (s *Store) ReadByRowID(
 	}
 	scope := k.Scope()
 	switch scope {
-	case api.ScopeNamespace:
-		if ns == nil {
-			return nil, errors.ErrSelectorNamespaceRequired
-		}
-		if ns.Domain() == nil {
-			return nil, errors.ErrSelectorDomainRequired
-		}
-		nsRec, err := s.namespaceStore.ReadByName(
-			ctx, ns.Domain(), ns.Name(),
-		)
-		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, err
-			}
-			return nil, errors.Internal(
-				"failed reading namespace record",
-				errors.WithWrap(err),
-			)
-		}
-		return s.dbReadNamespaceQualifiedByRowID(
-			ctx, sysRec, kindRec, kvRec, nsRec, rowID,
-		)
 	case api.ScopeDomain:
 		if dom == nil {
 			return nil, errors.ErrSelectorDomainRequired
@@ -117,7 +93,6 @@ func (s *Store) ReadByUUID(
 	k *kind.Kind,
 	kv *kindversion.KindVersion,
 	dom *domain.Domain,
-	ns *namespace.Namespace,
 	uuid string,
 ) (*Record, error) {
 	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
@@ -151,28 +126,6 @@ func (s *Store) ReadByUUID(
 	}
 	scope := k.Scope()
 	switch scope {
-	case api.ScopeNamespace:
-		if ns == nil {
-			return nil, errors.ErrSelectorNamespaceRequired
-		}
-		if ns.Domain() == nil {
-			return nil, errors.ErrSelectorDomainRequired
-		}
-		nsRec, err := s.namespaceStore.ReadByName(
-			ctx, ns.Domain(), ns.Name(),
-		)
-		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, err
-			}
-			return nil, errors.Internal(
-				"failed reading namespace record",
-				errors.WithWrap(err),
-			)
-		}
-		return s.dbReadNamespaceQualifiedByUUID(
-			ctx, sysRec, kindRec, kvRec, nsRec, uuid,
-		)
 	case api.ScopeDomain:
 		var domRec *storedomain.Record
 		if dom != nil {
@@ -206,7 +159,6 @@ func (s *Store) ReadByName(
 	k *kind.Kind,
 	kv *kindversion.KindVersion,
 	dom *domain.Domain,
-	ns *namespace.Namespace,
 	name string,
 ) (*Record, error) {
 	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
@@ -240,28 +192,6 @@ func (s *Store) ReadByName(
 	}
 	scope := k.Scope()
 	switch scope {
-	case api.ScopeNamespace:
-		if ns == nil {
-			return nil, errors.ErrSelectorNamespaceRequired
-		}
-		if ns.Domain() == nil {
-			return nil, errors.ErrSelectorDomainRequired
-		}
-		nsRec, err := s.namespaceStore.ReadByName(
-			ctx, ns.Domain(), ns.Name(),
-		)
-		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, err
-			}
-			return nil, errors.Internal(
-				"failed reading namespace record",
-				errors.WithWrap(err),
-			)
-		}
-		return s.dbReadNamespaceQualifiedByName(
-			ctx, sysRec, kindRec, kvRec, nsRec, name,
-		)
 	case api.ScopeDomain:
 		if dom == nil {
 			return nil, errors.ErrSelectorDomainRequired

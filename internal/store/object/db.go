@@ -21,7 +21,6 @@ import (
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
-	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
@@ -37,74 +36,6 @@ func isKindishPredicate(p query.Predicate) bool {
 	default:
 		return false
 	}
-}
-
-// dbReadNamespaceQualifiedByRowID performs a SELECT query to return the stored
-// object record having the supplied internal DB RowID with an expected
-// namespace-qualified name.
-func (s *Store) dbReadNamespaceQualifiedByRowID(
-	ctx context.Context,
-	sysRec *storesystem.Record,
-	kindRec *storekind.Record,
-	kvRec *storekindversion.Record,
-	nsRec *storenamespace.Record,
-	rowID int64,
-) (*Record, error) {
-	var uuid string
-	var name string
-	var latestGen api.Generation
-	var spec sql.NullString
-	out := Record{
-		RowID: rowID,
-	}
-	fn := func(tx pgx.Tx) error {
-		qs := `
-SELECT
-  o.uuid AS object_uuid
-, o.generation AS object_generation
-, n.name AS object_name
-, o.spec AS object_spec
-FROM objects AS o
-INNER JOIN namespace_qualified_object_names AS n
- ON o.id = n.object
- AND o.system = n.system
- AND n.namespace = o.namespace
-WHERE o.system = $1
-AND o.kindversion = $2
-AND n.kind = $3
-AND o.id = $4
-AND o.namespace = $5
-`
-		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID,
-			rowID, nsRec.RowID,
-		).Scan(&uuid, &latestGen, &name, &spec)
-		if err != nil {
-			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
-			}
-			return errors.Internal(
-				"failed reading objects record",
-				errors.WithWrap(err),
-			)
-		}
-		out.Object = object.New(
-			object.WithSystem(sysRec.System),
-			object.WithKindVersionName(kvRec.KindVersion.Name()),
-			object.WithNamespace(nsRec.Namespace),
-			object.WithUUID(uuid),
-			object.WithName(name),
-			object.WithGeneration(latestGen),
-		)
-		if spec.Valid {
-			out.Object.SetSpec(spec.String)
-		}
-		return nil
-	}
-	if err := s.Exec(ctx, fn); err != nil {
-		return nil, err
-	}
-	return &out, nil
 }
 
 // dbReadDomainQualifiedByRowID performs a SELECT query to return the stored
@@ -223,71 +154,6 @@ AND o.id = $4
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
 			object.WithKindVersionName(kvRec.KindVersion.Name()),
-			object.WithUUID(uuid),
-			object.WithName(name),
-			object.WithGeneration(latestGen),
-		)
-		if spec.Valid {
-			out.Object.SetSpec(spec.String)
-		}
-		return nil
-	}
-	if err := s.Exec(ctx, fn); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// dbReadNamespaceQualifiedByUUID performs a SELECT query to return the stored
-// object record having the supplied object UUID with an expected
-// namespace-qualified name.
-func (s *Store) dbReadNamespaceQualifiedByUUID(
-	ctx context.Context,
-	sysRec *storesystem.Record,
-	kindRec *storekind.Record,
-	kvRec *storekindversion.Record,
-	nsRec *storenamespace.Record,
-	uuid string,
-) (*Record, error) {
-	var name string
-	var latestGen api.Generation
-	var spec sql.NullString
-	out := Record{}
-	fn := func(tx pgx.Tx) error {
-		qs := `
-SELECT
-  o.id AS object_id
-, o.generation AS object_generation
-, n.name AS object_name
-, o.spec AS object_spec
-FROM objects AS o
-INNER JOIN namespace_qualified_object_names AS n
- ON o.id = n.object
- AND o.system = n.system
- AND n.namespace = o.namespace
-WHERE o.system = $1
-AND o.kindversion = $2
-AND n.kind = $3
-AND o.uuid = $4
-AND o.namespace = $5
-`
-		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID,
-			uuid, nsRec.RowID,
-		).Scan(&out.RowID, &latestGen, &name, &spec)
-		if err != nil {
-			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
-			}
-			return errors.Internal(
-				"failed reading objects record",
-				errors.WithWrap(err),
-			)
-		}
-		out.Object = object.New(
-			object.WithSystem(sysRec.System),
-			object.WithKindVersionName(kvRec.KindVersion.Name()),
-			object.WithNamespace(nsRec.Namespace),
 			object.WithUUID(uuid),
 			object.WithName(name),
 			object.WithGeneration(latestGen),
@@ -442,70 +308,6 @@ AND o.uuid = $4
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
 			object.WithKindVersionName(kvRec.KindVersion.Name()),
-			object.WithUUID(uuid),
-			object.WithName(name),
-			object.WithGeneration(latestGen),
-		)
-		if spec.Valid {
-			out.Object.SetSpec(spec.String)
-		}
-		return nil
-	}
-	if err := s.Exec(ctx, fn); err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// dbReadNamespaceQualifiedByName performs a SELECT query to return the stored
-// object record having the supplied namespace-qualified name.
-func (s *Store) dbReadNamespaceQualifiedByName(
-	ctx context.Context,
-	sysRec *storesystem.Record,
-	kindRec *storekind.Record,
-	kvRec *storekindversion.Record,
-	nsRec *storenamespace.Record,
-	name string,
-) (*Record, error) {
-	var uuid string
-	var latestGen api.Generation
-	var spec sql.NullString
-	out := Record{}
-	fn := func(tx pgx.Tx) error {
-		qs := `
-SELECT
-  o.id AS object_id
-, o.uuid AS object_uuid
-, o.generation AS object_generation
-, o.spec AS object_spec
-FROM objects AS o
-INNER JOIN namespace_qualified_object_names AS n
- ON o.id = n.object
- AND o.system = n.system
- AND n.namespace = o.namespace
-WHERE o.system = $1
-AND o.kindversion = $2
-AND n.kind = $3
-AND n.name = $4
-AND o.namespace = $5
-`
-		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID,
-			name, nsRec.RowID,
-		).Scan(&out.RowID, &uuid, &latestGen, &spec)
-		if err != nil {
-			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
-			}
-			return errors.Internal(
-				"failed reading objects record",
-				errors.WithWrap(err),
-			)
-		}
-		out.Object = object.New(
-			object.WithSystem(sysRec.System),
-			object.WithKindVersionName(kvRec.KindVersion.Name()),
-			object.WithNamespace(nsRec.Namespace),
 			object.WithUUID(uuid),
 			object.WithName(name),
 			object.WithGeneration(latestGen),
@@ -692,7 +494,6 @@ func (s *Store) dbInsertFirst(
 	kindRec *storekind.Record,
 	kvRec *storekindversion.Record,
 	domRec *storedomain.Record,
-	nsRec *storenamespace.Record,
 	obj object.Object,
 ) (*object.Object, error) {
 	kind := kindRec.Kind
@@ -705,14 +506,9 @@ func (s *Store) dbInsertFirst(
 	specJSON := obj.Spec()
 
 	var domainRowID *int64
-	var nsRowID *int64
 
 	if domRec != nil {
 		domainRowID = &domRec.RowID
-	}
-
-	if nsRec != nil {
-		nsRowID = &nsRec.RowID
 	}
 
 	fn := func(tx pgx.Tx) error {
@@ -724,7 +520,6 @@ INSERT INTO objects (
 , uuid
 , generation
 , domain
-, namespace
 , spec
 , last_modified_on
 , last_modified_by
@@ -737,7 +532,6 @@ INSERT INTO objects (
 , $6
 , $7
 , $8
-, $9
 ) RETURNING id`
 		err := tx.QueryRow(
 			ctx, qs,
@@ -746,7 +540,6 @@ INSERT INTO objects (
 			uuid,
 			1, /* we expect we are the first generation */
 			domainRowID,
-			nsRowID,
 			specJSON,
 			createdOn,
 			createdBy,
@@ -756,10 +549,10 @@ INSERT INTO objects (
 				if pgErr.Code == pgerrcode.UniqueViolation {
 					// This will be the UUID column uniqueness constraint
 					// violation. Since we have different uniqueness
-					// constraints for the domain, namespace and name
-					// combinations depending on scope, we check for
-					// name-based collisions before attempting to INSERT a
-					// record in the objects table.
+					// constraints for the domain and name combinations
+					// depending on scope, we check for name-based collisions
+					// before attempting to INSERT a record in the objects
+					// table.
 					return errors.ExpectedNotToExist(fmt.Sprintf("%s (%s)", kv, uuid))
 				}
 			}
@@ -770,52 +563,6 @@ INSERT INTO objects (
 		}
 		scope := kindRec.Kind.Scope()
 		switch scope {
-		case api.ScopeNamespace:
-			qs = `
-INSERT INTO namespace_qualified_object_names (
-  object
-, system
-, kind
-, namespace
-, name
-, last_modified_on
-, last_modified_by
-) VALUES (
-  $1
-, $2
-, $3
-, $4
-, $5
-, $6
-, $7
-)`
-			_, err = tx.Exec(
-				ctx, qs,
-				objRowID,
-				sysRec.RowID,
-				kindRec.RowID,
-				nsRec.RowID,
-				name,
-				createdOn,
-				createdBy,
-			)
-			if err != nil {
-				if pgErr, ok := err.(*pgconn.PgError); ok {
-					if pgErr.Code == pgerrcode.UniqueViolation {
-						qn := fmt.Sprintf(
-							"%s:%s:%s",
-							nsRec.Namespace.Name(),
-							nsRec.Namespace.Domain().Name(),
-							name,
-						)
-						return errors.DuplicateName(kind.Name(), qn)
-					}
-				}
-				return errors.Internal(
-					"failed inserting namespace_qualified_object_names record",
-					errors.WithWrap(err),
-				)
-			}
 		case api.ScopeDomain:
 			qs = `
 INSERT INTO domain_qualified_object_names (
@@ -953,7 +700,6 @@ func (s *Store) dbInsertGeneration(
 	kindRec *storekind.Record,
 	kvRec *storekindversion.Record,
 	domRec *storedomain.Record,
-	nsRec *storenamespace.Record,
 	obj object.Object,
 	expectGeneration api.Generation,
 ) (*object.Object, error) {
@@ -1056,139 +802,6 @@ AND generation = $6`
 	out := obj
 	out.SetGeneration(expectGeneration + 1)
 	return &out, nil
-}
-
-type nsqObjectRecord struct {
-	ID            int64          `db:"object_id"`
-	UUID          string         `db:"object_uuid"`
-	Generation    api.Generation `db:"object_generation"`
-	Name          string         `db:"object_name"`
-	Spec          sql.NullString `db:"object_spec"`
-	SystemID      int64          `db:"system_id"`
-	KindVersionID int64          `db:"kindversion_id"`
-	NamespaceID   int64          `db:"namespace_id"`
-}
-
-// dbReadNamespaceQualifiedByExpression queries zero or more Objects that have
-// namespace-qualified names from persistent storage given the pre-validated
-// expression and options.
-func (s *Store) dbReadNamespaceQualifiedByExpression(
-	ctx context.Context,
-	kv api.KindVersionName,
-	kindRec *storekind.Record,
-	expr query.Expression,
-	opts query.Options,
-) ([]*Record, error) {
-	sysRec := s.hostSystemRecord
-	sys := sysRec.System
-
-	qargs := []any{
-		sysRec.RowID,
-		kindRec.RowID,
-	}
-	wheres := []string{
-		"o.system = $1",
-		"kv.kind = $2",
-	}
-
-	kvVerStr := kv.VersionString()
-	if kvVerStr != "" {
-		wheres = append(wheres, "kv.version = $3")
-		qargs = append(qargs, kvVerStr)
-	}
-
-	switch expr := expr.(type) {
-	case query.UnaryExpression:
-		pred := expr.Predicate
-		switch pred := pred.(type) {
-		case kind.NamePredicate:
-			op := pred.Op
-			switch op {
-			case query.PredicateOperatorEqual:
-				kn := pred.Value.(api.KindName)
-				kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
-				if err != nil {
-					return nil, err
-				}
-				wheres = append(wheres, fmt.Sprintf("kv.kind = $%d", len(qargs)+1))
-				qargs = append(qargs, kindRec.RowID)
-			}
-		}
-	case query.OrExpression:
-	case query.AndExpression:
-	}
-
-	var recs []nsqObjectRecord
-	fn := func(tx pgx.Tx) error {
-		qs := `
-SELECT
-  o.id AS object_id
-, o.uuid AS object_uuid
-, o.generation AS object_generation
-, n.name AS object_name
-, o.spec AS object_spec
-, o.system AS system_id
-, o.kindversion AS kindversion_id
-, o.namespace AS namespace_id
-FROM objects AS o
- INNER JOIN kindversions AS kv
-  ON o.kindversion = kv.id
- INNER JOIN namespace_qualified_object_names AS n
-  ON o.id = n.object
-`
-		if len(wheres) > 0 {
-			qs += "\nWHERE " + strings.Join(wheres, " AND ")
-		}
-		qs += fmt.Sprintf("\nORDER BY o.uuid ASC LIMIT %d", opts.Limit())
-		rows, err := tx.Query(ctx, qs, qargs...)
-		if err != nil {
-			return errors.Internal(
-				"failed reading namespace-qualified object records",
-				errors.WithWrap(err),
-			)
-		}
-		defer rows.Close()
-		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[nsqObjectRecord])
-		if err != nil {
-			return errors.Internal(
-				"failed collecting namespace-qualified object records",
-				errors.WithWrap(err),
-			)
-		}
-
-		return nil
-	}
-	if err := s.Exec(ctx, fn); err != nil {
-		return nil, err
-	}
-	out := make([]*Record, 0, len(recs))
-	for _, rec := range recs {
-		kvRec, err := s.kindversionStore.ReadByRowID(ctx, rec.KindVersionID)
-		if err != nil {
-			return nil, err
-		}
-		kv := kvRec.KindVersion.Name()
-		nsRec, err := s.namespaceStore.ReadByRowID(ctx, rec.NamespaceID)
-		if err != nil {
-			return nil, err
-		}
-		obj := object.New(
-			object.WithKindVersionName(kv),
-			object.WithUUID(rec.UUID),
-			object.WithName(rec.Name),
-			object.WithGeneration(rec.Generation),
-			object.WithSystem(sys),
-			object.WithNamespace(nsRec.Namespace),
-		)
-		if rec.Spec.Valid {
-			obj.SetSpec(rec.Spec.String)
-		}
-		out = append(out, &Record{
-			RowID:  rec.ID,
-			Object: obj,
-		})
-	}
-	return out, nil
 }
 
 type dqObjectRecord struct {

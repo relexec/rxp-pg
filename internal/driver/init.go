@@ -16,7 +16,6 @@ import (
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
-	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
@@ -65,10 +64,6 @@ func (d *Driver) init(ctx context.Context) error {
 	}
 
 	if err = d.initDomainStore(ctx); err != nil {
-		return err
-	}
-
-	if err = d.initNamespaceStore(ctx); err != nil {
 		return err
 	}
 
@@ -262,25 +257,6 @@ func (d *Driver) initDomainStore(ctx context.Context) error {
 	return nil
 }
 
-// initNamespaceStore initializes the namespace store.
-func (d *Driver) initNamespaceStore(ctx context.Context) error {
-	d.log.V(4).Info("initializing namespace store")
-	s, err := storenamespace.New(
-		ctx,
-		storenamespace.WithConfig(d.cfg),
-		storenamespace.WithPool(d.pool),
-		storenamespace.WithDomainStore(d.domainStore),
-		storenamespace.WithHostSystemRecord(*d.hostSystemRecord),
-	)
-	if err != nil {
-		return err
-	}
-	d.namespaceStore = s
-	d.onClose = append(d.onClose, d.namespaceStore.Close)
-	d.log.Info("initialized namespace store")
-	return nil
-}
-
 // initObjectStore initializes the object store.
 func (d *Driver) initObjectStore(ctx context.Context) error {
 	d.log.V(4).Info("initializing object store")
@@ -292,7 +268,6 @@ func (d *Driver) initObjectStore(ctx context.Context) error {
 		storeobject.WithSystemStore(d.systemStore),
 		storeobject.WithKindStore(d.kindStore),
 		storeobject.WithKindVersionStore(d.kindversionStore),
-		storeobject.WithNamespaceStore(d.namespaceStore),
 		storeobject.WithDomainStore(d.domainStore),
 	)
 	if err != nil {

@@ -5,7 +5,6 @@ import (
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
-	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
@@ -26,7 +25,4 @@ type Store struct {
 
 	// domainStore contains the Store for reading and writing Domain data.
 	domainStore *storedomain.Store
-	// namespaceStore contains the Store for reading and writing Namespace
-	// data.
-	namespaceStore *storenamespace.Store
 }

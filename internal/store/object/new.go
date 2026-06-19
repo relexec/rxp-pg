@@ -10,7 +10,6 @@ import (
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
-	storenamespace "github.com/relexec/rxp-pg/internal/store/namespace"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
@@ -86,12 +85,5 @@ func WithKindVersionStore(store *storekindversion.Store) WithOption {
 func WithDomainStore(store *storedomain.Store) WithOption {
 	return func(s *Store) {
 		s.domainStore = store
-	}
-}
-
-// WithNamespaceStore sets the Store's namespace Store to the supplied value.
-func WithNamespaceStore(store *storenamespace.Store) WithOption {
-	return func(s *Store) {
-		s.namespaceStore = store
 	}
 }
