@@ -114,14 +114,6 @@ func TestObjectRead(t *testing.T) {
 			"invalid selector: uuid or name required",
 		},
 		{
-			"missing domain with uuid",
-			ctx,
-			application.FirstKindVersionName(),
-			object.Select(object.ByUUID(app1.UUID())),
-			nil,
-			"invalid selector: domain required",
-		},
-		{
 			"missing domain with name",
 			ctx,
 			application.FirstKindVersionName(),

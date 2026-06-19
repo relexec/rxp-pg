@@ -92,6 +92,13 @@ WHERE id = $1
 			}
 			out.Domain.SetParent(parentRec.Domain)
 		}
+		if rootRowID != rowID {
+			rootDomRec, err := s.ReadByRowID(ctx, rootRowID)
+			if err != nil {
+				return err
+			}
+			out.Domain.SetRoot(rootDomRec.Domain)
+		}
 		out.Root = rootRowID
 		out.Left = left
 		out.Right = right
@@ -171,6 +178,11 @@ WHERE uuid = $1
 			}
 			out.Domain.SetParent(parentRec.Domain)
 		}
+		rootDomRec, err := s.ReadByRowID(ctx, rootRowID)
+		if err != nil {
+			return err
+		}
+		out.Domain.SetRoot(rootDomRec.Domain)
 		out.Domain.SetName(name)
 		out.Domain.SetSystem(systemRec.System)
 		out.Root = rootRowID
@@ -242,6 +254,11 @@ AND name = $2
 			}
 			out.Domain.SetParent(parentRec.Domain)
 		}
+		rootDomRec, err := s.ReadByRowID(ctx, rootRowID)
+		if err != nil {
+			return err
+		}
+		out.Domain.SetRoot(rootDomRec.Domain)
 		out.Domain.SetUUID(uuid)
 		out.Root = rootRowID
 		out.Left = left
@@ -641,6 +658,11 @@ FROM domains AS d`
 			}
 			dom.SetParent(parentRec.Domain)
 		}
+		rootDomRec, err := s.ReadByRowID(ctx, rec.RootID)
+		if err != nil {
+			return nil, err
+		}
+		dom.SetRoot(rootDomRec.Domain)
 		out = append(out, &Record{
 			RowID:  rec.ID,
 			Root:   rec.RootID,
@@ -719,6 +741,11 @@ WHERE d.root = $1
 			}
 			dom.SetParent(parentRec.Domain)
 		}
+		rootDomRec, err := s.ReadByRowID(ctx, rec.RootID)
+		if err != nil {
+			return nil, err
+		}
+		dom.SetRoot(rootDomRec.Domain)
 		out = append(out, &Record{
 			RowID:  rec.ID,
 			Root:   rootRowID,

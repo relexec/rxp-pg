@@ -90,6 +90,7 @@ func TestDomainRead(t *testing.T) {
 				require.False(
 					delta.DifferentExcept(
 						fieldpath.FromString("system"),
+						fieldpath.FromString("root"),
 					),
 					delta.Differences(),
 				)
@@ -162,6 +163,7 @@ func TestDomainWrite(t *testing.T) {
 			domain.New(
 				domain.WithUUID(uuid.NewString()),
 				domain.WithName("parent.not.exist"),
+				domain.WithRoot(fixtures.UnknownDomain),
 				domain.WithParent(fixtures.UnknownDomain),
 			),
 			"invalid domain: parent not found",
