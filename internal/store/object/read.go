@@ -174,18 +174,20 @@ func (s *Store) ReadByUUID(
 			ctx, sysRec, kindRec, kvRec, nsRec, uuid,
 		)
 	case api.ScopeDomain:
-		if dom == nil {
-			return nil, errors.ErrSelectorDomainRequired
-		}
 		var domRec *storedomain.Record
-		if dom.UUID() != "" {
-			domRec, err = s.domainStore.ReadByUUID(
-				ctx, dom.UUID(),
-			)
-		} else {
-			domRec, err = s.domainStore.ReadByName(
-				ctx, sys, dom.Name(),
-			)
+		if dom != nil {
+			if dom.UUID() != "" {
+				domRec, err = s.domainStore.ReadByUUID(
+					ctx, dom.UUID(),
+				)
+			} else {
+				domRec, err = s.domainStore.ReadByName(
+					ctx, sys, dom.Name(),
+				)
+			}
+			if err != nil {
+				return nil, err
+			}
 		}
 		return s.dbReadDomainQualifiedByUUID(
 			ctx, sysRec, kindRec, kvRec, domRec, uuid,

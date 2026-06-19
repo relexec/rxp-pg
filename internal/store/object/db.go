@@ -317,7 +317,14 @@ func (s *Store) dbReadDomainQualifiedByUUID(
 	var name string
 	var latestGen api.Generation
 	var spec sql.NullString
+	var domRowID int64
 	out := Record{}
+	qargs := []any{
+		sysRec.RowID,
+		kvRec.RowID,
+		kindRec.RowID,
+		uuid,
+	}
 	fn := func(tx pgx.Tx) error {
 		qs := `
 SELECT
@@ -325,6 +332,7 @@ SELECT
 , o.generation AS object_generation
 , n.name AS object_name
 , o.spec AS object_spec
+, o.domain AS domain_id
 FROM objects AS o
 INNER JOIN domain_qualified_object_names AS n
  ON o.id = n.object
@@ -334,12 +342,22 @@ WHERE o.system = $1
 AND o.kindversion = $2
 AND n.kind = $3
 AND o.uuid = $4
-AND o.domain = $5
 `
-		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID,
-			uuid, domRec.RowID,
-		).Scan(&out.RowID, &latestGen, &name, &spec)
+		// NOTE(jaypipes): We allow the lookup of object records by object UUID for
+		// domain-qualified objects when we don't have a domain record specified.
+		// If domRec is not nil, we add another WHERE condition to ensure that the
+		// expected domain is indeed the domain associated with the object.
+		if domRec != nil {
+			qargs = append(qargs, domRec.RowID)
+			qs += "AND o.domain = $5"
+		}
+		err := tx.QueryRow(ctx, qs, qargs...).Scan(
+			&out.RowID,
+			&latestGen,
+			&name,
+			&spec,
+			&domRowID,
+		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -352,11 +370,22 @@ AND o.domain = $5
 		out.Object = object.New(
 			object.WithSystem(sysRec.System),
 			object.WithKindVersionName(kvRec.KindVersion.Name()),
-			object.WithDomain(domRec.Domain),
 			object.WithUUID(uuid),
 			object.WithName(name),
 			object.WithGeneration(latestGen),
 		)
+		if domRec == nil {
+			// We allow looking up a domain-qualified object by object UUID
+			// without specifying the Domain. In those cases, we construct the
+			// returned Object's Domain here.
+			domRec, err = s.domainStore.ReadByRowID(
+				ctx, domRowID,
+			)
+			if err != nil {
+				return fmt.Errorf("failed reading domain by row ID: %w", err)
+			}
+		}
+		out.Object.SetDomain(domRec.Domain)
 		if spec.Valid {
 			out.Object.SetSpec(spec.String)
 		}
