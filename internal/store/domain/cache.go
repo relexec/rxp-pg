@@ -140,7 +140,7 @@ func (s *Store) cacheWrite(
 // cacheEvict purges the caches of all Domains in the supplied Domain's tree.
 func (s *Store) cacheEvict(
 	ctx context.Context,
-	dom *domain.Domain,
+	dom domain.Domain,
 ) error {
 	if s.byUUID == nil {
 		return nil

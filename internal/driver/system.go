@@ -65,7 +65,7 @@ func (d *Driver) systemReadValidate(
 // SystemWrite atomically writes the supplied System to persistent storage.
 func (d *Driver) SystemWrite(
 	ctx context.Context,
-	sys *system.System,
+	sys system.System,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -99,14 +99,8 @@ func (d *Driver) SystemWrite(
 // options are not valid for writing a single System.
 func (d *Driver) systemWriteValidate(
 	ctx context.Context,
-	sys *system.System,
+	sys system.System,
 ) error {
-	if sys == nil {
-		return errors.RequiredParameterNil(
-			"system",
-			errors.WithWrap(errors.ErrInvalidWriteRequest),
-		)
-	}
 	return sys.Validate()
 }
 

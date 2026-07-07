@@ -24,13 +24,16 @@ import (
 // having the supplied internal DB RowID.
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
+	sysRec storesystem.Record,
 	rowID int64,
 ) (*Record, error) {
 	out := Record{
 		RowID: rowID,
+		Domain: domain.New(
+			domain.WithSystem(sysRec.System),
+		),
 	}
 	fn := func(tx pgx.Tx) error {
-		var systemRowID int64
 		var name api.DomainName
 		var uuid string
 		var rootRowID int64
@@ -39,8 +42,7 @@ func (s *Store) dbReadByRowID(
 		var right int64
 		qs := `
 SELECT
-  system
-, uuid
+  uuid
 , name
 , root
 , parent
@@ -50,7 +52,6 @@ FROM domains
 WHERE id = $1
 `
 		err := tx.QueryRow(ctx, qs, rowID).Scan(
-			&systemRowID,
 			&uuid,
 			&name,
 			&rootRowID,
@@ -67,38 +68,25 @@ WHERE id = $1
 				errors.WithWrap(err),
 			)
 		}
-		systemRec, err := s.systemStore.ReadByRowID(ctx, systemRowID)
-		if err != nil {
-			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
-			}
-			return errors.Internal(
-				"failed reading system record for domain",
-				errors.WithWrap(err),
-			)
-		}
-		out.Domain = domain.New(
-			domain.WithSystem(systemRec.System),
-			domain.WithUUID(uuid),
-			domain.WithName(name),
-		)
 		if parentRowID.Valid {
 			// NOTE(jaypipes): This has the potential to do N queries where N
 			// is the depth of the domain tree. Consider constraining the
 			// behaviour here if we know there is a deep tree.
-			parentRec, err := s.ReadByRowID(ctx, parentRowID.Int64)
+			parentRec, err := s.ReadByRowID(ctx, sysRec, parentRowID.Int64)
 			if err != nil {
 				return err
 			}
 			out.Domain.SetParent(parentRec.Domain)
 		}
 		if rootRowID != rowID {
-			rootDomRec, err := s.ReadByRowID(ctx, rootRowID)
+			rootDomRec, err := s.ReadByRowID(ctx, sysRec, rootRowID)
 			if err != nil {
 				return err
 			}
 			out.Domain.SetRoot(rootDomRec.Domain)
 		}
+		out.Domain.SetUUID(uuid)
+		out.Domain.SetName(name)
 		out.Root = rootRowID
 		out.Left = left
 		out.Right = right
@@ -114,15 +102,16 @@ WHERE id = $1
 // having the supplied UUID.
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
+	sysRec storesystem.Record,
 	uuid string,
 ) (*Record, error) {
 	out := Record{
 		Domain: domain.New(
 			domain.WithUUID(uuid),
+			domain.WithSystem(sysRec.System),
 		),
 	}
 	fn := func(tx pgx.Tx) error {
-		var systemRowID int64
 		var name api.DomainName
 		var rootRowID int64
 		var parentRowID sql.NullInt64
@@ -131,7 +120,6 @@ func (s *Store) dbReadByUUID(
 		qs := `
 SELECT
   id
-, system
 , name
 , root
 , parent
@@ -142,7 +130,6 @@ WHERE uuid = $1
 `
 		err := tx.QueryRow(ctx, qs, uuid).Scan(
 			&out.RowID,
-			&systemRowID,
 			&name,
 			&rootRowID,
 			&parentRowID,
@@ -158,33 +145,22 @@ WHERE uuid = $1
 				errors.WithWrap(err),
 			)
 		}
-		systemRec, err := s.systemStore.ReadByRowID(ctx, systemRowID)
-		if err != nil {
-			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
-			}
-			return errors.Internal(
-				"failed reading system record for domain",
-				errors.WithWrap(err),
-			)
-		}
 		if parentRowID.Valid {
 			// NOTE(jaypipes): This has the potential to do N queries where N
 			// is the depth of the domain tree. Consider constraining the
 			// behaviour here if we know there is a deep tree.
-			parentRec, err := s.ReadByRowID(ctx, parentRowID.Int64)
+			parentRec, err := s.ReadByRowID(ctx, sysRec, parentRowID.Int64)
 			if err != nil {
 				return err
 			}
 			out.Domain.SetParent(parentRec.Domain)
 		}
-		rootDomRec, err := s.ReadByRowID(ctx, rootRowID)
+		rootDomRec, err := s.ReadByRowID(ctx, sysRec, rootRowID)
 		if err != nil {
 			return err
 		}
 		out.Domain.SetRoot(rootDomRec.Domain)
 		out.Domain.SetName(name)
-		out.Domain.SetSystem(systemRec.System)
 		out.Root = rootRowID
 		out.Left = left
 		out.Right = right
@@ -200,12 +176,12 @@ WHERE uuid = $1
 // having the supplied Name.
 func (s *Store) dbReadByName(
 	ctx context.Context,
-	systemRec *storesystem.Record,
+	sysRec storesystem.Record,
 	name api.DomainName,
 ) (*Record, error) {
 	out := Record{
 		Domain: domain.New(
-			domain.WithSystem(systemRec.System),
+			domain.WithSystem(sysRec.System),
 			domain.WithName(name),
 		),
 	}
@@ -227,7 +203,7 @@ FROM domains
 WHERE system = $1
 AND name = $2
 `
-		err := tx.QueryRow(ctx, qs, systemRec.RowID, name).Scan(
+		err := tx.QueryRow(ctx, qs, sysRec.RowID, name).Scan(
 			&out.RowID,
 			&uuid,
 			&rootRowID,
@@ -248,13 +224,13 @@ AND name = $2
 			// NOTE(jaypipes): This has the potential to do N queries where N
 			// is the depth of the domain tree. Consider constraining the
 			// behaviour here if we know there is a deep tree.
-			parentRec, err := s.ReadByRowID(ctx, parentRowID.Int64)
+			parentRec, err := s.ReadByRowID(ctx, sysRec, parentRowID.Int64)
 			if err != nil {
 				return err
 			}
 			out.Domain.SetParent(parentRec.Domain)
 		}
-		rootDomRec, err := s.ReadByRowID(ctx, rootRowID)
+		rootDomRec, err := s.ReadByRowID(ctx, sysRec, rootRowID)
 		if err != nil {
 			return err
 		}
@@ -274,21 +250,21 @@ AND name = $2
 // dbInsert atomically writes the supplied Domain to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	systemRec *storesystem.Record,
-	dom *domain.Domain,
+	sysRec storesystem.Record,
+	dom domain.Domain,
 ) error {
 	parent := dom.Parent()
 	if parent == nil {
-		return s.dbInsertRoot(ctx, systemRec, dom)
+		return s.dbInsertRoot(ctx, sysRec, dom)
 	}
-	return s.dbInsertNonRoot(ctx, systemRec, parent, dom)
+	return s.dbInsertNonRoot(ctx, sysRec, *parent, dom)
 }
 
 // dbInsertRoot creates a new domain record for a root node in a "domain tree".
 func (s *Store) dbInsertRoot(
 	ctx context.Context,
-	systemRec *storesystem.Record,
-	dom *domain.Domain,
+	sysRec storesystem.Record,
+	dom domain.Domain,
 ) error {
 	left := 1
 	right := 2
@@ -319,7 +295,7 @@ INSERT INTO domains (
 )`
 		_, err := tx.Exec(
 			ctx, qs,
-			systemRec.RowID,
+			sysRec.RowID,
 			uuid,
 			name,
 			left,
@@ -354,11 +330,11 @@ INSERT INTO domains (
 // set model values for the domain tree.
 func (s *Store) dbInsertNonRoot(
 	ctx context.Context,
-	systemRec *storesystem.Record,
-	parent *domain.Domain,
-	dom *domain.Domain,
+	sysRec storesystem.Record,
+	parent domain.Domain,
+	dom domain.Domain,
 ) error {
-	parentRec, err := s.ReadByUUID(ctx, parent.UUID())
+	parentRec, err := s.ReadByUUID(ctx, sysRec, parent.UUID())
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return errors.ErrDomainParentNotFound
@@ -424,7 +400,7 @@ INSERT INTO domains (
 )`
 		_, err = tx.Exec(
 			ctx, qs,
-			systemRec.RowID,
+			sysRec.RowID,
 			uuid,
 			name,
 			rootRowID,
@@ -652,13 +628,13 @@ FROM domains AS d`
 			// is the limit of records fetched and M is the the depth of the
 			// domain tree of that domain record. Consider constraining the
 			// behaviour here if we know there is a deep tree.
-			parentRec, err := s.ReadByRowID(ctx, rec.ParentID.Int64)
+			parentRec, err := s.ReadByRowID(ctx, *sysRec, rec.ParentID.Int64)
 			if err != nil {
 				return nil, err
 			}
 			dom.SetParent(parentRec.Domain)
 		}
-		rootDomRec, err := s.ReadByRowID(ctx, rec.RootID)
+		rootDomRec, err := s.ReadByRowID(ctx, *sysRec, rec.RootID)
 		if err != nil {
 			return nil, err
 		}
@@ -735,13 +711,13 @@ WHERE d.root = $1
 			// NOTE(jaypipes): This has the potential to do N queries where N
 			// is the depth of the domain tree. Consider constraining the
 			// behaviour here if we know there is a deep tree.
-			parentRec, err := s.ReadByRowID(ctx, rec.ParentID.Int64)
+			parentRec, err := s.ReadByRowID(ctx, *sysRec, rec.ParentID.Int64)
 			if err != nil {
 				return nil, err
 			}
 			dom.SetParent(parentRec.Domain)
 		}
-		rootDomRec, err := s.ReadByRowID(ctx, rec.RootID)
+		rootDomRec, err := s.ReadByRowID(ctx, *sysRec, rec.RootID)
 		if err != nil {
 			return nil, err
 		}

@@ -5,8 +5,8 @@ import (
 
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/domain"
-	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/system"
+
+	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // Record decorates a Domain with internal DB information.
@@ -28,6 +28,7 @@ type Record struct {
 // row ID. This method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
+	sysRec storesystem.Record,
 	rowID int64,
 ) (*Record, error) {
 	cacheKey := byRowIDCacheKey(rowID)
@@ -35,7 +36,7 @@ func (s *Store) ReadByRowID(
 	if found {
 		return cached, nil
 	}
-	record, err := s.dbReadByRowID(ctx, rowID)
+	record, err := s.dbReadByRowID(ctx, sysRec, rowID)
 	if err != nil {
 		return nil, err
 	}
@@ -50,6 +51,7 @@ func (s *Store) ReadByRowID(
 // method will populate any caches with any read records.
 func (s *Store) ReadByUUID(
 	ctx context.Context,
+	sysRec storesystem.Record,
 	uuid string,
 ) (*Record, error) {
 	cacheKey := byUUIDCacheKey(uuid)
@@ -57,7 +59,7 @@ func (s *Store) ReadByUUID(
 	if found {
 		return cached, nil
 	}
-	record, err := s.dbReadByUUID(ctx, uuid)
+	record, err := s.dbReadByUUID(ctx, sysRec, uuid)
 	if err != nil {
 		return nil, err
 	}
@@ -72,23 +74,13 @@ func (s *Store) ReadByUUID(
 // method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
-	sys *system.System,
+	sysRec storesystem.Record,
 	name api.DomainName,
 ) (*Record, error) {
-	cacheKey := newByNameCacheKey(sys, name)
+	cacheKey := newByNameCacheKey(sysRec.System, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)
 	if found {
 		return cached, nil
-	}
-	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
-	if err != nil {
-		if err == errors.ErrNotFound {
-			return nil, err
-		}
-		return nil, errors.Internal(
-			"failed reading system record",
-			errors.WithWrap(err),
-		)
 	}
 	record, err := s.dbReadByName(ctx, sysRec, name)
 	if err != nil {

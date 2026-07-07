@@ -61,7 +61,7 @@ func KindVersionCreateIfNotExists(
 		if err != errors.ErrNotFound {
 			return err
 		}
-		return d.KindVersionWrite(ctx, kv)
+		return d.KindVersionWrite(ctx, *kv)
 	}
 	return nil
 }
@@ -81,7 +81,7 @@ func KindCreateIfNotExists(
 		if err != errors.ErrNotFound {
 			return err
 		}
-		return d.KindWrite(ctx, k)
+		return d.KindWrite(ctx, *k)
 	}
 	return nil
 }
@@ -101,7 +101,7 @@ func DomainCreateIfNotExists(
 		if err != errors.ErrNotFound {
 			return err
 		}
-		return d.DomainWrite(ctx, dom)
+		return d.DomainWrite(ctx, *dom)
 	}
 	return nil
 }

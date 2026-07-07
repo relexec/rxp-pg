@@ -423,7 +423,7 @@ func TestObjectWrite(t *testing.T) {
 				require.ErrorContains(err, c.expErr)
 				require.Nil(got)
 			} else {
-				require.Nil(err)
+				require.Nil(err, err)
 				require.NotNil(got)
 				require.Equal(c.exp.KindVersionName(), got.KindVersionName())
 				if c.exp.Domain() != nil {

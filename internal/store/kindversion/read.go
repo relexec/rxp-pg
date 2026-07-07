@@ -3,10 +3,10 @@ package store
 import (
 	"context"
 
+	storekind "github.com/relexec/rxp-pg/internal/store/kind"
+	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind/kindversion"
-	"github.com/relexec/rxp/system"
 )
 
 // Record decorates a KindVersion with internal DB information.
@@ -21,6 +21,8 @@ type Record struct {
 // row ID. This method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
 	rowID int64,
 ) (*Record, error) {
 	cacheKey := byRowIDCacheKey(rowID)
@@ -28,7 +30,7 @@ func (s *Store) ReadByRowID(
 	if found {
 		return cached, nil
 	}
-	record, err := s.dbReadByRowID(ctx, rowID)
+	record, err := s.dbReadByRowID(ctx, sysRec, kindRec, rowID)
 	if err != nil {
 		return nil, err
 	}
@@ -43,31 +45,14 @@ func (s *Store) ReadByRowID(
 // KindVersionName. This method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
-	sys *system.System,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
 	name api.KindVersionName,
 ) (*Record, error) {
-	cacheKey := newByNameCacheKey(sys, name)
+	cacheKey := newByNameCacheKey(sysRec.System, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)
 	if found {
 		return cached, nil
-	}
-	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
-	if err != nil {
-		return nil, errors.Internal(
-			"failed reading system record",
-			errors.WithWrap(err),
-		)
-	}
-	k := name.Kind()
-	kindRec, err := s.kindStore.ReadByName(ctx, sys, k)
-	if err != nil {
-		if err == errors.ErrNotFound {
-			return nil, errors.ErrKindVersionUnknown
-		}
-		return nil, errors.Internal(
-			"failed reading kind record",
-			errors.WithWrap(err),
-		)
 	}
 	record, err := s.dbReadByName(ctx, sysRec, kindRec, name)
 	if err != nil {

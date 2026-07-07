@@ -1,7 +1,7 @@
 *.swp
 *.swo
 *~
-run/
+build/run/
 bin/
 build/
 go.work

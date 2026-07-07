@@ -11,6 +11,8 @@ import (
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+
+	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // KindVersionRead reads a KindVersion from persistent storage.
@@ -47,23 +49,36 @@ func (d *Driver) KindVersionRead(
 		return nil, err
 	}
 
+	var sysRec *storesystem.Record
+
+	name = sel.Name()
 	sys := sel.System()
 
 	// Default the system to the host system if it hasn't been specified in the
 	// selector.
-	if sys == nil {
-		sys = d.hostSystemRecord.System
+	if sys != nil && sys.UUID() != d.hostSystemUUID {
+		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID())
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return nil, errors.ErrSystemUnknown
+			}
+			return nil, err
+		}
+	} else {
+		sysRec = d.hostSystemRecord
 	}
 
-	if sys.UUID() != d.hostSystemUUID {
-		_, err := d.systemStore.ReadByUUID(ctx, sys.UUID())
+	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, name.Kind())
+	if err != nil {
 		if err != nil {
+			if err == errors.ErrNotFound {
+				return nil, errors.ErrKindUnknown
+			}
 			return nil, err
 		}
 	}
-	name = sel.Name()
 
-	rec, err := d.kindversionStore.ReadByName(ctx, sys, name)
+	rec, err := d.kindversionStore.ReadByName(ctx, *sysRec, *kindRec, name)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +97,7 @@ func (d *Driver) kindversionReadValidate(
 // KindVersionWrite atomically writes the supplied KindVersion to persistent storage.
 func (d *Driver) KindVersionWrite(
 	ctx context.Context,
-	kv *kindversion.KindVersion,
+	kv kindversion.KindVersion,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -113,25 +128,43 @@ func (d *Driver) KindVersionWrite(
 		return err
 	}
 
-	system := kv.System()
-	if system == nil {
+	var sysRec *storesystem.Record
+
+	kn := kv.Name()
+	sys := kv.System()
+
+	// Default the system to the host system if it hasn't been specified.
+	if sys != nil && sys.UUID() != d.hostSystemUUID {
+		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID())
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return errors.ErrSystemUnknown
+			}
+			return err
+		}
+	} else {
+		sysRec = d.hostSystemRecord
 		kv.SetSystem(d.hostSystemRecord.System)
 	}
-	return d.kindversionStore.Write(ctx, kv)
+
+	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, kn.Kind())
+	if err != nil {
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return errors.ErrKindUnknown
+			}
+			return err
+		}
+	}
+	return d.kindversionStore.Write(ctx, *sysRec, *kindRec, kv)
 }
 
 // kindversionWriteValidate returns an error if the supplied kindversion and write
 // options are not valid for writing a single KindVersion.
 func (d *Driver) kindversionWriteValidate(
 	ctx context.Context,
-	kv *kindversion.KindVersion,
+	kv kindversion.KindVersion,
 ) error {
-	if kv == nil {
-		return errors.RequiredParameterNil(
-			"kindversion",
-			errors.WithWrap(errors.ErrInvalidWriteRequest),
-		)
-	}
 	return kv.Validate()
 }
 

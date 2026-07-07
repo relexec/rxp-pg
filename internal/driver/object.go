@@ -12,11 +12,13 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
+	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
+	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
-// ObjectRead reads a single object from persistent storage.
+// ObjectRead reads a single Object from persistent storage.
 func (d *Driver) ObjectRead(
 	ctx context.Context,
 	kv api.KindVersionName,
@@ -49,28 +51,40 @@ func (d *Driver) ObjectRead(
 		return nil, err
 	}
 
+	// NOTE(jaypipes): We will always look up Objects by UUID. If the user has
+	// not specified a UUID in the selector, we will ask the object store to
+	// fetch the UUID associated with the Object's name. In order to do that,
+	// however, we need to first identify whether the Kind of the Object is
+	// domain or system-scoped.
+	//
+	// Even if the user specified a UUID for the Object, we still want to look
+	// up the name associated with the UUID and verify that the system/domain
+	// specified for the Object is valid and matches the system/domain we had
+	// stored for the Object with that UUID.
+
+	var sysRec *storesystem.Record
+	var domRec *storedomain.Record
+
 	sys := sel.System()
 	dom := sel.Domain()
 
 	if dom != nil {
 		sys = dom.System()
 	}
-	// Default the system to the host system if it hasn't been specified.
-	if sys == nil {
-		sys = d.hostSystemRecord.System
-	}
 
-	if sys.UUID() != d.hostSystemUUID {
-		_, err := d.systemStore.ReadByUUID(ctx, sys.UUID())
+	if sys != nil && sys.UUID() != d.hostSystemUUID {
+		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID())
 		if err != nil {
 			if err == errors.ErrNotFound {
 				return nil, errors.ErrSystemUnknown
 			}
 			return nil, err
 		}
+	} else {
+		sysRec = d.hostSystemRecord
 	}
 
-	kindRec, err := d.kindStore.ReadByName(ctx, sys, kv.Kind())
+	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, kv.Kind())
 	if err != nil {
 		if err != nil {
 			if err == errors.ErrNotFound {
@@ -85,7 +99,7 @@ func (d *Driver) ObjectRead(
 		return nil, err
 	}
 
-	kvRec, err := d.kindversionStore.ReadByName(ctx, sys, kv)
+	kvRec, err := d.kindversionStore.ReadByName(ctx, *sysRec, *kindRec, kv)
 	if err != nil {
 		if err != nil {
 			if err == errors.ErrNotFound {
@@ -95,37 +109,50 @@ func (d *Driver) ObjectRead(
 		}
 	}
 
+	if dom != nil {
+		if dom.UUID() != "" {
+			domRec, err = d.domainStore.ReadByUUID(
+				ctx, *sysRec, dom.UUID(),
+			)
+		} else {
+			domRec, err = d.domainStore.ReadByName(
+				ctx, *sysRec, dom.Name(),
+			)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	objGen := sel.Generation()
 	uuid := sel.UUID()
 	name := sel.Name()
 
 	var rec *storeobject.Record
-	if uuid != "" {
-		rec, err = d.objectStore.ReadByUUID(
-			ctx, sys, kindRec.Kind, kvRec.KindVersion,
-			dom, uuid,
-		)
-	} else {
-		rec, err = d.objectStore.ReadByName(
-			ctx, sys, kindRec.Kind, kvRec.KindVersion,
-			dom, name,
-		)
+	if uuid == "" {
+		qualifier := storeobject.NameQualifier{
+			System: *sysRec,
+		}
+		if kindRec.Kind.Scope() == api.ScopeDomain {
+			qualifier.Domain = domRec
+			uuid, err = d.objectStore.UUIDFromName(
+				ctx, name, qualifier,
+			)
+		} else {
+			uuid, err = d.objectStore.UUIDFromName(
+				ctx, name, qualifier,
+			)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
+	rec, err = d.objectStore.ReadByUUIDAndGeneration(
+		ctx, *sysRec, *kindRec, *kvRec, domRec, uuid, objGen,
+	)
 	if err != nil {
 		return nil, err
 	}
-	if objGen == 0 || objGen == rec.Object.Generation() {
-		return rec.Object, nil
-	}
-
-	// caller expected a specific generation and it wasn't the latest
-	// generation. So we look up a specific generation of the object.
-	genRec, err := d.objectStore.ReadAtGeneration(ctx, rec.RowID, objGen)
-	if err != nil {
-		return nil, err
-	}
-	rec.Object.SetGeneration(objGen)
-	rec.Object.SetSpec(genRec.Object.Spec())
 	return rec.Object, nil
 }
 
@@ -200,32 +227,37 @@ func (d *Driver) ObjectWrite(
 		return nil, err
 	}
 
+	var sysRec *storesystem.Record
+	var domRec *storedomain.Record
+
 	sys := obj.System()
 	dom := obj.Domain()
 
 	if dom != nil {
 		sys = dom.System()
 	}
+
 	// Default the system to the host system if it hasn't been specified.
 	if sys == nil {
 		sys = d.hostSystemRecord.System
+		if dom != nil {
+			dom.SetSystem(sys)
+		}
 	}
 
 	if sys.UUID() != d.hostSystemUUID {
-		_, err := d.systemStore.ReadByUUID(ctx, sys.UUID())
+		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID())
 		if err != nil {
 			if err == errors.ErrNotFound {
 				return nil, errors.ErrSystemUnknown
 			}
 			return nil, err
 		}
+	} else {
+		sysRec = d.hostSystemRecord
 	}
 
-	if obj.System() == nil {
-		obj.SetSystem(sys)
-	}
-
-	kindRec, err := d.kindStore.ReadByName(ctx, sys, kv.Kind())
+	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, kv.Kind())
 	if err != nil {
 		if err != nil {
 			if err == errors.ErrNotFound {
@@ -234,11 +266,29 @@ func (d *Driver) ObjectWrite(
 			return nil, err
 		}
 	}
-	err = d.objectWriteValidateScope(ctx, kindRec, obj)
+
+	err = d.objectWriteValidateScope(ctx, *kindRec, obj)
 	if err != nil {
 		return nil, err
 	}
-	return d.objectStore.Write(ctx, obj)
+
+	if kindRec.Kind.Scope() == api.ScopeDomain {
+		domRec, err = d.domainStore.ReadByUUID(ctx, *sysRec, dom.UUID())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	kvRec, err := d.kindversionStore.ReadByName(ctx, *sysRec, *kindRec, kv)
+	if err != nil {
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return nil, errors.ErrKindUnknown
+			}
+			return nil, err
+		}
+	}
+	return d.objectStore.Write(ctx, *sysRec, *kindRec, *kvRec, domRec, obj)
 }
 
 // objectWriteValidate returns an error if the supplied object and write
@@ -266,12 +316,10 @@ func (d *Driver) objectWriteValidate(
 // required domain qualification if the scope of Kind is ScopeDomain.
 func (d *Driver) objectWriteValidateScope(
 	ctx context.Context,
-	kindRec *storekind.Record,
+	kindRec storekind.Record,
 	obj object.Object,
 ) error {
-	scope := kindRec.Kind.Scope()
-	switch scope {
-	case api.ScopeDomain:
+	if kindRec.Kind.Scope() == api.ScopeDomain {
 		domain := obj.Domain()
 		if domain == nil {
 			return errors.ErrObjectDomainRequired
@@ -322,10 +370,22 @@ func (d *Driver) ObjectQuery(
 		return nil, err
 	}
 
+	sysRec := d.hostSystemRecord
+
+	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, kv.Kind())
+	if err != nil {
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return nil, errors.ErrKindUnknown
+			}
+			return nil, err
+		}
+	}
+
 	boundedOpts := d.objectQueryBoundedOptions(ctx, qopts)
 
 	recs, err := d.objectStore.Query(
-		ctx, kv, expr, boundedOpts,
+		ctx, kv, *sysRec, *kindRec, expr, boundedOpts,
 	)
 	if err != nil {
 		return nil, err

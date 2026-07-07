@@ -216,13 +216,11 @@ func (d *Driver) initHostSystemRecord(ctx context.Context) error {
 			}
 			d.log.V(4).Info("creating host system record")
 			initCtx := rxpcontext.SetIdentity(ctx, "rxp.system")
-			err = d.systemStore.Write(
-				initCtx,
-				system.New(
-					system.WithUUID(d.hostSystemUUID),
-					system.WithTag(d.hostSystemTag),
-				),
+			sys := system.New(
+				system.WithUUID(d.hostSystemUUID),
+				system.WithTag(d.hostSystemTag),
 			)
+			err = d.systemStore.Write(initCtx, *sys)
 			if err != nil {
 				return err
 			}

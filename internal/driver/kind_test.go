@@ -121,7 +121,7 @@ func TestKindWrite(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			err := rxp.KindWrite(c.ctx, c.subject)
+			err := rxp.KindWrite(c.ctx, *c.subject)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {

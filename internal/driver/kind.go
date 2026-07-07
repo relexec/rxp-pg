@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
@@ -44,16 +45,26 @@ func (d *Driver) KindRead(
 		return nil, err
 	}
 
+	var sysRec *storesystem.Record
+
 	name := sel.Name()
 	sys := sel.System()
 
 	// Default the system to the host system if it hasn't been specified in the
 	// selector.
-	if sys == nil {
-		sys = d.hostSystemRecord.System
+	if sys != nil && sys.UUID() != d.hostSystemUUID {
+		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID())
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return nil, errors.ErrSystemUnknown
+			}
+			return nil, err
+		}
+	} else {
+		sysRec = d.hostSystemRecord
 	}
 
-	rec, err := d.kindStore.ReadByName(ctx, sys, name)
+	rec, err := d.kindStore.ReadByName(ctx, *sysRec, name)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +83,7 @@ func (d *Driver) kindReadValidate(
 // KindWrite atomically writes the supplied Kind to persistent storage.
 func (d *Driver) KindWrite(
 	ctx context.Context,
-	k *kind.Kind,
+	k kind.Kind,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -100,26 +111,32 @@ func (d *Driver) KindWrite(
 		return err
 	}
 
+	var sysRec *storesystem.Record
+
 	sys := k.System()
+
 	// Default the system to the host system if it hasn't been specified.
-	if sys == nil {
+	if sys != nil && sys.UUID() != d.hostSystemUUID {
+		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID())
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return errors.ErrSystemUnknown
+			}
+			return err
+		}
+	} else {
+		sysRec = d.hostSystemRecord
 		k.SetSystem(d.hostSystemRecord.System)
 	}
-	return d.kindStore.Write(ctx, k)
+	return d.kindStore.Write(ctx, *sysRec, k)
 }
 
 // kindWriteValidate returns an error if the supplied kind and write
 // options are not valid for writing a single Kind.
 func (d *Driver) kindWriteValidate(
 	ctx context.Context,
-	k *kind.Kind,
+	k kind.Kind,
 ) error {
-	if k == nil {
-		return errors.RequiredParameterNil(
-			"kind",
-			errors.WithWrap(errors.ErrInvalidWriteRequest),
-		)
-	}
 	return k.Validate()
 }
 

@@ -106,21 +106,26 @@ func (s *Store) dbReadByUUID(
 // having the supplied Name.
 func (s *Store) dbReadByName(
 	ctx context.Context,
-	systemRec *storesystem.Record,
+	sysRec storesystem.Record,
 	name api.KindName,
 ) (*Record, error) {
 	out := Record{
 		Kind: kind.New(
-			kind.WithSystem(systemRec.System),
+			kind.WithSystem(sysRec.System),
 			kind.WithName(name),
 		),
 	}
 	fn := func(tx pgx.Tx) error {
 		var uuid string
 		var scope api.Scope
-		qs := "SELECT id, uuid, scope FROM kinds WHERE system = $1 AND name = $2"
+		qs := `
+SELECT id, uuid, scope
+FROM kinds
+WHERE system = $1
+AND name = $2
+`
 		err := tx.QueryRow(
-			ctx, qs, systemRec.RowID, name,
+			ctx, qs, sysRec.RowID, name,
 		).Scan(&out.RowID, &uuid, &scope)
 		if err != nil {
 			if err == pgx.ErrNoRows {
@@ -144,8 +149,8 @@ func (s *Store) dbReadByName(
 // dbInsert atomically writes the supplied Kind to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	systemRec *storesystem.Record,
-	kind *kind.Kind,
+	sysRec storesystem.Record,
+	kind kind.Kind,
 ) error {
 	createdOn := time.Now().UnixNano()
 	createdBy := rxpcontext.Identity(ctx)
@@ -167,7 +172,7 @@ INSERT INTO kinds (
 , $6
 )`
 		_, err := tx.Exec(
-			ctx, qs, systemRec.RowID,
+			ctx, qs, sysRec.RowID,
 			kind.UUID(), kind.Name(), kind.Scope(),
 			createdOn, createdBy,
 		)

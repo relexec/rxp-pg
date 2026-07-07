@@ -53,7 +53,7 @@ func TestKindVersionRead(t *testing.T) {
 				kindversion.ByName(fixtures.UnknownKindVersionName),
 			),
 			nil,
-			"unknown kind version",
+			"unknown kind",
 		},
 		{
 			"invalid kind version",
@@ -146,7 +146,7 @@ func TestKindVersionWrite(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			err := rxp.KindVersionWrite(c.ctx, c.subject)
+			err := rxp.KindVersionWrite(c.ctx, *c.subject)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {

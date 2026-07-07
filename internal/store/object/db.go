@@ -24,66 +24,160 @@ import (
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
-func isKindishPredicate(p query.Predicate) bool {
-	switch p.(type) {
-	case
-		kind.NamePredicate,
-		kind.UUIDPredicate,
-		kind.KindPredicate,
-		kindversion.KindVersionPredicate,
-		kindversion.NamePredicate:
-		return true
-	default:
-		return false
+// dbUUIDFromNameDomainQualified returns the UUID associated with the object
+// with the supplied name and domain.
+func (s *Store) dbUUIDFromNameDomainQualified(
+	ctx context.Context,
+	sysRec storesystem.Record,
+	domRec storedomain.Record,
+	name string,
+) (string, error) {
+	var uuid string
+	fn := func(tx pgx.Tx) error {
+		qs := `
+SELECT o.uuid
+FROM domain_qualified_object_names AS n
+INNER JOIN objects AS o
+ ON n.object = o.id
+ AND n.system = o.system
+ AND n.domain = o.domain
+WHERE n.system = $1
+AND n.domain = $2
+AND n.name = $3
+`
+		err := tx.QueryRow(
+			ctx, qs,
+			sysRec.RowID,
+			domRec.RowID,
+			name,
+		).Scan(&uuid)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				return errors.ErrNotFound
+			}
+			return errors.Internal(
+				"failed reading object uuid for domain qualified name",
+				errors.WithWrap(err),
+			)
+		}
+		return nil
 	}
+	if err := s.Exec(ctx, fn); err != nil {
+		return "", err
+	}
+	return uuid, nil
 }
 
-// dbReadDomainQualifiedByRowID performs a SELECT query to return the stored
-// object record having the supplied internal DB RowID with an expected
-// domain-qualified name.
-func (s *Store) dbReadDomainQualifiedByRowID(
+// dbUUIDFromNameSystemQualified returns the UUID associated with the object
+// with the supplied name and system.
+func (s *Store) dbUUIDFromNameSystemQualified(
 	ctx context.Context,
-	sysRec *storesystem.Record,
-	kindRec *storekind.Record,
-	kvRec *storekindversion.Record,
-	domRec *storedomain.Record,
+	sysRec storesystem.Record,
+	name string,
+) (string, error) {
+	var uuid string
+	fn := func(tx pgx.Tx) error {
+		qs := `
+SELECT o.uuid
+FROM system_qualified_object_names AS n
+INNER JOIN objects AS o
+ ON n.object = o.id
+ AND n.system = o.system
+WHERE n.system = $1
+AND n.name = $2
+`
+		err := tx.QueryRow(
+			ctx, qs,
+			sysRec.RowID,
+			name,
+		).Scan(&uuid)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				return errors.ErrNotFound
+			}
+			return errors.Internal(
+				"failed reading object uuid for system qualified name",
+				errors.WithWrap(err),
+			)
+		}
+		return nil
+	}
+	if err := s.Exec(ctx, fn); err != nil {
+		return "", err
+	}
+	return uuid, nil
+}
+
+const (
+	latestSentinel = api.Generation(0)
+)
+
+// dbReadByRowIDAndGenerationDomainQualified returns the object record having
+// the supplied internal DB RowID and generation with an expected
+// domain-qualified name.
+func (s *Store) dbReadByRowIDAndGenerationDomainQualified(
+	ctx context.Context,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
+	kvRec storekindversion.Record,
+	domRec storedomain.Record,
 	rowID int64,
+	requestedGen api.Generation,
 ) (*Record, error) {
 	var uuid string
 	var name string
-	var latestGen api.Generation
+	var generation api.Generation
 	var spec sql.NullString
 	out := Record{
 		RowID: rowID,
+	}
+	qargs := []any{
+		sysRec.RowID,
+		kvRec.RowID,
+		kindRec.RowID,
+		rowID,
+		domRec.RowID,
 	}
 	fn := func(tx pgx.Tx) error {
 		qs := `
 SELECT
   o.uuid AS object_uuid
-, o.generation AS object_generation
+, og.generation AS object_generation
 , n.name AS object_name
-, o.spec AS object_spec
+, og.spec AS object_spec
 FROM objects AS o
 INNER JOIN domain_qualified_object_names AS n
  ON o.id = n.object
  AND o.system = n.system
  AND n.domain = o.domain
+INNER JOIN object_generations AS og
+ ON o.id = og.object
+`
+		if requestedGen == latestSentinel {
+			qs += `AND o.generation = og.generation
+`
+		}
+		qs += `
 WHERE o.system = $1
 AND o.kindversion = $2
 AND n.kind = $3
 AND o.id = $4
 AND o.domain = $5
 `
+		if requestedGen != latestSentinel {
+			qs += `AND og.generation = $6
+`
+			qargs = append(qargs, requestedGen)
+		}
 		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID,
-			rowID, domRec.RowID,
-		).Scan(&uuid, &latestGen, &name, &spec)
+			ctx, qs, qargs...,
+		).Scan(&uuid, &generation, &name, &spec)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading objects record",
+				"failed reading domain-qualified objects record by row ID",
 				errors.WithWrap(err),
 			)
 		}
@@ -93,7 +187,7 @@ AND o.domain = $5
 			object.WithDomain(domRec.Domain),
 			object.WithUUID(uuid),
 			object.WithName(name),
-			object.WithGeneration(latestGen),
+			object.WithGeneration(generation),
 		)
 		if spec.Valid {
 			out.Object.SetSpec(spec.String)
@@ -106,22 +200,29 @@ AND o.domain = $5
 	return &out, nil
 }
 
-// dbReadSystemQualifiedByRowID performs a SELECT query to return the stored
-// object record having the supplied internal DB RowID with an expected
+// dbReadByRowIDAndGenerationSystemQUalified returns the object record having
+// the supplied internal DB RowID and generation with an expected
 // system-qualified name.
-func (s *Store) dbReadSystemQualifiedByRowID(
+func (s *Store) dbReadByRowIDAndGenerationSystemQualified(
 	ctx context.Context,
-	sysRec *storesystem.Record,
-	kindRec *storekind.Record,
-	kvRec *storekindversion.Record,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
+	kvRec storekindversion.Record,
 	rowID int64,
+	requestedGen api.Generation,
 ) (*Record, error) {
 	var uuid string
 	var name string
-	var latestGen api.Generation
+	var generation api.Generation
 	var spec sql.NullString
 	out := Record{
 		RowID: rowID,
+	}
+	qargs := []any{
+		sysRec.RowID,
+		kvRec.RowID,
+		kindRec.RowID,
+		rowID,
 	}
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -129,25 +230,41 @@ SELECT
   o.uuid AS object_uuid
 , o.generation AS object_generation
 , n.name AS object_name
-, o.spec AS object_spec
+, og.spec AS object_spec
 FROM objects AS o
 INNER JOIN system_qualified_object_names AS n
  ON o.id = n.object
  AND o.system = n.system
+INNER JOIN object_generations AS og
+ ON o.id = og.object
+`
+		if requestedGen == latestSentinel {
+			qs += `AND o.generation = og.generation
+`
+		}
+		qs += `
 WHERE o.system = $1
 AND o.kindversion = $2
 AND n.kind = $3
 AND o.id = $4
 `
-		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID, rowID,
-		).Scan(&uuid, &latestGen, &name, &spec)
+		if requestedGen != latestSentinel {
+			qs += `AND og.generation = $5
+`
+			qargs = append(qargs, requestedGen)
+		}
+		err := tx.QueryRow(ctx, qs, qargs...).Scan(
+			&uuid,
+			&generation,
+			&name,
+			&spec,
+		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading objects record",
+				"failed reading system-qualified objects record by row ID",
 				errors.WithWrap(err),
 			)
 		}
@@ -156,7 +273,7 @@ AND o.id = $4
 			object.WithKindVersionName(kvRec.KindVersion.Name()),
 			object.WithUUID(uuid),
 			object.WithName(name),
-			object.WithGeneration(latestGen),
+			object.WithGeneration(generation),
 		)
 		if spec.Valid {
 			out.Object.SetSpec(spec.String)
@@ -169,19 +286,20 @@ AND o.id = $4
 	return &out, nil
 }
 
-// dbReadDomainQualifiedByUUID performs a SELECT query to return the stored
-// object record having the supplied object UUID with an expected
-// domain-qualified name.
-func (s *Store) dbReadDomainQualifiedByUUID(
+// dbReadByUUIDAndGenerationDomainQualified returns the object record having
+// the supplied object UUID and generation with an expected domain-qualified
+// name.
+func (s *Store) dbReadByUUIDAndGenerationDomainQualified(
 	ctx context.Context,
-	sysRec *storesystem.Record,
-	kindRec *storekind.Record,
-	kvRec *storekindversion.Record,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
+	kvRec storekindversion.Record,
 	domRec *storedomain.Record,
 	uuid string,
+	requestedGen api.Generation,
 ) (*Record, error) {
 	var name string
-	var latestGen api.Generation
+	var generation api.Generation
 	var spec sql.NullString
 	var domRowID int64
 	out := Record{}
@@ -195,31 +313,44 @@ func (s *Store) dbReadDomainQualifiedByUUID(
 		qs := `
 SELECT
   o.id AS object_id
-, o.generation AS object_generation
+, og.generation AS object_generation
 , n.name AS object_name
-, o.spec AS object_spec
+, og.spec AS object_spec
 , o.domain AS domain_id
 FROM objects AS o
 INNER JOIN domain_qualified_object_names AS n
  ON o.id = n.object
  AND o.system = n.system
  AND n.domain = o.domain
-WHERE o.system = $1
+INNER JOIN object_generations AS og
+ ON o.id = og.object
+`
+		if requestedGen == latestSentinel {
+			qs += `AND o.generation = og.generation
+`
+		}
+		qs += `WHERE o.system = $1
 AND o.kindversion = $2
 AND n.kind = $3
 AND o.uuid = $4
 `
+		if requestedGen != latestSentinel {
+			qs += `AND og.generation = $5
+`
+			qargs = append(qargs, requestedGen)
+		}
 		// NOTE(jaypipes): We allow the lookup of object records by object UUID for
 		// domain-qualified objects when we don't have a domain record specified.
 		// If domRec is not nil, we add another WHERE condition to ensure that the
 		// expected domain is indeed the domain associated with the object.
 		if domRec != nil {
+			qs += fmt.Sprintf(`AND o.domain = $%d
+`, len(qargs)+1)
 			qargs = append(qargs, domRec.RowID)
-			qs += "AND o.domain = $5"
 		}
 		err := tx.QueryRow(ctx, qs, qargs...).Scan(
 			&out.RowID,
-			&latestGen,
+			&generation,
 			&name,
 			&spec,
 			&domRowID,
@@ -229,7 +360,7 @@ AND o.uuid = $4
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading objects record",
+				"failed reading domain-qualified objects record by UUID",
 				errors.WithWrap(err),
 			)
 		}
@@ -238,14 +369,14 @@ AND o.uuid = $4
 			object.WithKindVersionName(kvRec.KindVersion.Name()),
 			object.WithUUID(uuid),
 			object.WithName(name),
-			object.WithGeneration(latestGen),
+			object.WithGeneration(generation),
 		)
 		if domRec == nil {
 			// We allow looking up a domain-qualified object by object UUID
 			// without specifying the Domain. In those cases, we construct the
 			// returned Object's Domain here.
 			domRec, err = s.domainStore.ReadByRowID(
-				ctx, domRowID,
+				ctx, sysRec, domRowID,
 			)
 			if err != nil {
 				return fmt.Errorf("failed reading domain by row ID: %w", err)
@@ -263,45 +394,66 @@ AND o.uuid = $4
 	return &out, nil
 }
 
-// dbReadSystemQualifiedByUUID performs a SELECT query to return the stored
-// object record having the supplied object UUID with an expected
-// system-qualified name.
-func (s *Store) dbReadSystemQualifiedByUUID(
+// dbReadByUUIDAndGenerationSystemQualified return the object record having the
+// supplied object UUID and generation with an expected system-qualified name.
+func (s *Store) dbReadByUUIDAndGenerationSystemQualified(
 	ctx context.Context,
-	sysRec *storesystem.Record,
-	kindRec *storekind.Record,
-	kvRec *storekindversion.Record,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
+	kvRec storekindversion.Record,
 	uuid string,
+	requestedGen api.Generation,
 ) (*Record, error) {
 	var name string
-	var latestGen api.Generation
+	var generation api.Generation
 	var spec sql.NullString
 	out := Record{}
+	qargs := []any{
+		sysRec.RowID,
+		kvRec.RowID,
+		kindRec.RowID,
+		uuid,
+	}
 	fn := func(tx pgx.Tx) error {
 		qs := `
 SELECT
   o.id AS object_id
 , o.generation AS object_generation
 , n.name AS object_name
-, o.spec AS object_spec
+, og.spec AS object_spec
 FROM objects AS o
 INNER JOIN system_qualified_object_names AS n
  ON o.id = n.object
  AND o.system = n.system
+INNER JOIN object_generations AS og
+ ON o.id = og.object
+`
+		if requestedGen == latestSentinel {
+			qs += `AND o.generation = og.generation
+`
+		}
+		qs += `
 WHERE o.system = $1
 AND o.kindversion = $2
 AND n.kind = $3
 AND o.uuid = $4
 `
-		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID, uuid,
-		).Scan(&out.RowID, &latestGen, &name, &spec)
+		if requestedGen != latestSentinel {
+			qs += `AND og.generation = $5`
+			qargs = append(qargs, requestedGen)
+		}
+		err := tx.QueryRow(ctx, qs, qargs...).Scan(
+			&out.RowID,
+			&generation,
+			&name,
+			&spec,
+		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading objects record",
+				"failed reading system-qualified objects record by UUID",
 				errors.WithWrap(err),
 			)
 		}
@@ -310,7 +462,7 @@ AND o.uuid = $4
 			object.WithKindVersionName(kvRec.KindVersion.Name()),
 			object.WithUUID(uuid),
 			object.WithName(name),
-			object.WithGeneration(latestGen),
+			object.WithGeneration(generation),
 		)
 		if spec.Valid {
 			out.Object.SetSpec(spec.String)
@@ -323,42 +475,63 @@ AND o.uuid = $4
 	return &out, nil
 }
 
-// dbReadDomainQualifiedByName performs a SELECT query to return the stored
-// object record having the supplied domain-qualified name.
-func (s *Store) dbReadDomainQualifiedByName(
+// dbReadByNameAndGenerationDomainQualified returns the object record having
+// the supplied domain-qualified name and generation.
+func (s *Store) dbReadByNameAndGenerationDomainQualified(
 	ctx context.Context,
-	sysRec *storesystem.Record,
-	kindRec *storekind.Record,
-	kvRec *storekindversion.Record,
-	domRec *storedomain.Record,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
+	kvRec storekindversion.Record,
+	domRec storedomain.Record,
 	name string,
+	requestedGen api.Generation,
 ) (*Record, error) {
 	var uuid string
-	var latestGen api.Generation
+	var generation api.Generation
 	var spec sql.NullString
 	out := Record{}
+	qargs := []any{
+		sysRec.RowID,
+		kvRec.RowID,
+		kindRec.RowID,
+		name,
+		domRec.RowID,
+	}
 	fn := func(tx pgx.Tx) error {
 		qs := `
 SELECT
   o.id AS object_id
 , o.uuid AS object_uuid
 , o.generation AS object_generation
-, o.spec AS object_spec
+, og.spec AS object_spec
 FROM objects AS o
 INNER JOIN domain_qualified_object_names AS n
  ON o.id = n.object
  AND o.system = n.system
  AND n.domain = o.domain
-WHERE o.system = $1
+INNER JOIN object_generations AS og
+ ON o.id = og.object
+`
+		if requestedGen == latestSentinel {
+			qs += `AND o.generation = og.generation
+`
+		}
+		qs += `WHERE o.system = $1
 AND o.kindversion = $2
 AND n.kind = $3
 AND n.name = $4
 AND o.domain = $5
 `
-		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID,
-			name, domRec.RowID,
-		).Scan(&out.RowID, &uuid, &latestGen, &spec)
+		if requestedGen != latestSentinel {
+			qs += `AND og.generation = $6`
+			qargs = append(qargs, requestedGen)
+		}
+		err := tx.QueryRow(ctx, qs, qargs...).Scan(
+			&out.RowID,
+			&uuid,
+			&generation,
+			&spec,
+		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -374,7 +547,7 @@ AND o.domain = $5
 			object.WithDomain(domRec.Domain),
 			object.WithUUID(uuid),
 			object.WithName(name),
-			object.WithGeneration(latestGen),
+			object.WithGeneration(generation),
 		)
 		if spec.Valid {
 			out.Object.SetSpec(spec.String)
@@ -387,19 +560,26 @@ AND o.domain = $5
 	return &out, nil
 }
 
-// dbReadSystemQualifiedByName performs a SELECT query to return the stored
-// object record having the supplied system-qualified name.
-func (s *Store) dbReadSystemQualifiedByName(
+// dbReadByNameAndGenerationSystemQualified returns the object record having
+// the supplied system-qualified name and generation.
+func (s *Store) dbReadByNameAndGenerationSystemQualified(
 	ctx context.Context,
-	sysRec *storesystem.Record,
-	kindRec *storekind.Record,
-	kvRec *storekindversion.Record,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
+	kvRec storekindversion.Record,
 	name string,
+	requestedGen api.Generation,
 ) (*Record, error) {
 	var uuid string
-	var latestGen api.Generation
+	var generation api.Generation
 	var spec sql.NullString
 	out := Record{}
+	qargs := []any{
+		sysRec.RowID,
+		kvRec.RowID,
+		kindRec.RowID,
+		name,
+	}
 	fn := func(tx pgx.Tx) error {
 		qs := `
 SELECT
@@ -411,14 +591,28 @@ FROM objects AS o
 INNER JOIN system_qualified_object_names AS n
  ON o.id = n.object
  AND o.system = n.system
-WHERE o.system = $1
+INNER JOIN object_generations AS og
+ ON o.id = og.object
+`
+		if requestedGen == latestSentinel {
+			qs += `AND o.generation = og.generation
+`
+		}
+		qs += `WHERE o.system = $1
 AND o.kindversion = $2
 AND n.kind = $3
 AND n.name = $4
 `
-		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, kvRec.RowID, kindRec.RowID, name,
-		).Scan(&out.RowID, &uuid, &latestGen, &spec)
+		if requestedGen != latestSentinel {
+			qs += `AND og.generation = $5`
+			qargs = append(qargs, requestedGen)
+		}
+		err := tx.QueryRow(ctx, qs, qargs...).Scan(
+			&out.RowID,
+			&uuid,
+			&generation,
+			&spec,
+		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -433,7 +627,7 @@ AND n.name = $4
 			object.WithKindVersionName(kvRec.KindVersion.Name()),
 			object.WithUUID(uuid),
 			object.WithName(name),
-			object.WithGeneration(latestGen),
+			object.WithGeneration(generation),
 		)
 		if spec.Valid {
 			out.Object.SetSpec(spec.String)
@@ -446,57 +640,20 @@ AND n.name = $4
 	return &out, nil
 }
 
-// dbReadAtGeneration grabs object data for a specified generation of the
-// object desired state. This method mutates the supplied objectEntry with the
-// desired spec for the object at the specific generation.
-func (s *Store) dbReadAtGeneration(
-	ctx context.Context,
-	rowID int64,
-	generation api.Generation,
-) (*Record, error) {
-	var spec sql.NullString
-	out := Record{
-		RowID: rowID,
-		Object: object.New(
-			object.WithGeneration(generation),
-		),
-	}
-	fn := func(tx pgx.Tx) error {
-		qs := `SELECT spec FROM object_generations WHERE object = $1 AND generation = $2`
-		err := tx.QueryRow(ctx, qs, rowID, generation).Scan(&spec)
-		if err != nil {
-			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
-			}
-			return errors.Internal(
-				"failed reading object_generations record",
-				errors.WithWrap(err),
-			)
-		}
-
-		if spec.Valid {
-			out.Object.SetSpec(spec.String)
-		}
-		return nil
-	}
-	err := s.Exec(ctx, fn)
-	if err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
 // dbInsertFirst is called when the caller believes they are the first
 // writer of an object.
 func (s *Store) dbInsertFirst(
 	ctx context.Context,
-	sysRec *storesystem.Record,
-	kindRec *storekind.Record,
-	kvRec *storekindversion.Record,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
+	kvRec storekindversion.Record,
 	domRec *storedomain.Record,
 	obj object.Object,
 ) (*object.Object, error) {
 	kind := kindRec.Kind
+	if kind.Scope() == api.ScopeDomain && domRec == nil {
+		return nil, errors.ErrObjectDomainRequired
+	}
 	kv := obj.KindVersionName()
 	uuid := obj.UUID()
 	name := obj.Name()
@@ -520,7 +677,6 @@ INSERT INTO objects (
 , uuid
 , generation
 , domain
-, spec
 , last_modified_on
 , last_modified_by
 ) VALUES (
@@ -531,7 +687,6 @@ INSERT INTO objects (
 , $5
 , $6
 , $7
-, $8
 ) RETURNING id`
 		err := tx.QueryRow(
 			ctx, qs,
@@ -540,7 +695,6 @@ INSERT INTO objects (
 			uuid,
 			1, /* we expect we are the first generation */
 			domainRowID,
-			specJSON,
 			createdOn,
 			createdBy,
 		).Scan(&objRowID)
@@ -696,13 +850,17 @@ INSERT INTO object_generations (
 // writer of an object and expect to see a supplied generation.
 func (s *Store) dbInsertGeneration(
 	ctx context.Context,
-	sysRec *storesystem.Record,
-	kindRec *storekind.Record,
-	kvRec *storekindversion.Record,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
+	kvRec storekindversion.Record,
 	domRec *storedomain.Record,
 	obj object.Object,
 	expectGeneration api.Generation,
 ) (*object.Object, error) {
+	kind := kindRec.Kind
+	if kind.Scope() == api.ScopeDomain && domRec == nil {
+		return nil, errors.ErrObjectDomainRequired
+	}
 	kv := obj.KindVersionName()
 	uuid := obj.UUID()
 	createdOn := time.Now().UnixNano()
@@ -768,15 +926,13 @@ INSERT INTO object_generations (
 		qs = `
 UPDATE objects
 SET generation = $1
-, spec = $2
-, last_modified_on = $3
-, last_modified_by = $4
-WHERE id = $5
-AND generation = $6`
+, last_modified_on = $2
+, last_modified_by = $3
+WHERE id = $4
+AND generation = $5`
 		res, err := tx.Exec(
 			ctx, qs,
 			expectGeneration+1, /* we expect we are the first generation */
-			specJSON,
 			createdOn,
 			createdBy,
 			objRowID,
@@ -804,6 +960,20 @@ AND generation = $6`
 	return &out, nil
 }
 
+func isKindishPredicate(p query.Predicate) bool {
+	switch p.(type) {
+	case
+		kind.NamePredicate,
+		kind.UUIDPredicate,
+		kind.KindPredicate,
+		kindversion.KindVersionPredicate,
+		kindversion.NamePredicate:
+		return true
+	default:
+		return false
+	}
+}
+
 type dqObjectRecord struct {
 	ID            int64          `db:"object_id"`
 	UUID          string         `db:"object_uuid"`
@@ -821,12 +991,14 @@ type dqObjectRecord struct {
 func (s *Store) dbReadDomainQualifiedByExpression(
 	ctx context.Context,
 	kv api.KindVersionName,
-	kindRec *storekind.Record,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
 	expr query.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
-	sysRec := s.hostSystemRecord
-	sys := sysRec.System
+	if query.ContainsPredicate(expr, isKindishPredicate) {
+		return nil, errors.ErrInvalidQueryKindPredicate
+	}
 
 	qargs := []any{
 		sysRec.RowID,
@@ -843,36 +1015,15 @@ func (s *Store) dbReadDomainQualifiedByExpression(
 		qargs = append(qargs, kvVerStr)
 	}
 
-	switch expr := expr.(type) {
-	case query.UnaryExpression:
-		pred := expr.Predicate
-		switch pred := pred.(type) {
-		case kind.NamePredicate:
-			op := pred.Op
-			switch op {
-			case query.PredicateOperatorEqual:
-				kn := pred.Value.(api.KindName)
-				kindRec, err := s.kindStore.ReadByName(ctx, sys, kn)
-				if err != nil {
-					return nil, err
-				}
-				wheres = append(wheres, fmt.Sprintf("kv.kind = $%d", len(qargs)+1))
-				qargs = append(qargs, kindRec.RowID)
-			}
-		}
-	case query.OrExpression:
-	case query.AndExpression:
-	}
-
 	var recs []dqObjectRecord
 	fn := func(tx pgx.Tx) error {
 		qs := `
 SELECT
   o.id AS object_id
 , o.uuid AS object_uuid
-, o.generation AS object_generation
+, og.generation AS object_generation
 , d.name AS object_name
-, o.spec AS object_spec
+, og.spec AS object_spec
 , o.system AS system_id
 , o.kindversion AS kindversion_id
 , o.domain AS domain_id
@@ -881,6 +1032,9 @@ FROM objects AS o
   ON o.kindversion = kv.id
  INNER JOIN domain_qualified_object_names AS d
   ON o.id = d.object
+INNER JOIN object_generations AS og
+ ON o.id = og.object
+ AND o.generation = og.generation
 `
 		if len(wheres) > 0 {
 			qs += "\nWHERE " + strings.Join(wheres, " AND ")
@@ -909,21 +1063,31 @@ FROM objects AS o
 	}
 	out := make([]*Record, 0, len(recs))
 	for _, rec := range recs {
-		kvRec, err := s.kindversionStore.ReadByRowID(ctx, rec.KindVersionID)
-		if err != nil {
-			return nil, err
+		kvName := kv
+		if kvVerStr == "" {
+			kvRec, err := s.kindversionStore.ReadByRowID(
+				ctx, sysRec, kindRec, rec.KindVersionID,
+			)
+			if err != nil {
+				return nil, errors.Internal(
+					"failed reading kindversion record",
+					errors.WithWrap(err),
+				)
+			}
+			kvName = kvRec.KindVersion.Name()
 		}
-		kv := kvRec.KindVersion.Name()
-		domRec, err := s.domainStore.ReadByRowID(ctx, rec.DomainID)
+		domRec, err := s.domainStore.ReadByRowID(
+			ctx, sysRec, rec.DomainID,
+		)
 		if err != nil {
 			return nil, err
 		}
 		obj := object.New(
-			object.WithKindVersionName(kv),
+			object.WithKindVersionName(kvName),
 			object.WithUUID(rec.UUID),
 			object.WithName(rec.Name),
 			object.WithGeneration(rec.Generation),
-			object.WithSystem(sys),
+			object.WithSystem(sysRec.System),
 			object.WithDomain(domRec.Domain),
 		)
 		if rec.Spec.Valid {
@@ -953,15 +1117,14 @@ type sqObjectRecord struct {
 func (s *Store) dbReadSystemQualifiedByExpression(
 	ctx context.Context,
 	kv api.KindVersionName,
-	kindRec *storekind.Record,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
 	expr query.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
 	if query.ContainsPredicate(expr, isKindishPredicate) {
 		return nil, errors.ErrInvalidQueryKindPredicate
 	}
-	sysRec := s.hostSystemRecord
-	sys := sysRec.System
 
 	qargs := []any{
 		sysRec.RowID,
@@ -1079,16 +1242,19 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 SELECT
   o.id AS object_id
 , o.uuid AS object_uuid
-, o.generation AS object_generation
+, og.generation AS object_generation
 , n.name AS object_name
-, o.spec AS object_spec
+, og.spec AS object_spec
 , o.system AS system_id
 , o.kindversion AS kindversion_id
 FROM objects AS o
- INNER JOIN kindversions AS kv
-  ON o.kindversion = kv.id
- INNER JOIN system_qualified_object_names AS n
-  ON o.id = n.object
+INNER JOIN kindversions AS kv
+ ON o.kindversion = kv.id
+INNER JOIN system_qualified_object_names AS n
+ ON o.id = n.object
+INNER JOIN object_generations AS og
+ ON o.id = og.object
+ AND o.generation = og.generation
 `
 		if len(wheres) > 0 {
 			qs += "WHERE " + strings.Join(wheres, " AND ")
@@ -1117,17 +1283,25 @@ FROM objects AS o
 	}
 	out := make([]*Record, 0, len(recs))
 	for _, rec := range recs {
-		kvRec, err := s.kindversionStore.ReadByRowID(ctx, rec.KindVersionID)
-		if err != nil {
-			return nil, err
+		kvName := kv
+		if kvVerStr == "" {
+			kvRec, err := s.kindversionStore.ReadByRowID(
+				ctx, sysRec, kindRec, rec.KindVersionID,
+			)
+			if err != nil {
+				return nil, errors.Internal(
+					"failed reading kindversion record",
+					errors.WithWrap(err),
+				)
+			}
+			kvName = kvRec.KindVersion.Name()
 		}
-		kv := kvRec.KindVersion.Name()
 		obj := object.New(
-			object.WithKindVersionName(kv),
+			object.WithKindVersionName(kvName),
 			object.WithUUID(rec.UUID),
 			object.WithName(rec.Name),
 			object.WithGeneration(rec.Generation),
-			object.WithSystem(sys),
+			object.WithSystem(sysRec.System),
 		)
 		if rec.Spec.Valid {
 			obj.SetSpec(rec.Spec.String)

@@ -9,7 +9,7 @@ import (
 // Write atomically writes the supplied System to persistent storage.
 func (s *Store) Write(
 	ctx context.Context,
-	sys *system.System,
+	sys system.System,
 ) error {
 	return s.dbInsert(ctx, sys)
 }

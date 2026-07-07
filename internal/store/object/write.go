@@ -2,83 +2,25 @@ package store
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/relexec/rxp/object"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
-	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/object"
+	storekind "github.com/relexec/rxp-pg/internal/store/kind"
+	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
+	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // Write atomically writes the supplied Object to persistent storage. On
 // successful write, the newly created or updated Object is returned.
 func (s *Store) Write(
 	ctx context.Context,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
+	kvRec storekindversion.Record,
+	domRec *storedomain.Record,
 	obj object.Object,
 ) (*object.Object, error) {
-	sys := obj.System()
-	sysRec, err := s.systemStore.ReadByUUID(ctx, sys.UUID())
-	if err != nil {
-		return nil, errors.Internal(
-			"failed reading system record",
-			errors.WithWrap(err),
-		)
-	}
-	kv := obj.KindVersionName()
-	kindRec, err := s.kindStore.ReadByName(ctx, sys, kv.Kind())
-	if err != nil {
-		if err == errors.ErrNotFound {
-			return nil, errors.ErrKindVersionUnknown
-		}
-		return nil, errors.Internal(
-			"failed reading kind record",
-			errors.WithWrap(err),
-		)
-	}
-	kvRec, err := s.kindversionStore.ReadByName(
-		ctx, sys, kv,
-	)
-	if err != nil {
-		if err == errors.ErrNotFound {
-			return nil, errors.ErrKindVersionUnknown
-		}
-		return nil, errors.Internal(
-			"failed reading kindversion record",
-			errors.WithWrap(err),
-		)
-	}
-
-	var domRec *storedomain.Record
-
-	k := kindRec.Kind
-	scope := k.Scope()
-	switch scope {
-	case api.ScopeDomain:
-		dom := obj.Domain()
-		if dom == nil {
-			return nil, errors.Internal(
-				fmt.Sprintf(
-					"expected to have domain for object %q",
-					obj.UUID(),
-				),
-			)
-		}
-		if dom.UUID() != "" {
-			domRec, err = s.domainStore.ReadByUUID(
-				ctx, dom.UUID(),
-			)
-		} else {
-			domRec, err = s.domainStore.ReadByName(
-				ctx, sys, dom.Name(),
-			)
-		}
-		if err != nil {
-			return nil, errors.Internal(
-				"failed reading domain record",
-				errors.WithWrap(err),
-			)
-		}
-	}
 	expectGeneration := obj.Generation()
 	if expectGeneration == 0 {
 		// caller expects that they are the first writer of this object. This

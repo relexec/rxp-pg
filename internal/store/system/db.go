@@ -89,7 +89,7 @@ func (s *Store) dbReadByUUID(
 // dbInsert atomically writes the supplied System to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sys *system.System,
+	sys system.System,
 ) error {
 	createdOn := time.Now().UnixNano()
 	createdBy := rxpcontext.Identity(ctx)

@@ -108,7 +108,6 @@ CREATE TABLE objects (
 , uuid UUID NOT NULL
 , generation INT NOT NULL
 , domain INT NULL
-, spec TEXT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
 , UNIQUE (uuid)
@@ -145,7 +144,7 @@ CREATE TABLE objects_archived (
 , uuid UUID NOT NULL
 , domain INT NULL
 , name TEXT NOT NULL
-, spec TEXT NULL
+, generation INT NOT NULL
 , last_modified_on BIGINT NOT NULL
 , last_modified_by TEXT NOT NULL
 , archived_on BIGINT NOT NULL
@@ -154,20 +153,22 @@ CREATE TABLE objects_archived (
 );
 
 CREATE TABLE object_generations (
-  object BIGINT NOT NULL
+  id BIGSERIAL NOT NULL PRIMARY KEY
+, object BIGINT NOT NULL
 , generation INT NOT NULL
 , kindversion BIGINT NOT NULL
 , created_on BIGINT NOT NULL
 , created_by TEXT NOT NULL
 , spec TEXT NOT NULL
-, PRIMARY KEY (object, generation)
+, UNIQUE (object, generation)
 );
 
 CREATE INDEX ix_object_generations_kindversion
 ON object_generations (kindversion);
 
 CREATE TABLE object_generations_archived (
-  object BIGINT NOT NULL
+  object_generation BIGINT NOT NULL
+, object BIGINT NOT NULL
 , generation INT NOT NULL
 , kindversion INT NOT NULL
 , spec TEXT NOT NULL
@@ -187,11 +188,11 @@ CREATE TABLE object_labels (
 
 -- +goose down
 DROP TABLE object_labels;
-DROP TABLE system_qualified_object_names;
-DROP TABLE domain_qualified_object_names;
 DROP TABLE object_generations_archived;
 DROP TABLE object_generations;
 DROP TABLE objects_archived;
+DROP TABLE system_qualified_object_names;
+DROP TABLE domain_qualified_object_names;
 DROP TABLE objects;
 DROP TABLE kindversions_archived;
 DROP TABLE kindversions;

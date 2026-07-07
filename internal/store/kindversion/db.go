@@ -29,10 +29,10 @@ import (
 // record having the supplied internal DB RowID.
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
 	rowID int64,
 ) (*Record, error) {
-	var systemRowID int64
-	var kindRowID int64
 	var verStr string
 	var schemaBytes sql.NullString
 	var schema schema.Schema
@@ -40,11 +40,11 @@ func (s *Store) dbReadByRowID(
 		RowID: rowID,
 	}
 	fn := func(tx pgx.Tx) error {
-		qs := "SELECT system, kind, version, schema FROM kindversions WHERE id = $1"
+		qs := "SELECT version, schema FROM kindversions WHERE id = $1"
 		err := tx.QueryRow(
 			ctx, qs, rowID,
 		).Scan(
-			&systemRowID, &kindRowID, &verStr, &schemaBytes,
+			&verStr, &schemaBytes,
 		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
@@ -52,23 +52,6 @@ func (s *Store) dbReadByRowID(
 			}
 			return errors.Internal(
 				"failed reading kindversions record",
-				errors.WithWrap(err),
-			)
-		}
-		systemRec, err := s.systemStore.ReadByRowID(ctx, systemRowID)
-		if err != nil {
-			return errors.Internal(
-				"failed reading system record for kindversion",
-				errors.WithWrap(err),
-			)
-		}
-		kindRec, err := s.kindStore.ReadByRowID(ctx, kindRowID)
-		if err != nil {
-			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
-			}
-			return errors.Internal(
-				"failed reading kind record for kindversion",
 				errors.WithWrap(err),
 			)
 		}
@@ -89,7 +72,7 @@ func (s *Store) dbReadByRowID(
 			)
 		}
 		out.KindVersion = kindversion.New(
-			kindversion.WithSystem(systemRec.System),
+			kindversion.WithSystem(sysRec.System),
 			kindversion.WithKind(kindRec.Kind),
 			kindversion.WithVersion(*sv),
 			kindversion.WithSchema(&schema),
@@ -106,8 +89,8 @@ func (s *Store) dbReadByRowID(
 // having the supplied KindVersion.
 func (s *Store) dbReadByName(
 	ctx context.Context,
-	systemRec *storesystem.Record,
-	kindRec *storekind.Record,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
 	kv api.KindVersionName,
 ) (*Record, error) {
 	sv, _ := kv.Version()
@@ -127,7 +110,7 @@ AND version = $3
 `
 		err := tx.QueryRow(
 			ctx, qs,
-			systemRec.RowID, kindRec.RowID, verStr,
+			sysRec.RowID, kindRec.RowID, verStr,
 		).Scan(
 			&out.RowID, &schemaBytes,
 		)
@@ -150,7 +133,7 @@ AND version = $3
 			}
 		}
 		out.KindVersion = kindversion.New(
-			kindversion.WithSystem(systemRec.System),
+			kindversion.WithSystem(sysRec.System),
 			kindversion.WithKind(kindRec.Kind),
 			kindversion.WithVersion(*sv),
 			kindversion.WithSchema(&schema),
@@ -167,13 +150,18 @@ AND version = $3
 // versions known for the supplied Kind.
 func (s *Store) dbVersionsForKind(
 	ctx context.Context,
-	systemRec *storesystem.Record,
-	kindRec *storekind.Record,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
 ) (version.Set, error) {
 	var versionStrs []string
 	fn := func(tx pgx.Tx) error {
-		qs := "SELECT version FROM kindversions WHERE system = $1 AND kind = $2"
-		rows, err := tx.Query(ctx, qs, systemRec.RowID, kindRec.RowID)
+		qs := `
+SELECT version
+FROM kindversions
+WHERE system = $1
+AND kind = $2
+`
+		rows, err := tx.Query(ctx, qs, sysRec.RowID, kindRec.RowID)
 		if err != nil {
 			return errors.Internal(
 				"failed reading kindversion records",
@@ -213,9 +201,9 @@ func (s *Store) dbVersionsForKind(
 // dbInsert atomically writes the supplied KindVersion to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	systemRec *storesystem.Record,
-	kindRec *storekind.Record,
-	kv *kindversion.KindVersion,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
+	kv kindversion.KindVersion,
 ) error {
 	name := kv.Name()
 	ver, _ := name.Version()
@@ -226,7 +214,7 @@ func (s *Store) dbInsert(
 		return err
 	}
 	fn := func(tx pgx.Tx) error {
-		versions, err := s.dbVersionsForKind(ctx, systemRec, kindRec)
+		versions, err := s.dbVersionsForKind(ctx, sysRec, kindRec)
 		if err != nil {
 			return err
 		}
@@ -262,7 +250,7 @@ INSERT INTO kindversions (
 )`
 		_, err = tx.Exec(
 			ctx, qs,
-			systemRec.RowID,
+			sysRec.RowID,
 			kindRec.RowID,
 			name.VersionString(),
 			schemaJSON,
@@ -314,7 +302,7 @@ func (s *Store) dbReadByExpression(
 				kvName := pred.Value.(api.KindVersionName)
 				kindName := kvName.Kind()
 				kindRec, err := s.kindStore.ReadByName(
-					ctx, s.hostSystemRecord.System, kindName,
+					ctx, s.hostSystemRecord, kindName,
 				)
 				if err != nil {
 					// If we're looking up kindversions by a non-existent kind,
@@ -335,7 +323,7 @@ func (s *Store) dbReadByExpression(
 				for _, kvName := range kvNames {
 					kindName := kvName.Kind()
 					kindRec, err := s.kindStore.ReadByName(
-						ctx, s.hostSystemRecord.System, kindName,
+						ctx, s.hostSystemRecord, kindName,
 					)
 					if err != nil {
 						if err == errors.ErrNotFound {

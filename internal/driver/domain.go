@@ -11,6 +11,8 @@ import (
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+
+	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // DomainRead reads a Domain from persistent storage.
@@ -44,16 +46,8 @@ func (d *Driver) DomainRead(
 		return nil, err
 	}
 
-	uuid := sel.UUID()
-	if uuid != "" {
-		rec, err := d.domainStore.ReadByUUID(ctx, uuid)
-		if err != nil {
-			return nil, err
-		}
-		return rec.Domain, nil
-	}
+	var sysRec *storesystem.Record
 
-	name := sel.Name()
 	sys := sel.System()
 
 	// Default the system to the host system if it hasn't been specified in the
@@ -62,8 +56,30 @@ func (d *Driver) DomainRead(
 		sys = d.hostSystemRecord.System
 	}
 
+	if sys.UUID() != d.hostSystemUUID {
+		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID())
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return nil, errors.ErrSystemUnknown
+			}
+			return nil, err
+		}
+	} else {
+		sysRec = d.hostSystemRecord
+	}
+
+	uuid := sel.UUID()
+	if uuid != "" {
+		rec, err := d.domainStore.ReadByUUID(ctx, *sysRec, uuid)
+		if err != nil {
+			return nil, err
+		}
+		return rec.Domain, nil
+	}
+
+	name := sel.Name()
 	rec, err := d.domainStore.ReadByName(
-		ctx, sys, name,
+		ctx, *sysRec, name,
 	)
 	if err != nil {
 		return nil, err
@@ -83,7 +99,7 @@ func (d *Driver) domainReadValidate(
 // DomainWrite atomically writes the supplied Domain to persistent storage.
 func (d *Driver) DomainWrite(
 	ctx context.Context,
-	dom *domain.Domain,
+	dom domain.Domain,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -111,26 +127,38 @@ func (d *Driver) DomainWrite(
 		return err
 	}
 
+	var sysRec *storesystem.Record
+
 	sys := dom.System()
-	// Default the system to the host system if it hasn't been specified.
+
+	// Default the system to the host system if it hasn't been specified in the
+	// selector.
 	if sys == nil {
-		dom.SetSystem(d.hostSystemRecord.System)
+		sys = d.hostSystemRecord.System
+		dom.SetSystem(sys)
 	}
-	return d.domainStore.Write(ctx, dom)
+
+	if sys.UUID() != d.hostSystemUUID {
+		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID())
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return errors.ErrSystemUnknown
+			}
+			return err
+		}
+	} else {
+		sysRec = d.hostSystemRecord
+	}
+
+	return d.domainStore.Write(ctx, *sysRec, dom)
 }
 
 // domainWriteValidate returns an error if the supplied domain and write
 // options are not valid for writing a single Domain.
 func (d *Driver) domainWriteValidate(
 	ctx context.Context,
-	dom *domain.Domain,
+	dom domain.Domain,
 ) error {
-	if dom == nil {
-		return errors.RequiredParameterNil(
-			"domain",
-			errors.WithWrap(errors.ErrInvalidWriteRequest),
-		)
-	}
 	return dom.Validate()
 }
 
