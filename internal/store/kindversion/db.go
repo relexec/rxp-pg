@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/relexec/pkg/version"
 	"github.com/relexec/rxp/api"
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
@@ -19,7 +20,6 @@ import (
 	"github.com/relexec/rxp/kind/kindversion/schema"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/system"
-	"github.com/relexec/pkg/version"
 
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"

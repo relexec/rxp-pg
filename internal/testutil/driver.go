@@ -4,12 +4,12 @@ import (
 	"context"
 	"sync"
 
+	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/object"
-	"github.com/relexec/rxp-testing/fixtures"
 
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/driver"

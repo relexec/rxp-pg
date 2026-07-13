@@ -22,6 +22,13 @@ mv "$(BIN_DIR)/$$(basename "$(1)")" "$(1)-$(3)" ;\
 ln -sf "$$(realpath "$(1)-$(3)")" "$(1)"
 endef
 
+GOLANGCILINT ?= $(BIN_DIR)/golangci-lint
+GOLANGCILINT_VERSION ?= latest
+$(GOLANGCILINT): | $(BIN_DIR)
+	@echo -n "installing golangci-lint@$(GOLANGCILINT_VERSION) ... "
+	@$(call go-install-tool,$(GOLANGCILINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCILINT_VERSION))
+	@echo "ok."
+
 ##@ Go development
 
 .PHONY: go-fmt
@@ -31,3 +38,7 @@ go-fmt: ## Run go fmt against code.
 .PHONY: go-vet
 go-vet: ## Run go vet against code.
 	go vet ./...
+
+.PHONY: go-lint
+go-lint: $(GOLANGCILINT)## Run golangci-lint against code.
+	golangci-lint run

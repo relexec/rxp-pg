@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read # needed for only-new-issues option below
 
 jobs:
   lint:
@@ -29,16 +28,26 @@ jobs:
            proxy.golang.org:443
            storage.googleapis.com:443
            release-assets.githubusercontent.com:443
+           sum.golang.org:443
      - name: checkout code
        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+     - name: setup go workspace
+       run: go work init && go work use -r .
      - name: setup go
        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
        with:
-         go-version-file: go.mod
          cache: true
-     - name: lint
+         go-version-file: go.work
+         cache-dependency-path: |
+           go.work.sum
+           **/go.sum
+     - name: golangci-lint
+       env:
+         GOEXPERIMENT: jsonv2
        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
        with:
-         version: v2.11
-         args: --timeout=5m0s --verbose
+         version: v2.12
+         args: --timeout=2m0s --verbose
          only-new-issues: true
+     - name: check go fmt differences
+       run: 'bash -c "diff -u <(echo -n) <(gofmt -d .)"'
