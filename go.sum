@@ -41,6 +41,13 @@ github.com/matoous/go-nanoid v1.5.1/go.mod h1:zyD2a71IubI24efhpvkJz+ZwfwagzgSO6U
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/relexec/delta v0.1.0 h1:lyRSR+Y8rcHnb911ZQsXwX/0mmVGddXjSppyyYLFru4=
+github.com/relexec/delta v0.1.0/go.mod h1:0Be+SFo/n4hts1tjh+XgEslauq0iEmFMsPyAvBAhILQ=
+github.com/relexec/pkg v0.2.0 h1:T+YffSmpdGca+8tfSw0iqJaaTYVvSPRffEYwCIyoyMc=
+github.com/relexec/pkg v0.2.0/go.mod h1:y5ab7KBWbcbKmSPrUIFArxaSQfznb2twWAAk44eNhgM=
+github.com/relexec/rxp v0.1.0 h1:BQ2rDEMeEhVU5XR263ZoPrRfNmKSPhKlyoLl1telRNc=
+github.com/relexec/rxp v0.1.0/go.mod h1:9dnBCpuburK7YvtVwZDczneT3od+iE6VE1iGeRJQfYE=
+github.com/relexec/rxp-testing v0.1.0 h1:CX9DjCpfVLNDOTN3NAsGYlTL8KSRLe6VieA9am+gvl0=
+github.com/relexec/rxp-testing v0.1.0/go.mod h1:NfvehqA4MUk7641ewObbHqWQwWf4w7sBVBTX3mlZzDI=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
 github.com/samber/lo v1.53.0 h1:t975lj2py4kJPQ6haz1QMgtId2gtmfktACxIXArw3HM=
@@ -69,8 +76,11 @@ go.opentelemetry.io/otel/sdk/metric v1.44.0/go.mod h1:5B5pMARnXxKhltooO4xUuCBorl
 go.opentelemetry.io/otel/trace v1.44.0 h1:jxF5CsGYCe74MCRx2X4g7WsY/VBKRqqpNvXlX/6gtIk=
 go.opentelemetry.io/otel/trace v1.44.0/go.mod h1:oLl1jrMQAVo6v3GAggN+1VH9VIz9iUSvW53sW1Q8PIE=
 golang.org/x/sync v0.21.0 h1:HLII4xRRTtCRkxYp4HNFF0Js/Og6q2i++KXbg0gHCwM=
+golang.org/x/sync v0.21.0/go.mod h1:9xrNwdLfx4jkKbNva9FpL6vEN7evnE43NNNJQ2LF3+0=
 golang.org/x/sys v0.46.0 h1:noSf2Fq6F8DBgS+LysIkx7rIExoNHJsxOAtPp4rthXw=
+golang.org/x/sys v0.46.0/go.mod h1:4GL1E5IUh+htKOUEOaiffhrAeqysfVGipDYzABqnCmw=
 golang.org/x/text v0.38.0 h1:sXmwo9DwP3OK9EZ7PqAdaooSGozfl/3a6/xJcbzPRhE=
+golang.org/x/text v0.38.0/go.mod h1:YXZt3QhHUKYT53r2lLKFIVi6Ao1jdzrTR/KQ09qyxF4=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c h1:Hei/4ADfdWqJk1ZMxUNpqntNwaWcugrBjAiHlqqRiVk=
 gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EVd6muEfDQjcINNoR0C8j2r3qZ4Q=

@@ -7,8 +7,17 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	rxpconfig "github.com/relexec/rxp/config"
+	pkglog "github.com/relexec/pkg/log"
 	"github.com/spf13/pflag"
+)
+
+const (
+	flagSystemUUID     = "rxp-system-uuid"
+	flagSystemUUIDDesc = "Contains the rxp host system UUID. If empty, the value of RXP_SYSTEM_UUID environs variable is used."
+	envVarSystemUUID   = "RXP_SYSTEM_UUID"
+	flagSystemTag      = "rxp-system-tag"
+	flagSystemTagDesc  = "Contains the rxp host system tag. If empty, the value of RXP_SYSTEM_TAG environs variable is used."
+	envVarSystemTag    = "RXP_SYSTEM_TAG"
 )
 
 const (
@@ -28,7 +37,12 @@ const (
 
 // Config contains configuration options for the rxp-pg library.
 type Config struct {
-	rxpconfig.Config
+	// SystemUUID contains the rxp host system UUID.
+	SystemUUID string `json:"system_uuid,omitempty"`
+	// SystemTag contains the rxp host system Name, if any.
+	SystemTag string `json:"system_name,omitempty"`
+	// Log contains options for configuring logging.
+	Log pkglog.Config
 	// Connect contains the libpq connection string in either key=value or URL
 	// format.
 	//
@@ -51,7 +65,13 @@ type Config struct {
 // SetDefaults sets any missing values to their defaults or environs variable
 // values.
 func (c *Config) SetDefaults() {
-	c.Config.SetDefaults()
+	if c.SystemUUID == "" {
+		c.SystemUUID = os.Getenv(envVarSystemUUID)
+	}
+	if c.SystemTag == "" {
+		c.SystemTag = os.Getenv(envVarSystemTag)
+	}
+	c.Log.SetDefaults()
 	if c.Connect == "" {
 		c.Connect = os.Getenv(EnvVarConnect)
 	}
@@ -80,12 +100,27 @@ func (c Config) Validate() error {
 			return fmt.Errorf("invalid postgres Connect: %w", err)
 		}
 	}
+	if err := c.Log.Validate(); err != nil {
+		return err
+	}
 	return c.Cache.Validate()
 }
 
 // BindFlags bings the supplied flagset to the Config's fields.
 func (c *Config) BindFlags(fs *pflag.FlagSet) {
-	c.Config.BindFlags(fs)
+	pflag.StringVar(
+		&c.SystemUUID,
+		flagSystemUUID,
+		"",
+		flagSystemUUIDDesc,
+	)
+	pflag.StringVar(
+		&c.SystemTag,
+		flagSystemTag,
+		"",
+		flagSystemTagDesc,
+	)
+	c.Log.BindFlags(fs)
 	pflag.StringVar(
 		&c.Connect,
 		flagConnect,
