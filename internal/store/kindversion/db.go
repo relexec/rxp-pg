@@ -19,7 +19,7 @@ import (
 	"github.com/relexec/rxp/kind/kindversion/schema"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/system"
-	"github.com/relexec/rxp/version"
+	"github.com/relexec/pkg/version"
 
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"

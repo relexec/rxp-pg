@@ -7,7 +7,7 @@ import (
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/metrics"
+	"github.com/relexec/rxp/api/metrics"
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"

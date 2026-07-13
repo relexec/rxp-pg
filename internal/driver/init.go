@@ -7,9 +7,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/relexec/rxp/api/metrics"
 	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/metrics"
 	"github.com/relexec/rxp/system"
 
 	"github.com/relexec/rxp-pg/config"
@@ -114,17 +114,13 @@ func (d *Driver) ensureHostSystem() error {
 func (d *Driver) initMetrics(ctx context.Context) error {
 	d.log.V(4).Info("initializing metrics")
 	if d.metrics == nil {
-		metrics, err := metrics.New(ctx)
+		h, err := metrics.New(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed initializing metrics: %w", err)
 		}
-		d.metrics = metrics
+		d.metrics = h
 	}
 	d.onClose = append(d.onClose, d.metrics.MeterProvider().Shutdown)
-	err := metrics.Init(d.metrics)
-	if err != nil {
-		return fmt.Errorf("failed initializing metrics: %w", err)
-	}
 	d.log.Info("initialized metrics")
 	return nil
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/relexec/rxp/metrics"
+	"github.com/relexec/rxp/api/metrics"
 
 	"github.com/relexec/rxp-pg/config"
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
@@ -27,7 +27,7 @@ type Driver struct {
 	// shared by all Stores contained in the Driver.
 	pool *pgxpool.Pool
 	// metrics is the metrics handler for the Driver.
-	metrics *metrics.Metrics
+	metrics *metrics.Handler
 
 	// hostSystemUUID is the UUID of the host System managed by this Driver.
 	hostSystemUUID string
@@ -55,7 +55,7 @@ type Driver struct {
 }
 
 // Metrics returns the Driver's configured metrics handler.
-func (d *Driver) Metrics() *metrics.Metrics {
+func (d *Driver) Metrics() *metrics.Handler {
 	return d.metrics
 }
 

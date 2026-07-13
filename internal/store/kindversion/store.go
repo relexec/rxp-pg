@@ -1,6 +1,8 @@
 package store
 
 import (
+	"sync"
+
 	"github.com/relexec/rxp-pg/internal/cache"
 	"github.com/relexec/rxp-pg/internal/store"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
@@ -11,6 +13,8 @@ import (
 type Store struct {
 	store.Store
 
+	// cacheLock protects the set of lookup caches.
+	cacheLock sync.RWMutex
 	// byKindVersion is a cache that stores known KindVersions keyed by System
 	// UUID+KindVersionName..
 	byName *cache.Cache[byNameCacheKey, *Record]

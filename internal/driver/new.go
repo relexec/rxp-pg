@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	"github.com/relexec/rxp/metrics"
+	"github.com/relexec/rxp/api/metrics"
 
 	"github.com/relexec/rxp-pg/config"
 )
@@ -55,8 +55,8 @@ func WithLogger(logger logr.Logger) WithOption {
 }
 
 // WithMetrics sets the Driver's Metrics handler to the supplied value.
-func WithMetrics(metrics *metrics.Metrics) WithOption {
+func WithMetrics(h *metrics.Handler) WithOption {
 	return func(d *Driver) {
-		d.metrics = metrics
+		d.metrics = h
 	}
 }

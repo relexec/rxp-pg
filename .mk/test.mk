@@ -148,13 +148,13 @@ test-postgres-db-delete: ## Delete the test DB.
 	@echo "ok."
 
 .PHONY: test-postgres-db-reset
-test-postgres-db-reset: test-postgres-db-delete test-postgres-db-up ## Recreate the test DB.
+test-postgres-db-reset: $(GOOSE) test-postgres-db-delete test-postgres-db-up ## Recreate the test DB.
 
 .PHONY: test-postgres-db-up
-test-postgres-db-up: test-postgres-db-ensure ## Run test DB schema migrations.
+test-postgres-db-up: $(GOOSE) test-postgres-db-ensure ## Run test DB schema migrations.
 	@echo -n "running schema migrations for '${TEST_PG_DB}' database ... "
 	@GOOSE_DRIVER=postgres \
 	GOOSE_DBSTRING=postgres://postgres:postgres@localhost:5432/${TEST_PG_DB} \
 	GOOSE_MIGRATION_DIR=migrations \
-	goose up >/dev/null 2>&1
+	$(GOOSE) up >/dev/null 2>&1
 	@echo "ok."

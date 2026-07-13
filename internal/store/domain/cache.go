@@ -131,7 +131,7 @@ func (s *Store) cacheWrite(
 	set = s.byRowID.Set(rowIDKey, byUUIDCacheKey(uuid))
 	if !set {
 		return errors.Internal(
-			fmt.Sprintf("failed setting domain cache rowid key %q", rowIDKey),
+			fmt.Sprintf("failed setting domain cache rowid key %d", rowIDKey),
 		)
 	}
 	return nil

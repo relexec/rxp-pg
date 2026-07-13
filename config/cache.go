@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	rxpconfig "github.com/relexec/rxp/config"
+	"github.com/relexec/pkg/size"
 )
 
 const (
@@ -95,11 +95,11 @@ type CacheConfig struct {
 
 // MaxSizeBytes returns the MaxSize string value as the number of bytes.
 func (c CacheConfig) MaxSizeBytes() (int, error) {
-	size, err := rxpconfig.SizeFromString(c.MaxSize)
+	s, err := size.FromString(c.MaxSize)
 	if err != nil {
 		return -1, err
 	}
-	return int(size.Bytes()), nil
+	return int(s.Bytes()), nil
 }
 
 // BindFlags binds the supplied flagset to the CacheConfigs' fields.

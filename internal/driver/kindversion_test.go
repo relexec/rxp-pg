@@ -11,8 +11,8 @@ import (
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/system"
-	"github.com/relexec/rxp/testing/fixtures"
-	"github.com/relexec/rxp/testing/fixtures/service"
+	"github.com/relexec/rxp-testing/fixtures"
+	"github.com/relexec/rxp-testing/fixtures/service"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )

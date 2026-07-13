@@ -9,7 +9,7 @@ import (
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/object"
-	"github.com/relexec/rxp/testing/fixtures"
+	"github.com/relexec/rxp-testing/fixtures"
 
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/driver"

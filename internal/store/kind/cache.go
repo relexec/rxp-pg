@@ -40,14 +40,18 @@ func (s *Store) cacheReadByRowID(
 	if s.byRowID == nil {
 		return nil, false
 	}
+
+	s.cacheLock.RLock()
+	defer s.cacheLock.RUnlock()
+
 	uuid, found := s.byRowID.Get(key)
 	if !found {
 		return nil, false
 	}
-	return s.cacheReadByUUID(ctx, uuid)
+	return s.cacheReadByUUIDNoLock(ctx, uuid)
 }
 
-// cacheReadByUUID looks up a cached Kind by UUID, returning the cached
+// cacheReadByUUID looks up a cached Domain by UUID, returning the cached
 // Record and whether or not the entry was found.
 func (s *Store) cacheReadByUUID(
 	ctx context.Context,
@@ -56,11 +60,25 @@ func (s *Store) cacheReadByUUID(
 	if s.byUUID == nil {
 		return nil, false
 	}
+
+	s.cacheLock.RLock()
+	defer s.cacheLock.RUnlock()
+
+	return s.cacheReadByUUIDNoLock(ctx, key)
+}
+
+// cacheReadByUUIDNoLock looks up a cached Kind by UUID, returning the cached
+// Record and whether or not the entry was found. This method assumes the cache
+// lock is already held.
+func (s *Store) cacheReadByUUIDNoLock(
+	ctx context.Context,
+	key byUUIDCacheKey,
+) (*Record, bool) {
 	return s.byUUID.Get(key)
 }
 
-// cacheReadByName looks up a cached Kind by System UUID + Name, returning the cached
-// Record and whether or not the entry was found.
+// cacheReadByName looks up a cached Kind by name, returning the cached Record
+// and whether or not the entry was found.
 func (s *Store) cacheReadByName(
 	ctx context.Context,
 	key byNameCacheKey,
@@ -68,11 +86,15 @@ func (s *Store) cacheReadByName(
 	if s.byName == nil {
 		return nil, false
 	}
+
+	s.cacheLock.RLock()
+	defer s.cacheLock.RUnlock()
+
 	uuid, found := s.byName.Get(key)
 	if !found {
 		return nil, false
 	}
-	return s.cacheReadByUUID(ctx, uuid)
+	return s.cacheReadByUUIDNoLock(ctx, uuid)
 }
 
 // cacheWrite ensures the supplied Record is written to the lookup caches if
@@ -84,6 +106,10 @@ func (s *Store) cacheWrite(
 	if s.byUUID == nil {
 		return nil
 	}
+
+	s.cacheLock.Lock()
+	defer s.cacheLock.Unlock()
+
 	uuidKey := byUUIDCacheKey(rec.Kind.UUID())
 	set := s.byUUID.Set(uuidKey, rec)
 	if !set {
@@ -104,7 +130,7 @@ func (s *Store) cacheWrite(
 	set = s.byRowID.Set(rowIDKey, byUUIDCacheKey(uuid))
 	if !set {
 		return errors.Internal(
-			fmt.Sprintf("failed setting kind cache rowid key %q", rowIDKey),
+			fmt.Sprintf("failed setting kind cache rowid key %d", rowIDKey),
 		)
 	}
 	return nil

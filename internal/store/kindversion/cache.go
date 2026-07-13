@@ -39,11 +39,15 @@ func (s *Store) cacheReadByRowID(
 	if s.byRowID == nil {
 		return nil, false
 	}
+
+	s.cacheLock.RLock()
+	defer s.cacheLock.RUnlock()
+
 	kv, found := s.byRowID.Get(key)
 	if !found {
 		return nil, false
 	}
-	return s.cacheReadByName(ctx, kv)
+	return s.cacheReadByNameNoLock(ctx, kv)
 }
 
 // cacheReadByName looks up a cached KindVersion by KindVersionName, returning
@@ -55,6 +59,20 @@ func (s *Store) cacheReadByName(
 	if s.byName == nil {
 		return nil, false
 	}
+
+	s.cacheLock.RLock()
+	defer s.cacheLock.RUnlock()
+
+	return s.cacheReadByNameNoLock(ctx, key)
+}
+
+// cacheReadByNameNoLock looks up a cached Kind by name, returning the cached
+// Record and whether or not the entry was found. This method assumes the cache
+// lock is already held.
+func (s *Store) cacheReadByNameNoLock(
+	ctx context.Context,
+	key byNameCacheKey,
+) (*Record, bool) {
 	return s.byName.Get(key)
 }
 
@@ -67,6 +85,10 @@ func (s *Store) cacheWrite(
 	if s.byName == nil {
 		return nil
 	}
+
+	s.cacheLock.Lock()
+	defer s.cacheLock.Unlock()
+
 	nameKey := newByNameCacheKey(
 		rec.KindVersion.System(),
 		rec.KindVersion.Name(),
@@ -85,7 +107,7 @@ func (s *Store) cacheWrite(
 	if !set {
 		return errors.Internal(
 			fmt.Sprintf(
-				"failed setting kindversion cache rowid key %q", rowIDKey,
+				"failed setting kindversion cache rowid key %d", rowIDKey,
 			),
 		)
 	}
