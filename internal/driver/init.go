@@ -85,7 +85,7 @@ func (d *Driver) ensureHostSystem() error {
 			v := os.Getenv("RXP_SYSTEM_UUID")
 			if v == "" {
 				return fmt.Errorf(
-					"Unable to determine rxp host system uuid",
+					"failed determining rxp host system uuid",
 				)
 			}
 			d.hostSystemUUID = v

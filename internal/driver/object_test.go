@@ -141,12 +141,14 @@ func TestObjectRead(t *testing.T) {
 			"not found",
 		},
 		{
-			"happy path domain-scoped with only uuid",
+			"missing domain when domain-scoped",
 			ctx,
 			application.FirstKindVersionName(),
-			object.Select(object.ByUUID(app1.UUID())),
-			app1,
-			"",
+			object.Select(
+				object.ByUUID(app1.UUID()),
+			),
+			nil,
+			"invalid selector: domain required",
 		},
 		{
 			"happy path domain-scoped with uuid and root domain",

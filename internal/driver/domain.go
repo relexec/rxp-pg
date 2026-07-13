@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
+	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
@@ -94,6 +95,26 @@ func (d *Driver) domainReadValidate(
 	sel domain.Selector,
 ) error {
 	return sel.Validate()
+}
+
+// domainRecordFromDomain examines the supplied Domain and returns the
+// associated Record from the domain store.
+func (d *Driver) domainRecordFromDomain(
+	ctx context.Context,
+	sysRec storesystem.Record,
+	dom *domain.Domain,
+) (*storedomain.Record, error) {
+	if dom == nil {
+		return nil, nil
+	}
+	if dom.UUID() != "" {
+		return d.domainStore.ReadByUUID(
+			ctx, sysRec, dom.UUID(),
+		)
+	}
+	return d.domainStore.ReadByName(
+		ctx, sysRec, dom.Name(),
+	)
 }
 
 // DomainWrite atomically writes the supplied Domain to persistent storage.

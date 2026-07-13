@@ -62,9 +62,6 @@ func (d *Driver) ObjectRead(
 	// specified for the Object is valid and matches the system/domain we had
 	// stored for the Object with that UUID.
 
-	var sysRec *storesystem.Record
-	var domRec *storedomain.Record
-
 	sys := sel.System()
 	dom := sel.Domain()
 
@@ -72,26 +69,17 @@ func (d *Driver) ObjectRead(
 		sys = dom.System()
 	}
 
-	if sys != nil && sys.UUID() != d.hostSystemUUID {
-		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID())
-		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, errors.ErrSystemUnknown
-			}
-			return nil, err
-		}
-	} else {
-		sysRec = d.hostSystemRecord
+	sysRec, err := d.systemRecordFromSystem(ctx, sys)
+	if err != nil {
+		return nil, err
 	}
 
 	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, kv.Kind())
 	if err != nil {
-		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, errors.ErrKindUnknown
-			}
-			return nil, err
+		if err == errors.ErrNotFound {
+			return nil, errors.ErrKindUnknown
 		}
+		return nil, err
 	}
 
 	err = d.objectReadValidateScope(ctx, kindRec, sel)
@@ -101,58 +89,43 @@ func (d *Driver) ObjectRead(
 
 	kvRec, err := d.kindversionStore.ReadByName(ctx, *sysRec, *kindRec, kv)
 	if err != nil {
-		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, errors.ErrKindVersionUnknown
-			}
-			return nil, err
+		if err == errors.ErrNotFound {
+			return nil, errors.ErrKindVersionUnknown
 		}
+		return nil, err
 	}
 
-	if dom != nil {
-		if dom.UUID() != "" {
-			domRec, err = d.domainStore.ReadByUUID(
-				ctx, *sysRec, dom.UUID(),
-			)
-		} else {
-			domRec, err = d.domainStore.ReadByName(
-				ctx, *sysRec, dom.Name(),
-			)
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	objGen := sel.Generation()
-	uuid := sel.UUID()
-	name := sel.Name()
-
-	var rec *storeobject.Record
-	if uuid == "" {
-		qualifier := storeobject.NameQualifier{
-			System: *sysRec,
-		}
-		if kindRec.Kind.Scope() == api.ScopeDomain {
-			qualifier.Domain = domRec
-			uuid, err = d.objectStore.UUIDFromName(
-				ctx, name, qualifier,
-			)
-		} else {
-			uuid, err = d.objectStore.UUIDFromName(
-				ctx, name, qualifier,
-			)
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-	rec, err = d.objectStore.ReadByUUIDAndGeneration(
-		ctx, *sysRec, *kindRec, *kvRec, domRec, uuid, objGen,
-	)
+	domRec, err := d.domainRecordFromDomain(ctx, *sysRec, dom)
 	if err != nil {
 		return nil, err
 	}
+
+	objGen := sel.Generation()
+	name := sel.Name()
+	uuid := sel.UUID()
+
+	var rec *storeobject.Record
+	if uuid == "" {
+		uuid, err = d.objectUUIDFromName(ctx, *sysRec, *kindRec, name, domRec)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		name, err = d.objectNameFromUUID(ctx, *sysRec, *kindRec, uuid, domRec)
+		if err != nil {
+			return nil, err
+		}
+	}
+	rec, err = d.objectStore.ReadByUUIDAndGeneration(ctx, uuid, objGen)
+	if err != nil {
+		return nil, err
+	}
+	rec.Object.SetSystem(sysRec.System)
+	if dom != nil {
+		rec.Object.SetDomain(dom)
+	}
+	rec.Object.SetKindVersionName(kvRec.KindVersion.Name())
+	rec.Object.SetName(name)
 	return rec.Object, nil
 }
 
@@ -170,6 +143,46 @@ func (d *Driver) objectReadValidate(
 	return sel.Validate()
 }
 
+// objectUUIDFromName returns the object's UUID given a system record, kind
+// record, name and optional domain record.
+func (d *Driver) objectUUIDFromName(
+	ctx context.Context,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
+	name string,
+	domRec *storedomain.Record,
+) (string, error) {
+	qualifier := storeobject.NameQualifier{
+		System: sysRec,
+	}
+	if kindRec.Kind.Scope() == api.ScopeDomain {
+		qualifier.Domain = domRec
+	}
+	return d.objectStore.UUIDFromName(
+		ctx, name, qualifier,
+	)
+}
+
+// objectNameFromUUID returns the object's name given a system record, kind
+// record, object UUID and optional domain record.
+func (d *Driver) objectNameFromUUID(
+	ctx context.Context,
+	sysRec storesystem.Record,
+	kindRec storekind.Record,
+	uuid string,
+	domRec *storedomain.Record,
+) (string, error) {
+	qualifier := storeobject.NameQualifier{
+		System: sysRec,
+	}
+	if kindRec.Kind.Scope() == api.ScopeDomain {
+		qualifier.Domain = domRec
+	}
+	return d.objectStore.NameFromUUID(
+		ctx, uuid, qualifier,
+	)
+}
+
 // objectReadValidateScope verifies that the object being read has the required
 // domain in the selector if the scope of Kind is ScopeDomain.
 func (d *Driver) objectReadValidateScope(
@@ -177,9 +190,6 @@ func (d *Driver) objectReadValidateScope(
 	kindRec *storekind.Record,
 	sel object.Selector,
 ) error {
-	if sel.UUID() != "" {
-		return nil
-	}
 	scope := kindRec.Kind.Scope()
 	switch scope {
 	case api.ScopeDomain:
@@ -227,9 +237,6 @@ func (d *Driver) ObjectWrite(
 		return nil, err
 	}
 
-	var sysRec *storesystem.Record
-	var domRec *storedomain.Record
-
 	sys := obj.System()
 	dom := obj.Domain()
 
@@ -245,26 +252,17 @@ func (d *Driver) ObjectWrite(
 		}
 	}
 
-	if sys.UUID() != d.hostSystemUUID {
-		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID())
-		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, errors.ErrSystemUnknown
-			}
-			return nil, err
-		}
-	} else {
-		sysRec = d.hostSystemRecord
+	sysRec, err := d.systemRecordFromSystem(ctx, sys)
+	if err != nil {
+		return nil, err
 	}
 
 	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, kv.Kind())
 	if err != nil {
-		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, errors.ErrKindUnknown
-			}
-			return nil, err
+		if err == errors.ErrNotFound {
+			return nil, errors.ErrKindUnknown
 		}
+		return nil, err
 	}
 
 	err = d.objectWriteValidateScope(ctx, *kindRec, obj)
@@ -272,21 +270,17 @@ func (d *Driver) ObjectWrite(
 		return nil, err
 	}
 
-	if kindRec.Kind.Scope() == api.ScopeDomain {
-		domRec, err = d.domainStore.ReadByUUID(ctx, *sysRec, dom.UUID())
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	kvRec, err := d.kindversionStore.ReadByName(ctx, *sysRec, *kindRec, kv)
 	if err != nil {
-		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, errors.ErrKindUnknown
-			}
-			return nil, err
+		if err == errors.ErrNotFound {
+			return nil, errors.ErrKindUnknown
 		}
+		return nil, err
+	}
+
+	domRec, err := d.domainRecordFromDomain(ctx, *sysRec, dom)
+	if err != nil {
+		return nil, err
 	}
 	return d.objectStore.Write(ctx, *sysRec, *kindRec, *kvRec, domRec, obj)
 }
@@ -374,12 +368,10 @@ func (d *Driver) ObjectQuery(
 
 	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, kv.Kind())
 	if err != nil {
-		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, errors.ErrKindUnknown
-			}
-			return nil, err
+		if err == errors.ErrNotFound {
+			return nil, errors.ErrKindUnknown
 		}
+		return nil, err
 	}
 
 	boundedOpts := d.objectQueryBoundedOptions(ctx, qopts)
@@ -417,10 +409,7 @@ func (d *Driver) objectQueryValidate(
 	expr query.Expression,
 	opts query.Options,
 ) error {
-	if err := kv.Validate(); err != nil {
-		return err
-	}
-	return nil
+	return kv.Validate()
 }
 
 // objectQueryBoundedOptions returns a Options that has been bounded with

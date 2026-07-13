@@ -33,13 +33,16 @@ func Driver(ctx context.Context) (*driver.Driver, error) {
 			return
 		}
 		cfg := config.New(config.WithConnect(DSN))
-		testDriver, err = driver.New(
+		d, err := driver.New(
 			ctx,
 			driver.WithHostSystemUUID(fixtures.SystemUUID),
 			driver.WithHostSystemTag(fixtures.SystemTag),
 			driver.WithMetrics(metrics),
 			driver.WithConfig(cfg),
 		)
+		if err == nil {
+			testDriver = d
+		}
 	})
 	return testDriver, err
 }

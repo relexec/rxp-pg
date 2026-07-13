@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/api/metrics"
 	"github.com/relexec/rxp/errors"
@@ -60,6 +61,26 @@ func (d *Driver) systemReadValidate(
 	sel system.Selector,
 ) error {
 	return sel.Validate()
+}
+
+// systemRecordFromSystem examines the supplied System and returns the
+// associated Record from the system store, short-circuiting the return of the
+// host system record when the supplied System is nil or the UUIDs match.
+func (d *Driver) systemRecordFromSystem(
+	ctx context.Context,
+	sys *system.System,
+) (*storesystem.Record, error) {
+	if sys == nil || sys.UUID() == d.hostSystemUUID {
+		return d.hostSystemRecord, nil
+	}
+	sysRec, err := d.systemStore.ReadByUUID(ctx, sys.UUID())
+	if err != nil {
+		if err == errors.ErrNotFound {
+			return nil, errors.ErrSystemUnknown
+		}
+		return nil, err
+	}
+	return sysRec, nil
 }
 
 // SystemWrite atomically writes the supplied System to persistent storage.

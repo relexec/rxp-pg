@@ -32,7 +32,7 @@ func (s Store) Exec(
 	tx, err := pool.BeginTx(ctx, txOptsStrict)
 	if err != nil {
 		return errors.Internal(
-			fmt.Sprintf("failed beginning transaction"),
+			"failed beginning transaction",
 			errors.WithWrap(err),
 		)
 	}
@@ -57,7 +57,7 @@ func (s Store) Exec(
 		rbErr := tx.Rollback(ctx)
 		if rbErr != nil && rbErr != pgx.ErrTxClosed {
 			return errors.Internal(
-				fmt.Sprintf("failed rolling back transaction"),
+				"failed rolling back transaction",
 				errors.WithWrap(rbErr),
 			)
 		}
@@ -67,7 +67,7 @@ func (s Store) Exec(
 	err = tx.Commit(ctx)
 	if err != nil {
 		return errors.Internal(
-			fmt.Sprintf("failed committing transaction"),
+			"failed committing transaction",
 			errors.WithWrap(err),
 		)
 	}
