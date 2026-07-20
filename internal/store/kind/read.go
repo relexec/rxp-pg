@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/kind"
 
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
@@ -14,7 +13,7 @@ type Record struct {
 	// RowID is the internal database SERIAL for the kinds record.
 	RowID int64
 	// Kind is the publicly-exposed Kind object.
-	Kind *kind.Kind
+	Kind *api.Kind
 }
 
 // ReadByRowID returns a Record for the Kind with the supplied internal DB

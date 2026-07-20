@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/pkg/version"
 	"github.com/relexec/rxp/api"
-	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/kind/kindversion/schema"
@@ -203,12 +202,13 @@ func (s *Store) dbInsert(
 	ctx context.Context,
 	sysRec storesystem.Record,
 	kindRec storekind.Record,
-	kv kindversion.KindVersion,
+	kv api.KindVersion,
 ) error {
 	name := kv.Name()
 	ver, _ := name.Version()
 	createdOn := time.Now().UnixNano()
-	createdBy := rxpcontext.Identity(ctx)
+	caller := api.CallerFromContext(ctx)
+	createdBy := caller.Identity
 	schemaJSON, err := kv.SchemaJSON()
 	if err != nil {
 		return err

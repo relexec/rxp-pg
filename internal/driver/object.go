@@ -23,7 +23,7 @@ func (d *Driver) ObjectRead(
 	ctx context.Context,
 	kv api.KindVersionName,
 	sel object.Selector,
-) (*object.Object, error) {
+) (*api.Object, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -206,8 +206,8 @@ func (d *Driver) objectReadValidateScope(
 // on successful write, the newly-created or updated Object is returned.
 func (d *Driver) ObjectWrite(
 	ctx context.Context,
-	obj object.Object,
-) (*object.Object, error) {
+	obj api.Object,
+) (*api.Object, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -289,7 +289,7 @@ func (d *Driver) ObjectWrite(
 // options are not valid for writing a single Object.
 func (d *Driver) objectWriteValidate(
 	ctx context.Context,
-	obj object.Object,
+	obj api.Object,
 ) error {
 	kv := obj.KindVersionName()
 	if kv == "" {
@@ -311,7 +311,7 @@ func (d *Driver) objectWriteValidate(
 func (d *Driver) objectWriteValidateScope(
 	ctx context.Context,
 	kindRec storekind.Record,
-	obj object.Object,
+	obj api.Object,
 ) error {
 	if kindRec.Kind.Scope() == api.ScopeDomain {
 		domain := obj.Domain()
@@ -335,7 +335,7 @@ func (d *Driver) ObjectQuery(
 	kv api.KindVersionName,
 	expr query.Expression,
 	opts ...query.Option,
-) (*query.Result[*object.Object], error) {
+) (*query.Result[*api.Object], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -382,23 +382,23 @@ func (d *Driver) ObjectQuery(
 	if err != nil {
 		return nil, err
 	}
-	objs := make([]*object.Object, 0, len(recs))
+	objs := make([]*api.Object, 0, len(recs))
 	for _, rec := range recs {
 		objs = append(objs, rec.Object)
 	}
-	resNewOpts := []query.ResultModifier[*object.Object]{
+	resNewOpts := []query.ResultModifier[*api.Object]{
 		query.ResultWithItems(objs),
-		query.ResultWithOptions[*object.Object](boundedOpts),
+		query.ResultWithOptions[*api.Object](boundedOpts),
 	}
 	if len(recs) == int(boundedOpts.Limit()) {
 		resNewOpts = append(
 			resNewOpts,
-			query.ResultWithMarker[*object.Object](
+			query.ResultWithMarker[*api.Object](
 				recs[len(recs)-1].Object.UUID(),
 			),
 		)
 	}
-	return query.NewResult[*object.Object](resNewOpts...), nil
+	return query.NewResult[*api.Object](resNewOpts...), nil
 }
 
 // objectQueryValidate returns an error if the supplied expression and query

@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/api/metrics"
 	"github.com/relexec/rxp/errors"
@@ -12,13 +11,15 @@ import (
 	"github.com/relexec/rxp/system"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+
+	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // SystemRead reads a System from persistent storage.
 func (d *Driver) SystemRead(
 	ctx context.Context,
 	sel system.Selector,
-) (*system.System, error) {
+) (*api.System, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -68,7 +69,7 @@ func (d *Driver) systemReadValidate(
 // host system record when the supplied System is nil or the UUIDs match.
 func (d *Driver) systemRecordFromSystem(
 	ctx context.Context,
-	sys *system.System,
+	sys *api.System,
 ) (*storesystem.Record, error) {
 	if sys == nil || sys.UUID() == d.hostSystemUUID {
 		return d.hostSystemRecord, nil
@@ -86,7 +87,7 @@ func (d *Driver) systemRecordFromSystem(
 // SystemWrite atomically writes the supplied System to persistent storage.
 func (d *Driver) SystemWrite(
 	ctx context.Context,
-	sys system.System,
+	sys api.System,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -120,7 +121,7 @@ func (d *Driver) SystemWrite(
 // options are not valid for writing a single System.
 func (d *Driver) systemWriteValidate(
 	ctx context.Context,
-	sys system.System,
+	sys api.System,
 ) error {
 	return sys.Validate()
 }
@@ -135,7 +136,7 @@ func (d *Driver) SystemQuery(
 	ctx context.Context,
 	expr query.Expression,
 	opts ...query.Option,
-) (*query.Result[*system.System], error) {
+) (*query.Result[*api.System], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -171,7 +172,7 @@ func (d *Driver) SystemQuery(
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*system.System, 0, len(recs))
+	out := make([]*api.System, 0, len(recs))
 	for _, rec := range recs {
 		out = append(out, rec.System)
 	}
@@ -184,11 +185,11 @@ func (d *Driver) SystemQuery(
 			query.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []query.ResultModifier[*system.System]{
+	resNewOpts := []query.ResultModifier[*api.System]{
 		query.ResultWithItems(out),
-		query.ResultWithOptions[*system.System](resOpts),
+		query.ResultWithOptions[*api.System](resOpts),
 	}
-	return query.NewResult[*system.System](resNewOpts...), nil
+	return query.NewResult[*api.System](resNewOpts...), nil
 }
 
 // systemQueryValidate returns an error if the supplied expression and query

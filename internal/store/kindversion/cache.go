@@ -7,7 +7,6 @@ import (
 
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/system"
 )
 
 type byRowIDCacheKey int64
@@ -24,7 +23,7 @@ func (k byNameCacheKey) KindVersion() api.KindVersionName {
 }
 
 func newByNameCacheKey(
-	system *system.System,
+	system *api.System,
 	kv api.KindVersionName,
 ) byNameCacheKey {
 	return byNameCacheKey(system.UUID() + "|" + string(kv))

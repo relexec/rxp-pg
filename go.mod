@@ -12,8 +12,8 @@ require (
 	github.com/matoous/go-nanoid v1.5.1
 	github.com/relexec/delta v0.1.0
 	github.com/relexec/pkg v0.2.0
-	github.com/relexec/rxp v0.2.0
-	github.com/relexec/rxp-testing v0.1.0
+	github.com/relexec/rxp v0.3.0
+	github.com/relexec/rxp-testing v0.3.0
 	github.com/samber/lo v1.53.0
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1

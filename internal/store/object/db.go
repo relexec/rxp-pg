@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
-	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/kind/kindversion"
@@ -328,8 +327,8 @@ func (s *Store) dbInsertFirst(
 	kindRec storekind.Record,
 	kvRec storekindversion.Record,
 	domRec *storedomain.Record,
-	obj object.Object,
-) (*object.Object, error) {
+	obj api.Object,
+) (*api.Object, error) {
 	kind := kindRec.Kind
 	if kind.Scope() == api.ScopeDomain && domRec == nil {
 		return nil, errors.ErrObjectDomainRequired
@@ -338,7 +337,8 @@ func (s *Store) dbInsertFirst(
 	uuid := obj.UUID()
 	name := obj.Name()
 	createdOn := time.Now().UnixNano()
-	createdBy := rxpcontext.Identity(ctx)
+	caller := api.CallerFromContext(ctx)
+	createdBy := caller.Identity
 
 	specJSON := obj.Spec()
 
@@ -534,9 +534,9 @@ func (s *Store) dbInsertGeneration(
 	kindRec storekind.Record,
 	kvRec storekindversion.Record,
 	domRec *storedomain.Record,
-	obj object.Object,
+	obj api.Object,
 	expectGeneration api.Generation,
-) (*object.Object, error) {
+) (*api.Object, error) {
 	kind := kindRec.Kind
 	if kind.Scope() == api.ScopeDomain && domRec == nil {
 		return nil, errors.ErrObjectDomainRequired
@@ -544,7 +544,8 @@ func (s *Store) dbInsertGeneration(
 	kv := obj.KindVersionName()
 	uuid := obj.UUID()
 	createdOn := time.Now().UnixNano()
-	createdBy := rxpcontext.Identity(ctx)
+	caller := api.CallerFromContext(ctx)
+	createdBy := caller.Identity
 
 	specJSON := obj.Spec()
 

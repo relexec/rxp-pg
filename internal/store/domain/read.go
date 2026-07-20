@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/domain"
 
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
@@ -21,7 +20,7 @@ type Record struct {
 	// Right is the nested set model's right side value for this node.
 	Right int64
 	// Domain is the publicly-exposed Domain object.
-	Domain *domain.Domain
+	Domain *api.Domain
 }
 
 // ReadByRowID returns a Record for the Domain with the supplied internal DB

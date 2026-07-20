@@ -34,7 +34,7 @@ func TestKindVersionRead(t *testing.T) {
 		name   string
 		ctx    context.Context
 		sel    kindversion.Selector
-		exp    *kindversion.KindVersion
+		exp    *api.KindVersion
 		expErr string
 	}{
 		{
@@ -115,7 +115,7 @@ func TestKindVersionWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject *kindversion.KindVersion
+		subject *api.KindVersion
 		expErr  string
 	}{
 		{
@@ -319,7 +319,7 @@ func TestKindVersionQuery(t *testing.T) {
 				require.Equal(c.expOptions, gotOptions)
 				require.Equal(c.expMarker, gotMarker)
 				require.Len(gotItems, c.expNumItems)
-				gotNames := lo.Map(gotItems, func(kv *kindversion.KindVersion, _ int) api.KindVersionName {
+				gotNames := lo.Map(gotItems, func(kv *api.KindVersion, _ int) api.KindVersionName {
 					return kv.Name()
 				})
 				gotNames = lo.Uniq(gotNames)

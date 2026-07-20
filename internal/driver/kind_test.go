@@ -8,6 +8,7 @@ import (
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp-testing/fixtures/service"
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
@@ -30,7 +31,7 @@ func TestKindRead(t *testing.T) {
 		name   string
 		ctx    context.Context
 		sel    kind.Selector
-		exp    *kind.Kind
+		exp    *api.Kind
 		expErr string
 	}{
 		{
@@ -70,7 +71,7 @@ func TestKindRead(t *testing.T) {
 				require.ErrorContains(err, c.expErr)
 			} else {
 				require.Nil(err)
-				delta, err := c.exp.Diff(got)
+				delta, err := kind.Diff(*c.exp, got)
 				require.Nil(err)
 				require.False(
 					delta.DifferentExcept(
@@ -96,7 +97,7 @@ func TestKindWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject *kind.Kind
+		subject *api.Kind
 		expErr  string
 	}{
 		{
@@ -328,7 +329,7 @@ func TestKindQuery(t *testing.T) {
 				require.Equal(c.expOptions, gotOptions)
 				require.Equal(c.expMarker, gotMarker)
 				require.Len(gotItems, c.expNumItems)
-				gotUUIDs := lo.Map(gotItems, func(k *kind.Kind, _ int) string {
+				gotUUIDs := lo.Map(gotItems, func(k *api.Kind, _ int) string {
 					return k.UUID()
 				})
 				gotUUIDs = lo.Uniq(gotUUIDs)

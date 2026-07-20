@@ -6,9 +6,7 @@ import (
 	"strings"
 
 	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/system"
 )
 
 type byRowIDCacheKey int64
@@ -26,7 +24,7 @@ func (k byNameCacheKey) DomainName() api.DomainName {
 }
 
 func newByNameCacheKey(
-	system *system.System,
+	system *api.System,
 	name api.DomainName,
 ) byNameCacheKey {
 	return byNameCacheKey(system.UUID() + "|" + string(name))
@@ -140,7 +138,7 @@ func (s *Store) cacheWrite(
 // cacheEvict purges the caches of all Domains in the supplied Domain's tree.
 func (s *Store) cacheEvict(
 	ctx context.Context,
-	dom domain.Domain,
+	dom api.Domain,
 ) error {
 	if s.byUUID == nil {
 		return nil

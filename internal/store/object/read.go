@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/object"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
@@ -15,7 +14,7 @@ type Record struct {
 	// RowID is the internal database SERIAL for the objects record.
 	RowID int64
 	// Object is the publicly-exposed Object object.
-	Object *object.Object
+	Object *api.Object
 }
 
 // NameQualifier contains either a System or Domain store record that qualifies

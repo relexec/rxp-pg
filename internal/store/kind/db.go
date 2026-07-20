@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
-	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/query"
@@ -150,10 +149,11 @@ AND name = $2
 func (s *Store) dbInsert(
 	ctx context.Context,
 	sysRec storesystem.Record,
-	kind kind.Kind,
+	kind api.Kind,
 ) error {
 	createdOn := time.Now().UnixNano()
-	createdBy := rxpcontext.Identity(ctx)
+	caller := api.CallerFromContext(ctx)
+	createdBy := caller.Identity
 	fn := func(tx pgx.Tx) error {
 		qs := `
 INSERT INTO kinds (

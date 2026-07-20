@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
-	rxpcontext "github.com/relexec/rxp/context"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
@@ -251,7 +250,7 @@ AND name = $2
 func (s *Store) dbInsert(
 	ctx context.Context,
 	sysRec storesystem.Record,
-	dom domain.Domain,
+	dom api.Domain,
 ) error {
 	parent := dom.Parent()
 	if parent == nil {
@@ -264,12 +263,13 @@ func (s *Store) dbInsert(
 func (s *Store) dbInsertRoot(
 	ctx context.Context,
 	sysRec storesystem.Record,
-	dom domain.Domain,
+	dom api.Domain,
 ) error {
 	left := 1
 	right := 2
 	createdOn := time.Now().UnixNano()
-	createdBy := rxpcontext.Identity(ctx)
+	caller := api.CallerFromContext(ctx)
+	createdBy := caller.Identity
 	uuid := dom.UUID()
 	name := dom.Name()
 	fn := func(tx pgx.Tx) error {
@@ -331,8 +331,8 @@ INSERT INTO domains (
 func (s *Store) dbInsertNonRoot(
 	ctx context.Context,
 	sysRec storesystem.Record,
-	parent domain.Domain,
-	dom domain.Domain,
+	parent api.Domain,
+	dom api.Domain,
 ) error {
 	parentRec, err := s.ReadByUUID(ctx, sysRec, parent.UUID())
 	if err != nil {
@@ -348,7 +348,8 @@ func (s *Store) dbInsertNonRoot(
 	thisRight := thisLeft + 1
 
 	createdOn := time.Now().UnixNano()
-	createdBy := rxpcontext.Identity(ctx)
+	caller := api.CallerFromContext(ctx)
+	createdBy := caller.Identity
 	uuid := dom.UUID()
 	name := dom.Name()
 	fn := func(tx pgx.Tx) error {

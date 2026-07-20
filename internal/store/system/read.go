@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 
-	"github.com/relexec/rxp/system"
+	"github.com/relexec/rxp/api"
 )
 
 // Record decorates a System with internal DB information.
@@ -11,7 +11,7 @@ type Record struct {
 	// RowID is the internal database SERIAL for the systems record.
 	RowID int64
 	// System is the publicly-exposed System object.
-	System *system.System
+	System *api.System
 }
 
 // ReadByRowID returns a Record for the System with the supplied RowID. This

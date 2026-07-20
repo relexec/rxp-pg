@@ -19,7 +19,7 @@ import (
 func (d *Driver) KindVersionRead(
 	ctx context.Context,
 	sel kindversion.Selector,
-) (*kindversion.KindVersion, error) {
+) (*api.KindVersion, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ func (d *Driver) kindversionReadValidate(
 // KindVersionWrite atomically writes the supplied KindVersion to persistent storage.
 func (d *Driver) KindVersionWrite(
 	ctx context.Context,
-	kv kindversion.KindVersion,
+	kv api.KindVersion,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -163,7 +163,7 @@ func (d *Driver) KindVersionWrite(
 // options are not valid for writing a single KindVersion.
 func (d *Driver) kindversionWriteValidate(
 	ctx context.Context,
-	kv kindversion.KindVersion,
+	kv api.KindVersion,
 ) error {
 	return kv.Validate()
 }
@@ -178,7 +178,7 @@ func (d *Driver) KindVersionQuery(
 	ctx context.Context,
 	expr query.Expression,
 	opts ...query.Option,
-) (*query.Result[*kindversion.KindVersion], error) {
+) (*query.Result[*api.KindVersion], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -214,7 +214,7 @@ func (d *Driver) KindVersionQuery(
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*kindversion.KindVersion, 0, len(recs))
+	out := make([]*api.KindVersion, 0, len(recs))
 	for _, rec := range recs {
 		out = append(out, rec.KindVersion)
 	}
@@ -227,11 +227,11 @@ func (d *Driver) KindVersionQuery(
 			query.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []query.ResultModifier[*kindversion.KindVersion]{
+	resNewOpts := []query.ResultModifier[*api.KindVersion]{
 		query.ResultWithItems(out),
-		query.ResultWithOptions[*kindversion.KindVersion](resOpts),
+		query.ResultWithOptions[*api.KindVersion](resOpts),
 	}
-	return query.NewResult[*kindversion.KindVersion](resNewOpts...), nil
+	return query.NewResult[*api.KindVersion](resNewOpts...), nil
 }
 
 // kindversionQueryValidate returns an error if the supplied expression and query

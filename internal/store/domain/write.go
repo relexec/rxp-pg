@@ -3,16 +3,17 @@ package store
 import (
 	"context"
 
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
-	"github.com/relexec/rxp/domain"
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
+
+	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // Write atomically writes the pre-validated Domain to persistent storage.
 func (s *Store) Write(
 	ctx context.Context,
 	sysRec storesystem.Record,
-	dom domain.Domain,
+	dom api.Domain,
 ) error {
 	err := s.dbInsert(ctx, sysRec, dom)
 	if err != nil {

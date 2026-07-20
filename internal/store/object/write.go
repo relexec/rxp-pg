@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 
-	"github.com/relexec/rxp/object"
+	"github.com/relexec/rxp/api"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
@@ -19,8 +19,8 @@ func (s *Store) Write(
 	kindRec storekind.Record,
 	kvRec storekindversion.Record,
 	domRec *storedomain.Record,
-	obj object.Object,
-) (*object.Object, error) {
+	obj api.Object,
+) (*api.Object, error) {
 	expectGeneration := obj.Generation()
 	if expectGeneration == 0 {
 		// caller expects that they are the first writer of this object. This

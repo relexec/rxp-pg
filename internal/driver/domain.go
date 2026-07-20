@@ -20,7 +20,7 @@ import (
 func (d *Driver) DomainRead(
 	ctx context.Context,
 	sel domain.Selector,
-) (*domain.Domain, error) {
+) (*api.Domain, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func (d *Driver) domainReadValidate(
 func (d *Driver) domainRecordFromDomain(
 	ctx context.Context,
 	sysRec storesystem.Record,
-	dom *domain.Domain,
+	dom *api.Domain,
 ) (*storedomain.Record, error) {
 	if dom == nil {
 		return nil, nil
@@ -120,7 +120,7 @@ func (d *Driver) domainRecordFromDomain(
 // DomainWrite atomically writes the supplied Domain to persistent storage.
 func (d *Driver) DomainWrite(
 	ctx context.Context,
-	dom domain.Domain,
+	dom api.Domain,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -178,7 +178,7 @@ func (d *Driver) DomainWrite(
 // options are not valid for writing a single Domain.
 func (d *Driver) domainWriteValidate(
 	ctx context.Context,
-	dom domain.Domain,
+	dom api.Domain,
 ) error {
 	return dom.Validate()
 }
@@ -193,7 +193,7 @@ func (d *Driver) DomainQuery(
 	ctx context.Context,
 	expr query.Expression,
 	opts ...query.Option,
-) (*query.Result[*domain.Domain], error) {
+) (*query.Result[*api.Domain], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -229,7 +229,7 @@ func (d *Driver) DomainQuery(
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.Domain, 0, len(recs))
+	out := make([]*api.Domain, 0, len(recs))
 	for _, rec := range recs {
 		out = append(out, rec.Domain)
 	}
@@ -242,11 +242,11 @@ func (d *Driver) DomainQuery(
 			query.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []query.ResultModifier[*domain.Domain]{
+	resNewOpts := []query.ResultModifier[*api.Domain]{
 		query.ResultWithItems(out),
-		query.ResultWithOptions[*domain.Domain](resOpts),
+		query.ResultWithOptions[*api.Domain](resOpts),
 	}
-	return query.NewResult[*domain.Domain](resNewOpts...), nil
+	return query.NewResult[*api.Domain](resNewOpts...), nil
 }
 
 // domainQueryValidate returns an error if the supplied expression and query

@@ -3,10 +3,10 @@ package store
 import (
 	"context"
 
+	"github.com/relexec/rxp/api"
+
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
-	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/kind/kindversion"
 )
 
 // Record decorates a KindVersion with internal DB information.
@@ -14,7 +14,7 @@ type Record struct {
 	// RowID is the internal database SERIAL for the kindversions record.
 	RowID int64
 	// KindVersion is the publicly-exposed KindVersion object.
-	KindVersion *kindversion.KindVersion
+	KindVersion *api.KindVersion
 }
 
 // ReadByRowID returns a Record for the KindVersion with the supplied internal DB

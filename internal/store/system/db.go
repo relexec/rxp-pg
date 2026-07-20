@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	rxpcontext "github.com/relexec/rxp/context"
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/system"
@@ -89,10 +89,11 @@ func (s *Store) dbReadByUUID(
 // dbInsert atomically writes the supplied System to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sys system.System,
+	sys api.System,
 ) error {
 	createdOn := time.Now().UnixNano()
-	createdBy := rxpcontext.Identity(ctx)
+	caller := api.CallerFromContext(ctx)
+	createdBy := caller.Identity
 	var tag *string
 	uuid := sys.UUID()
 	sysTag := sys.Tag()

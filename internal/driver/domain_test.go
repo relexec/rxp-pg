@@ -9,6 +9,7 @@ import (
 	"github.com/relexec/delta/fieldpath"
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp-testing/fixtures"
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
@@ -31,7 +32,7 @@ func TestDomainRead(t *testing.T) {
 		name   string
 		ctx    context.Context
 		sel    domain.Selector
-		exp    *domain.Domain
+		exp    *api.Domain
 		expErr string
 	}{
 		{
@@ -85,7 +86,7 @@ func TestDomainRead(t *testing.T) {
 				require.ErrorContains(err, c.expErr)
 			} else {
 				require.Nil(err)
-				delta, err := c.exp.Diff(got)
+				delta, err := domain.Diff(*c.exp, got)
 				require.Nil(err)
 				require.False(
 					delta.DifferentExcept(
@@ -112,7 +113,7 @@ func TestDomainWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject *domain.Domain
+		subject *api.Domain
 		expErr  string
 	}{
 		{
@@ -187,7 +188,7 @@ func TestDomainTree(t *testing.T) {
 	rxp, err := testutil.Driver(ctx)
 	require.Nil(t, err)
 
-	treeDoms := []*domain.Domain{
+	treeDoms := []*api.Domain{
 		fixtures.DomainTree_Root,
 		fixtures.DomainTree_Group1,
 		fixtures.DomainTree_Group2,
@@ -196,7 +197,7 @@ func TestDomainTree(t *testing.T) {
 		fixtures.DomainTree_Group2Leaf1,
 		fixtures.DomainTree_Group2Leaf2,
 	}
-	treeDomUUIDs := lo.Map(treeDoms, func(d *domain.Domain, _ int) string {
+	treeDomUUIDs := lo.Map(treeDoms, func(d *api.Domain, _ int) string {
 		return d.UUID()
 	})
 	sort.Strings(treeDomUUIDs)
@@ -227,7 +228,7 @@ func TestDomainTree(t *testing.T) {
 	items = got.Items()
 	require.Len(t, items, len(treeDoms))
 
-	gotDomUUIDs := lo.Map(items, func(d *domain.Domain, _ int) string {
+	gotDomUUIDs := lo.Map(items, func(d *api.Domain, _ int) string {
 		return d.UUID()
 	})
 	sort.Strings(gotDomUUIDs)
@@ -244,7 +245,7 @@ func TestDomainTree(t *testing.T) {
 	items = got.Items()
 	require.Len(t, items, len(treeDoms))
 
-	gotDomUUIDs = lo.Map(items, func(d *domain.Domain, _ int) string {
+	gotDomUUIDs = lo.Map(items, func(d *api.Domain, _ int) string {
 		return d.UUID()
 	})
 	sort.Strings(gotDomUUIDs)
@@ -262,7 +263,7 @@ func TestDomainTree(t *testing.T) {
 	items = got.Items()
 	require.Len(t, items, len(treeDoms))
 
-	gotDomUUIDs = lo.Map(items, func(d *domain.Domain, _ int) string {
+	gotDomUUIDs = lo.Map(items, func(d *api.Domain, _ int) string {
 		return d.UUID()
 	})
 	sort.Strings(gotDomUUIDs)
@@ -271,7 +272,7 @@ func TestDomainTree(t *testing.T) {
 
 	// Grabbing domains within a subdomain should yield only that subdomain and
 	// its child domains.
-	groupDoms := []*domain.Domain{
+	groupDoms := []*api.Domain{
 		fixtures.DomainTree_Group1,
 		fixtures.DomainTree_Group1Leaf1,
 		fixtures.DomainTree_Group1Leaf2,
@@ -285,11 +286,11 @@ func TestDomainTree(t *testing.T) {
 	items = got.Items()
 	require.Len(t, items, len(groupDoms))
 
-	groupDomUUIDs := lo.Map(groupDoms, func(d *domain.Domain, _ int) string {
+	groupDomUUIDs := lo.Map(groupDoms, func(d *api.Domain, _ int) string {
 		return d.UUID()
 	})
 	sort.Strings(groupDomUUIDs)
-	gotDomUUIDs = lo.Map(items, func(d *domain.Domain, _ int) string {
+	gotDomUUIDs = lo.Map(items, func(d *api.Domain, _ int) string {
 		return d.UUID()
 	})
 	sort.Strings(gotDomUUIDs)
@@ -507,7 +508,7 @@ func TestDomainQuery(t *testing.T) {
 				require.Equal(c.expOptions, gotOptions)
 				require.Equal(c.expMarker, gotMarker)
 				require.Len(gotItems, c.expNumItems)
-				gotUUIDs := lo.Map(gotItems, func(d *domain.Domain, _ int) string {
+				gotUUIDs := lo.Map(gotItems, func(d *api.Domain, _ int) string {
 					return d.UUID()
 				})
 				gotUUIDs = lo.Uniq(gotUUIDs)

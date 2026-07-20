@@ -74,7 +74,7 @@ func TestObjectRead(t *testing.T) {
 		ctx    context.Context
 		kv     api.KindVersionName
 		sel    object.Selector
-		exp    *object.Object
+		exp    *api.Object
 		expErr string
 	}{
 		{
@@ -319,8 +319,8 @@ func TestObjectWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject *object.Object
-		exp     *object.Object
+		subject *api.Object
+		exp     *api.Object
 		expErr  string
 	}{
 		{
@@ -598,7 +598,7 @@ func TestObjectQuery(t *testing.T) {
 				require.Equal(c.expOptionLimit, gotOptions.Limit())
 				require.Equal(c.expMarkerEmpty, gotMarker == "")
 				require.Len(gotObjs, c.expNumObjs)
-				gotKindNames := lo.Map(gotObjs, func(o *object.Object, _ int) api.KindName {
+				gotKindNames := lo.Map(gotObjs, func(o *api.Object, _ int) api.KindName {
 					return o.KindVersionName().Kind()
 				})
 				gotKindNames = lo.Uniq(gotKindNames)
@@ -790,7 +790,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 				expUUIDs := c.expUUIDs
 				expNumObjs := len(c.expUUIDs)
 				require.Len(gotObjs, expNumObjs)
-				gotUUIDs := lo.Map(gotObjs, func(o *object.Object, _ int) string {
+				gotUUIDs := lo.Map(gotObjs, func(o *api.Object, _ int) string {
 					return o.UUID()
 				})
 				sort.Strings(expUUIDs)

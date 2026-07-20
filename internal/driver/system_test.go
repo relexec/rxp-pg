@@ -6,6 +6,7 @@ import (
 
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp-testing/fixtures"
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/system"
@@ -24,7 +25,7 @@ func TestSystemRead(t *testing.T) {
 		name   string
 		ctx    context.Context
 		sel    system.Selector
-		exp    *system.System
+		exp    *api.System
 		expErr string
 	}{
 		{
@@ -64,7 +65,7 @@ func TestSystemRead(t *testing.T) {
 				require.ErrorContains(err, c.expErr)
 			} else {
 				require.Nil(err)
-				delta, err := c.exp.Diff(got)
+				delta, err := system.Diff(*c.exp, got)
 				require.Nil(err)
 				require.False(delta.Different(), delta.Differences())
 			}
@@ -82,7 +83,7 @@ func TestSystemWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject *system.System
+		subject *api.System
 		expErr  string
 	}{
 		{
@@ -236,7 +237,7 @@ func TestSystemQuery(t *testing.T) {
 				require.Equal(c.expOptions, gotOptions)
 				require.Equal(c.expMarker, gotMarker)
 				require.Len(gotItems, c.expNumItems)
-				gotUUIDs := lo.Map(gotItems, func(s *system.System, _ int) string {
+				gotUUIDs := lo.Map(gotItems, func(s *api.System, _ int) string {
 					return s.UUID()
 				})
 				gotUUIDs = lo.Uniq(gotUUIDs)

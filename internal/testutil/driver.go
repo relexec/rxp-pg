@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/relexec/rxp-testing/fixtures"
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
@@ -52,7 +53,7 @@ func Driver(ctx context.Context) (*driver.Driver, error) {
 func KindVersionCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	kv *kindversion.KindVersion,
+	kv *api.KindVersion,
 ) error {
 	_, err := d.KindVersionRead(
 		ctx,
@@ -74,7 +75,7 @@ func KindVersionCreateIfNotExists(
 func KindCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	k *kind.Kind,
+	k *api.Kind,
 ) error {
 	_, err := d.KindRead(
 		ctx,
@@ -94,7 +95,7 @@ func KindCreateIfNotExists(
 func DomainCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	dom *domain.Domain,
+	dom *api.Domain,
 ) error {
 	_, err := d.DomainRead(
 		ctx,
@@ -114,7 +115,7 @@ func DomainCreateIfNotExists(
 func ObjectCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	o *object.Object,
+	o *api.Object,
 ) error {
 	selopts := []object.SelectOption{}
 	if o.UUID() != "" {
