@@ -5,14 +5,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/go-logr/logr"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/api/metrics"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/system"
 
-	"github.com/relexec/rxp-pg/config"
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
@@ -21,21 +19,8 @@ import (
 )
 
 func (d *Driver) init(ctx context.Context) error {
-	if d.cfg == nil {
-		d.cfg = config.Default()
-	}
-	if d.log == nil {
-		lc := logr.FromContextOrDiscard(ctx)
-		d.log = &lc
-	}
-	d.log.WithName("rxp.pg.store")
-
-	err := d.cfg.Validate()
+	err := d.ensureHostSystem()
 	if err != nil {
-		return err
-	}
-
-	if err = d.ensureHostSystem(); err != nil {
 		return err
 	}
 
@@ -79,8 +64,8 @@ func (d *Driver) ensureHostSystem() error {
 	if d.hostSystemUUID == "" {
 		// try to find the system identifier by looking at the configuration
 		// and environment variabled.
-		if d.cfg.SystemUUID != "" {
-			d.hostSystemUUID = d.cfg.SystemUUID
+		if d.Config.SystemUUID != "" {
+			d.hostSystemUUID = d.Config.SystemUUID
 		} else {
 			v := os.Getenv("RXP_SYSTEM_UUID")
 			if v == "" {
@@ -91,12 +76,12 @@ func (d *Driver) ensureHostSystem() error {
 			d.hostSystemUUID = v
 		}
 	}
-	d.log.Info("host system uuid: %s", d.hostSystemUUID)
+	d.Logger.Info(fmt.Sprintf("host system uuid: %s", d.hostSystemUUID))
 	if d.hostSystemTag == "" {
 		// try to find the system identifier by looking at the configuration
 		// and environment variabled.
-		if d.cfg.SystemTag != "" {
-			d.hostSystemTag = d.cfg.SystemTag
+		if d.Config.SystemTag != "" {
+			d.hostSystemTag = d.Config.SystemTag
 		} else {
 			v := os.Getenv("RXP_SYSTEM_TAG")
 			if v != "" {
@@ -105,30 +90,30 @@ func (d *Driver) ensureHostSystem() error {
 		}
 	}
 	if d.hostSystemTag != "" {
-		d.log.Info("host system name: %s", d.hostSystemTag)
+		d.Logger.Info(fmt.Sprintf("host system name: %s", d.hostSystemTag))
 	}
 	return nil
 }
 
 // initMetrics initializes the store's metrics handler.
 func (d *Driver) initMetrics(ctx context.Context) error {
-	d.log.V(4).Info("initializing metrics")
-	if d.metrics == nil {
+	d.Logger.Debug("initializing metrics")
+	if d.Metrics == nil {
 		h, err := metrics.New(ctx)
 		if err != nil {
 			return fmt.Errorf("failed initializing metrics: %w", err)
 		}
-		d.metrics = h
+		d.Metrics = h
 	}
-	d.onClose = append(d.onClose, d.metrics.MeterProvider().Shutdown)
-	d.log.Info("initialized metrics")
+	d.onClose = append(d.onClose, d.Metrics.MeterProvider().Shutdown)
+	d.Logger.Info("initialized metrics")
 	return nil
 }
 
 // initDBPool initializates the pgx pool connectiond.
 func (d *Driver) initDBPool(ctx context.Context) error {
-	d.log.V(4).Info("initializing db connection pool")
-	poolConfig, err := d.cfg.PGXPoolConfig()
+	d.Logger.Debug("initializing db connection pool")
+	poolConfig, err := d.Config.PGXPoolConfig()
 	if err != nil {
 		return err
 	}
@@ -139,35 +124,31 @@ func (d *Driver) initDBPool(ctx context.Context) error {
 	if err = pool.Ping(ctx); err != nil {
 		return fmt.Errorf("failed pinging db: %w", err)
 	}
-	d.log.Info("initialized db connection pool")
-	d.pool = pool
+	d.Logger.Info("initialized db connection pool")
+	d.Pool = pool
 	return nil
 }
 
 // initSystemStore initializes the system store.
 func (d *Driver) initSystemStore(ctx context.Context) error {
-	d.log.V(4).Info("initializing system store")
+	d.Logger.Debug("initializing system store")
 	s, err := storesystem.New(
-		ctx,
-		storesystem.WithConfig(d.cfg),
-		storesystem.WithPool(d.pool),
+		ctx, d.Config, d.Pool,
 	)
 	if err != nil {
 		return err
 	}
 	d.systemStore = s
 	d.onClose = append(d.onClose, d.systemStore.Close)
-	d.log.Info("initialized system store")
+	d.Logger.Info("initialized system store")
 	return nil
 }
 
 // initKindStore initializes the kind store.
 func (d *Driver) initKindStore(ctx context.Context) error {
-	d.log.V(4).Info("initializing kind store")
+	d.Logger.Debug("initializing kind store")
 	s, err := storekind.New(
-		ctx,
-		storekind.WithConfig(d.cfg),
-		storekind.WithPool(d.pool),
+		ctx, d.Config, d.Pool,
 		storekind.WithSystemStore(d.systemStore),
 		storekind.WithHostSystemRecord(*d.hostSystemRecord),
 	)
@@ -176,17 +157,15 @@ func (d *Driver) initKindStore(ctx context.Context) error {
 	}
 	d.kindStore = s
 	d.onClose = append(d.onClose, d.kindStore.Close)
-	d.log.Info("initialized kind store")
+	d.Logger.Info("initialized kind store")
 	return nil
 }
 
 // initKindVersionStore initializes the kindversion store.
 func (d *Driver) initKindVersionStore(ctx context.Context) error {
-	d.log.V(4).Info("initializing kindversion store")
+	d.Logger.Debug("initializing kindversion store")
 	s, err := storekindversion.New(
-		ctx,
-		storekindversion.WithConfig(d.cfg),
-		storekindversion.WithPool(d.pool),
+		ctx, d.Config, d.Pool,
 		storekindversion.WithSystemStore(d.systemStore),
 		storekindversion.WithHostSystemRecord(*d.hostSystemRecord),
 		storekindversion.WithKindStore(d.kindStore),
@@ -196,21 +175,21 @@ func (d *Driver) initKindVersionStore(ctx context.Context) error {
 	}
 	d.kindversionStore = s
 	d.onClose = append(d.onClose, d.kindversionStore.Close)
-	d.log.Info("initialized kindversion store")
+	d.Logger.Info("initialized kindversion store")
 	return nil
 }
 
 // initHostSystemRecord ensures that we have our System record for the host
 // system available.
 func (d *Driver) initHostSystemRecord(ctx context.Context) error {
-	d.log.V(4).Info("initializing host system record")
+	d.Logger.Debug("initializing host system record")
 	if d.hostSystemRecord == nil {
 		rec, err := d.systemStore.ReadByUUID(ctx, d.hostSystemUUID)
 		if err != nil {
 			if err != errors.ErrNotFound {
 				return err
 			}
-			d.log.V(4).Info("creating host system record")
+			d.Logger.Debug("creating host system record")
 			initCaller := api.Caller{Identity: "rxp.system"}
 			initCtx := api.CallerToContext(ctx, initCaller)
 			sys := system.New(
@@ -221,7 +200,7 @@ func (d *Driver) initHostSystemRecord(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			d.log.Info("created host system record")
+			d.Logger.Info("created host system record")
 			rec, err = d.systemStore.ReadByUUID(ctx, d.hostSystemUUID)
 			if err != nil {
 				return err
@@ -229,17 +208,15 @@ func (d *Driver) initHostSystemRecord(ctx context.Context) error {
 		}
 		d.hostSystemRecord = rec
 	}
-	d.log.Info("host system record initialized")
+	d.Logger.Info("host system record initialized")
 	return nil
 }
 
 // initDomainStore initializes the domain store.
 func (d *Driver) initDomainStore(ctx context.Context) error {
-	d.log.V(4).Info("initializing domain store")
+	d.Logger.Debug("initializing domain store")
 	s, err := storedomain.New(
-		ctx,
-		storedomain.WithConfig(d.cfg),
-		storedomain.WithPool(d.pool),
+		ctx, d.Config, d.Pool,
 		storedomain.WithSystemStore(d.systemStore),
 		storedomain.WithHostSystemRecord(*d.hostSystemRecord),
 	)
@@ -248,17 +225,15 @@ func (d *Driver) initDomainStore(ctx context.Context) error {
 	}
 	d.domainStore = s
 	d.onClose = append(d.onClose, d.domainStore.Close)
-	d.log.Info("initialized domain store")
+	d.Logger.Info("initialized domain store")
 	return nil
 }
 
 // initObjectStore initializes the object store.
 func (d *Driver) initObjectStore(ctx context.Context) error {
-	d.log.V(4).Info("initializing object store")
+	d.Logger.Debug("initializing object store")
 	s, err := storeobject.New(
-		ctx,
-		storeobject.WithConfig(d.cfg),
-		storeobject.WithPool(d.pool),
+		ctx, d.Config, d.Pool,
 		storeobject.WithHostSystemRecord(*d.hostSystemRecord),
 		storeobject.WithSystemStore(d.systemStore),
 		storeobject.WithKindStore(d.kindStore),
@@ -270,6 +245,6 @@ func (d *Driver) initObjectStore(ctx context.Context) error {
 	}
 	d.objectStore = s
 	d.onClose = append(d.onClose, d.objectStore.Close)
-	d.log.Info("initialized object store")
+	d.Logger.Info("initialized object store")
 	return nil
 }

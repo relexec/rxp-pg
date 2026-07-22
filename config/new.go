@@ -6,10 +6,10 @@ import "github.com/spf13/pflag"
 type WithOption func(*Config)
 
 // New returns a new Config.
-func New(opts ...WithOption) *Config {
-	c := &Config{}
+func New(opts ...WithOption) Config {
+	c := Config{}
 	for _, opt := range opts {
-		opt(c)
+		opt(&c)
 	}
 	c.SetDefaults()
 	return c

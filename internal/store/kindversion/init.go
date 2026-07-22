@@ -2,14 +2,15 @@ package store
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/relexec/rxp-pg/internal/cache"
 )
 
 func (s *Store) init(ctx context.Context) error {
-	s.SetLogger(s.Logger().WithName("rxp.pg.store.kindversion"))
+	s.Logger = s.Logger.With(slog.String("store", "kind"))
 
-	err := s.Config().Validate()
+	err := s.Config.Validate()
 	if err != nil {
 		return err
 	}
@@ -23,9 +24,9 @@ func (s *Store) init(ctx context.Context) error {
 // initCache initializes the lookup caches if they are enabled in our
 // configuration.
 func (s *Store) initCache(ctx context.Context) error {
-	cfg := s.Config()
+	cfg := s.Config
 	if cfg.Cache.KindVersion.Enabled {
-		s.Debug("initializing kindversion cache")
+		s.Logger.Debug("initializing kindversion cache")
 		cacheCfg := cfg.Cache.KindVersion
 		byName, err := cache.New[byNameCacheKey, *Record](
 			ctx,
@@ -46,9 +47,9 @@ func (s *Store) initCache(ctx context.Context) error {
 		}
 		s.byRowID = byRowID
 		s.OnClose(s.byRowID.Close)
-		s.Info("initialized kindversion cache")
+		s.Logger.Info("initialized kindversion cache")
 	} else {
-		s.Debug("kindversion cache disabled")
+		s.Logger.Info("kindversion cache disabled")
 	}
 	return nil
 }

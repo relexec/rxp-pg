@@ -2,12 +2,13 @@ package store
 
 import (
 	"context"
+	"log/slog"
 )
 
 func (s *Store) init(ctx context.Context) error {
-	s.SetLogger(s.Logger().WithName("rxp.pg.store.object"))
+	s.Logger = s.Logger.With(slog.String("store", "object"))
 
-	err := s.Config().Validate()
+	err := s.Config.Validate()
 	if err != nil {
 		return err
 	}

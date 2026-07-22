@@ -25,11 +25,10 @@ func (s Store) Exec(
 	ctx context.Context,
 	fn func(tx pgx.Tx) error,
 ) error {
-	pool := s.pool
-	if pool == nil {
-		return errors.Internal("connection pool not initialized")
+	if s.Pool == nil {
+		panic("connection pool not initialized")
 	}
-	tx, err := pool.BeginTx(ctx, txOptsStrict)
+	tx, err := s.Pool.BeginTx(ctx, txOptsStrict)
 	if err != nil {
 		return errors.Internal(
 			"failed beginning transaction",

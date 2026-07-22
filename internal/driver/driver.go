@@ -3,9 +3,9 @@ package driver
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"slices"
 
-	"github.com/go-logr/logr"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/relexec/rxp/api/metrics"
 
@@ -19,15 +19,16 @@ import (
 
 // Driver implements an rxp backend using PostgreSQL for persistence.
 type Driver struct {
-	// log is the top-level logger for the Driver.
-	log *logr.Logger
-	// cfg contains the configuration options for the Driver.
-	cfg *config.Config
+	// Logger is the top-level logger for the Driver.
+	Logger *slog.Logger
+	// Config contains the configuration options for the Driver.
+	Config config.Config
 	// pool holds the underlying pgx connection pool. This connection pool is
 	// shared by all Stores contained in the Driver.
-	pool *pgxpool.Pool
-	// metrics is the metrics handler for the Driver.
-	metrics *metrics.Handler
+	Pool *pgxpool.Pool
+
+	// Metrics is the metrics handler for the Driver.
+	Metrics *metrics.Handler
 
 	// hostSystemUUID is the UUID of the host System managed by this Driver.
 	hostSystemUUID string
@@ -54,16 +55,11 @@ type Driver struct {
 	onClose []func(context.Context) error
 }
 
-// Metrics returns the Driver's configured metrics handler.
-func (d *Driver) Metrics() *metrics.Handler {
-	return d.metrics
-}
-
 // Close tears down the Driver and executes any callbacks that were registered
 // to execute on shutdown.
 func (d *Driver) Close(ctx context.Context) error {
-	if d.pool != nil {
-		d.pool.Close()
+	if d.Pool != nil {
+		d.Pool.Close()
 	}
 	var err error
 	slices.Reverse(d.onClose)

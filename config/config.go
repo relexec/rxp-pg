@@ -42,7 +42,7 @@ type Config struct {
 	// SystemTag contains the rxp host system Name, if any.
 	SystemTag string `json:"system_name,omitempty"`
 	// Log contains options for configuring logging.
-	Log pkglog.Config
+	Log pkglog.Config `json:"log"`
 	// Connect contains the libpq connection string in either key=value or URL
 	// format.
 	//
@@ -71,13 +71,13 @@ func (c *Config) SetDefaults() {
 	if c.SystemTag == "" {
 		c.SystemTag = os.Getenv(envVarSystemTag)
 	}
-	c.Log.SetDefaults()
 	if c.Connect == "" {
 		c.Connect = os.Getenv(EnvVarConnect)
 	}
 	if c.MaxConnections == 0 {
 		c.MaxConnections = DefaultMaxConnections
 	}
+	c.Log.SetDefaults()
 }
 
 // PGXPoolConfig returns the Config as a [pgxpool.Config]
@@ -120,7 +120,6 @@ func (c *Config) BindFlags(fs *pflag.FlagSet) {
 		"",
 		flagSystemTagDesc,
 	)
-	c.Log.BindFlags(fs)
 	pflag.StringVar(
 		&c.Connect,
 		flagConnect,
@@ -133,5 +132,6 @@ func (c *Config) BindFlags(fs *pflag.FlagSet) {
 		DefaultMaxConnections,
 		flagMaxConnectionsDesc,
 	)
+	c.Log.BindFlags(fs)
 	c.Cache.BindFlags(fs)
 }

@@ -2,8 +2,9 @@ package driver
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 
-	"github.com/go-logr/logr"
 	"github.com/relexec/rxp/api/metrics"
 
 	"github.com/relexec/rxp-pg/config"
@@ -14,11 +15,21 @@ type WithOption func(*Driver)
 // New returns a new Driver.
 func New(
 	ctx context.Context,
+	cfg config.Config,
 	opts ...WithOption,
 ) (*Driver, error) {
-	d := &Driver{}
+	err := cfg.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("failed initializing driver: %w", err)
+	}
+	d := &Driver{
+		Config: cfg,
+	}
 	for _, opt := range opts {
 		opt(d)
+	}
+	if d.Logger == nil {
+		d.Logger = cfg.Log.Logger()
 	}
 	if err := d.init(ctx); err != nil {
 		return nil, err
@@ -40,23 +51,16 @@ func WithHostSystemTag(tag string) WithOption {
 	}
 }
 
-// WithConfig sets the Driver's Config to the supplied value.
-func WithConfig(cfg *config.Config) WithOption {
-	return func(d *Driver) {
-		d.cfg = cfg
-	}
-}
-
 // WithLogger sets the Driver's Logger to the supplied value.
-func WithLogger(logger logr.Logger) WithOption {
+func WithLogger(logger *slog.Logger) WithOption {
 	return func(d *Driver) {
-		d.log = &logger
+		d.Logger = logger
 	}
 }
 
 // WithMetrics sets the Driver's Metrics handler to the supplied value.
 func WithMetrics(h *metrics.Handler) WithOption {
 	return func(d *Driver) {
-		d.metrics = h
+		d.Metrics = h
 	}
 }
