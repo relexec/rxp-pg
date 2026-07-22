@@ -12,7 +12,7 @@ func (d *Driver) requestValidate(
 	ctx context.Context,
 ) error {
 	caller := api.CallerFromContext(ctx)
-	if caller == nil {
+	if caller == nil || caller.Identity == "" {
 		return errors.ErrMissingIdentity
 	}
 	return nil

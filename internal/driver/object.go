@@ -197,7 +197,6 @@ func (d *Driver) objectReadValidateScope(
 		if domain == nil {
 			return errors.ErrSelectorDomainRequired
 		}
-		return domain.Validate()
 	}
 	return nil
 }
