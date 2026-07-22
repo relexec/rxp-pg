@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/pflag"
 
@@ -9,6 +10,10 @@ import (
 )
 
 const (
+	// If RXP_CACHE_ENABLED environ variable has a value, then all caches will
+	// be enabled by default.
+	envVarCacheEnabled = "RXP_CACHE_ENABLED"
+
 	DefaultCacheSystemEnabled  = true
 	flagCacheSystemEnabled     = "rxp-cache-system-enabled"
 	flagCacheSystemEnabledDesc = "Enable the System cache."
@@ -81,6 +86,30 @@ func (c CacheConfigs) Validate() error {
 		}
 	}
 	return nil
+}
+
+// SetDefaults sets any missing values to their defaults or environs variable
+// values.
+func (c *CacheConfigs) SetDefaults() {
+	_, envEnabled := os.LookupEnv(envVarCacheEnabled)
+	if envEnabled {
+		c.System.Enabled = true
+		if c.System.MaxSize == "" {
+			c.System.MaxSize = DefaultCacheSystemMaxSize
+		}
+		c.Domain.Enabled = true
+		if c.Domain.MaxSize == "" {
+			c.Domain.MaxSize = DefaultCacheDomainMaxSize
+		}
+		c.Kind.Enabled = true
+		if c.Kind.MaxSize == "" {
+			c.Kind.MaxSize = DefaultCacheKindMaxSize
+		}
+		c.KindVersion.Enabled = true
+		if c.KindVersion.MaxSize == "" {
+			c.KindVersion.MaxSize = DefaultCacheKindVersionMaxSize
+		}
+	}
 }
 
 // CacheConfig contains configuration options for a single cache in the rxp-pg

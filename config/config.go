@@ -77,6 +77,7 @@ func (c *Config) SetDefaults() {
 	if c.MaxConnections == 0 {
 		c.MaxConnections = DefaultMaxConnections
 	}
+	c.Cache.SetDefaults()
 	c.Log.SetDefaults()
 }
 

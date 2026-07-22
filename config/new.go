@@ -51,8 +51,8 @@ func WithMaxConnections(count int) WithOption {
 }
 
 // Default returns the default Config to be used if no options are specified.
-func Default() *Config {
-	return &Config{
+func Default() Config {
+	return Config{
 		MaxConnections: DefaultMaxConnections,
 	}
 }
