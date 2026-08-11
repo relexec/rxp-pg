@@ -11,6 +11,7 @@ import (
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/object"
+	"github.com/relexec/rxp/run"
 
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/driver"
@@ -131,6 +132,27 @@ func ObjectCreateIfNotExists(
 			return err
 		}
 		_, err := d.ObjectWrite(ctx, *o)
+		return err
+	}
+	return nil
+}
+
+// RunCreateIfNotExists ensures that the supplied Run exists in the
+// database.
+func RunCreateIfNotExists(
+	ctx context.Context,
+	d *driver.Driver,
+	r *api.Run,
+) error {
+	selopts := []run.SelectOption{run.ByUUID(r.UUID())}
+	_, err := d.RunRead(
+		ctx, r.Request().Target, run.Select(selopts...),
+	)
+	if err != nil {
+		if err != errors.ErrNotFound {
+			return err
+		}
+		_, err := d.RunWrite(ctx, *r)
 		return err
 	}
 	return nil

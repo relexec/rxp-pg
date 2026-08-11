@@ -8,7 +8,7 @@ import (
 )
 
 func (s *Store) init(ctx context.Context) error {
-	s.Logger = s.Logger.With(slog.String("store", "kind"))
+	s.Logger = s.Logger.With(slog.String("store", "kindversion"))
 
 	err := s.Config.Validate()
 	if err != nil {

@@ -15,6 +15,7 @@ import (
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
+	storerun "github.com/relexec/rxp-pg/internal/store/run"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
@@ -53,6 +54,10 @@ func (d *Driver) init(ctx context.Context) error {
 	}
 
 	if err = d.initObjectStore(ctx); err != nil {
+		return err
+	}
+
+	if err = d.initRunStore(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -246,5 +251,25 @@ func (d *Driver) initObjectStore(ctx context.Context) error {
 	d.objectStore = s
 	d.onClose = append(d.onClose, d.objectStore.Close)
 	d.Logger.Info("initialized object store")
+	return nil
+}
+
+// initRunStore initializes the run store.
+func (d *Driver) initRunStore(ctx context.Context) error {
+	d.Logger.Debug("initializing run store")
+	s, err := storerun.New(
+		ctx, d.Config, d.Pool,
+		storerun.WithHostSystemRecord(*d.hostSystemRecord),
+		storerun.WithSystemStore(d.systemStore),
+		storerun.WithKindStore(d.kindStore),
+		storerun.WithKindVersionStore(d.kindversionStore),
+		storerun.WithDomainStore(d.domainStore),
+	)
+	if err != nil {
+		return err
+	}
+	d.runStore = s
+	d.onClose = append(d.onClose, d.runStore.Close)
+	d.Logger.Info("initialized run store")
 	return nil
 }
