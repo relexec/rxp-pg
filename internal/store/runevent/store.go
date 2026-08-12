@@ -4,7 +4,7 @@ import (
 	"github.com/relexec/rxp-pg/internal/store"
 )
 
-// Store facilitates reading and writing Run data.
+// Store facilitates reading and writing Object data.
 type Store struct {
 	store.Store
 }
