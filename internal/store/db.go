@@ -4,9 +4,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/relexec/rxp/errors"
+)
+
+const (
+	acquireTimeoutDuration = time.Millisecond * 500
 )
 
 var (
@@ -28,7 +33,22 @@ func (s Store) Exec(
 	if s.Pool == nil {
 		panic("connection pool not initialized")
 	}
-	tx, err := s.Pool.BeginTx(ctx, txOptsStrict)
+	// We manually acquire a connection from the pool instead of using
+	// Pool.BeginTx so that we can pass in an explicit short timeout for the
+	// acquire operation.
+	acqCtx, acqCancel := context.WithTimeout(ctx, acquireTimeoutDuration)
+	defer acqCancel()
+
+	conn, err := s.Pool.Acquire(acqCtx)
+	if err != nil {
+		return errors.Internal(
+			"failed acquiring connection from pool",
+			errors.WithWrap(err),
+		)
+	}
+	defer conn.Release()
+
+	tx, err := conn.BeginTx(ctx, txOptsStrict)
 	if err != nil {
 		return errors.Internal(
 			"failed beginning transaction",

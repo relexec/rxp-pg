@@ -74,7 +74,7 @@ func (c *Config) SetDefaults() {
 	if c.Connect == "" {
 		c.Connect = os.Getenv(EnvVarConnect)
 	}
-	if c.MaxConnections == 0 {
+	if c.MaxConnections == 0 && c.Connect == "" {
 		c.MaxConnections = DefaultMaxConnections
 	}
 	c.Cache.SetDefaults()
