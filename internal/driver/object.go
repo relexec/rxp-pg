@@ -120,12 +120,12 @@ func (d *Driver) ObjectRead(
 	if err != nil {
 		return nil, err
 	}
-	rec.Object.SetSystem(&sysRec.System)
+	rec.Object.System = &sysRec.System
 	if dom != nil {
-		rec.Object.SetDomain(dom)
+		rec.Object.Domain = dom
 	}
-	rec.Object.SetKindVersionName(kvRec.KindVersion.Name())
-	rec.Object.SetName(name)
+	rec.Object.KindVersionName = kvRec.KindVersion.Name()
+	rec.Object.Name = name
 	return rec.Object, nil
 }
 
@@ -213,7 +213,7 @@ func (d *Driver) ObjectWrite(
 	}
 	start := time.Now()
 
-	kv := obj.KindVersionName()
+	kv := obj.KindVersionName
 
 	defer func() {
 		elapsed := time.Since(start).Seconds()
@@ -236,8 +236,8 @@ func (d *Driver) ObjectWrite(
 		return nil, err
 	}
 
-	sys := obj.System()
-	dom := obj.Domain()
+	sys := obj.System
+	dom := obj.Domain
 
 	if dom != nil {
 		sys = dom.System
@@ -290,15 +290,15 @@ func (d *Driver) objectWriteValidate(
 	ctx context.Context,
 	obj api.Object,
 ) error {
-	kv := obj.KindVersionName()
+	kv := obj.KindVersionName
 	if kv == "" {
 		return errors.ErrObjectKindVersionRequired
 	}
-	uuid := obj.UUID()
+	uuid := obj.UUID
 	if uuid == "" {
 		return errors.ErrObjectUUIDRequired
 	}
-	name := obj.Name()
+	name := obj.Name
 	if name == "" {
 		return errors.ErrObjectNameRequired
 	}
@@ -313,11 +313,11 @@ func (d *Driver) objectWriteValidateScope(
 	obj api.Object,
 ) error {
 	if kindRec.Kind.Scope == api.ScopeDomain {
-		domain := obj.Domain()
-		if domain == nil {
+		dom := obj.Domain
+		if dom == nil {
 			return errors.ErrObjectDomainRequired
 		}
-		return domain.Validate()
+		return dom.Validate()
 	}
 	return nil
 }
@@ -393,7 +393,7 @@ func (d *Driver) ObjectQuery(
 		resNewOpts = append(
 			resNewOpts,
 			query.ResultWithMarker[*api.Object](
-				recs[len(recs)-1].Object.UUID(),
+				recs[len(recs)-1].Object.UUID,
 			),
 		)
 	}

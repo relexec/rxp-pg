@@ -243,12 +243,12 @@ WHERE o.id = $1
 				errors.WithWrap(err),
 			)
 		}
-		out.Object = object.New(
-			object.WithUUID(uuid),
-			object.WithGeneration(generation),
-		)
+		out.Object = &api.Object{
+			UUID:       uuid,
+			Generation: generation,
+		}
 		if spec.Valid {
-			out.Object.SetSpec(spec.String)
+			out.Object.Spec = spec.String
 		}
 		return nil
 	}
@@ -304,12 +304,12 @@ INNER JOIN object_generations AS og
 				errors.WithWrap(err),
 			)
 		}
-		out.Object = object.New(
-			object.WithUUID(uuid),
-			object.WithGeneration(generation),
-		)
+		out.Object = &api.Object{
+			UUID:       uuid,
+			Generation: generation,
+		}
 		if spec.Valid {
-			out.Object.SetSpec(spec.String)
+			out.Object.Spec = spec.String
 		}
 		return nil
 	}
@@ -333,14 +333,14 @@ func (s *Store) dbInsertFirst(
 	if kind.Scope == api.ScopeDomain && domRec == nil {
 		return nil, errors.ErrObjectDomainRequired
 	}
-	kv := obj.KindVersionName()
-	uuid := obj.UUID()
-	name := obj.Name()
+	kv := obj.KindVersionName
+	uuid := obj.UUID
+	name := obj.Name
 	createdOn := time.Now().UnixNano()
 	caller := api.CallerFromContext(ctx)
 	createdBy := caller.Identity
 
-	specJSON := obj.Spec()
+	specJSON := obj.Spec
 
 	var domainRowID *int64
 
@@ -522,7 +522,7 @@ INSERT INTO object_generations (
 		return nil, err
 	}
 	out := obj
-	out.SetGeneration(1)
+	out.Generation = 1
 	return &out, nil
 }
 
@@ -541,13 +541,13 @@ func (s *Store) dbInsertGeneration(
 	if kind.Scope == api.ScopeDomain && domRec == nil {
 		return nil, errors.ErrObjectDomainRequired
 	}
-	kv := obj.KindVersionName()
-	uuid := obj.UUID()
+	kv := obj.KindVersionName
+	uuid := obj.UUID
 	createdOn := time.Now().UnixNano()
 	caller := api.CallerFromContext(ctx)
 	createdBy := caller.Identity
 
-	specJSON := obj.Spec()
+	specJSON := obj.Spec
 
 	fn := func(tx pgx.Tx) error {
 		var objRowID int64
@@ -637,7 +637,7 @@ AND generation = $5`
 		return nil, err
 	}
 	out := obj
-	out.SetGeneration(expectGeneration + 1)
+	out.Generation = expectGeneration + 1
 	return &out, nil
 }
 
@@ -763,16 +763,16 @@ INNER JOIN object_generations AS og
 		if err != nil {
 			return nil, err
 		}
-		obj := object.New(
-			object.WithKindVersionName(kvName),
-			object.WithUUID(rec.UUID),
-			object.WithName(rec.Name),
-			object.WithGeneration(rec.Generation),
-			object.WithSystem(&sysRec.System),
-			object.WithDomain(&domRec.Domain),
-		)
+		obj := &api.Object{
+			KindVersionName: kvName,
+			UUID:            rec.UUID,
+			Name:            rec.Name,
+			Generation:      rec.Generation,
+			System:          &sysRec.System,
+			Domain:          &domRec.Domain,
+		}
 		if rec.Spec.Valid {
-			obj.SetSpec(rec.Spec.String)
+			obj.Spec = rec.Spec.String
 		}
 		out = append(out, &Record{
 			RowID:  rec.ID,
@@ -977,15 +977,15 @@ INNER JOIN object_generations AS og
 			}
 			kvName = kvRec.KindVersion.Name()
 		}
-		obj := object.New(
-			object.WithKindVersionName(kvName),
-			object.WithUUID(rec.UUID),
-			object.WithName(rec.Name),
-			object.WithGeneration(rec.Generation),
-			object.WithSystem(&sysRec.System),
-		)
+		obj := &api.Object{
+			KindVersionName: kvName,
+			UUID:            rec.UUID,
+			Name:            rec.Name,
+			Generation:      rec.Generation,
+			System:          &sysRec.System,
+		}
 		if rec.Spec.Valid {
-			obj.SetSpec(rec.Spec.String)
+			obj.Spec = rec.Spec.String
 		}
 		out = append(out, &Record{
 			RowID:  rec.ID,

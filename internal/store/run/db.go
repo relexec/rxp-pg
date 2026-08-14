@@ -301,7 +301,7 @@ SELECT id FROM object_generations
 WHERE object = $1 AND generation = $2
 `
 	err := tx.QueryRow(
-		ctx, qs, targetRec.RowID, targetRec.Object.Generation(),
+		ctx, qs, targetRec.RowID, targetRec.Object.Generation,
 	).Scan(&rowID)
 	if err != nil {
 		return -1, err

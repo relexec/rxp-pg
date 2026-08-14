@@ -191,11 +191,11 @@ func (d *Driver) RunWrite(
 	if err != nil {
 		return nil, err
 	}
-	targetRec.Object.SetSystem(&targetSysRec.System)
+	targetRec.Object.System = &targetSysRec.System
 	if targetDom != nil {
-		targetRec.Object.SetDomain(targetDom)
+		targetRec.Object.Domain = targetDom
 	}
-	targetRec.Object.SetKindVersionName(targetKV)
+	targetRec.Object.KindVersionName = targetKV
 
 	var rootRec *storerun.Record
 	var parentRec *storerun.Record

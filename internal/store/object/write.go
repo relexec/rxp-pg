@@ -21,7 +21,7 @@ func (s *Store) Write(
 	domRec *storedomain.Record,
 	obj api.Object,
 ) (*api.Object, error) {
-	expectGeneration := obj.Generation()
+	expectGeneration := obj.Generation
 	if expectGeneration == 0 {
 		// caller expects that they are the first writer of this object. This
 		// means we can attempt to insert into the objects table with this

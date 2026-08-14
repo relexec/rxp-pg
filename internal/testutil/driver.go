@@ -118,15 +118,15 @@ func ObjectCreateIfNotExists(
 	o *api.Object,
 ) error {
 	selopts := []object.SelectOption{}
-	if o.UUID() != "" {
-		selopts = append(selopts, object.ByUUID(o.UUID()))
-	} else if o.Name() != "" {
-		selopts = append(selopts, object.ByName(o.Name()))
+	if o.UUID != "" {
+		selopts = append(selopts, object.ByUUID(o.UUID))
+	} else if o.Name != "" {
+		selopts = append(selopts, object.ByName(o.Name))
 	}
-	if o.Domain() != nil {
-		selopts = append(selopts, object.ByDomain(o.Domain()))
+	if o.Domain != nil {
+		selopts = append(selopts, object.ByDomain(o.Domain))
 	}
-	_, err := d.ObjectRead(ctx, o.KindVersionName(), object.Select(selopts...))
+	_, err := d.ObjectRead(ctx, o.KindVersionName, object.Select(selopts...))
 	if err != nil {
 		if err != errors.ErrNotFound {
 			return err

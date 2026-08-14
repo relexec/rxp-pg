@@ -49,22 +49,22 @@ func TestObjectRead(t *testing.T) {
 
 	ctxMissingIdent := context.TODO()
 
-	app1 := object.New(
-		object.WithKindVersionName(application.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithDomain(&dom),
-		object.WithName(testutil.RandomName()),
-	)
+	app1 := &api.Object{
+		KindVersionName: application.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+		Domain:          &dom,
+		Name:            testutil.RandomName(),
+	}
 
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, app1)
 	require.Nil(t, err, err)
 
-	svc1 := object.New(
-		object.WithKindVersionName(service.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithDomain(&fixtures.DomainTree_Group1),
-		object.WithName(testutil.RandomName()),
-	)
+	svc1 := &api.Object{
+		KindVersionName: service.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+		Domain:          &fixtures.DomainTree_Group1,
+		Name:            testutil.RandomName(),
+	}
 
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, svc1)
 	require.Nil(t, err, err)
@@ -81,7 +81,7 @@ func TestObjectRead(t *testing.T) {
 			"missing identity",
 			ctxMissingIdent,
 			service.FirstKindVersionName(),
-			object.Select(object.ByUUID(svc1.UUID())),
+			object.Select(object.ByUUID(svc1.UUID)),
 			nil,
 			"missing identity",
 		},
@@ -89,7 +89,7 @@ func TestObjectRead(t *testing.T) {
 			"unknown kind",
 			ctx,
 			fixtures.UnknownKindVersionName,
-			object.Select(object.ByUUID(svc1.UUID())),
+			object.Select(object.ByUUID(svc1.UUID)),
 			nil,
 			"unknown kind",
 		},
@@ -97,7 +97,7 @@ func TestObjectRead(t *testing.T) {
 			"invalid kind version",
 			ctx,
 			fixtures.InvalidKindVersionName,
-			object.Select(object.ByUUID(svc1.UUID())),
+			object.Select(object.ByUUID(svc1.UUID)),
 			nil,
 			"invalid kind name: invalid characters",
 		},
@@ -123,7 +123,7 @@ func TestObjectRead(t *testing.T) {
 			application.FirstKindVersionName(),
 			object.Select(
 				object.ByDomain(&dom),
-				object.ByUUID(svc1.UUID()),
+				object.ByUUID(svc1.UUID),
 			),
 			nil,
 			"not found",
@@ -134,7 +134,7 @@ func TestObjectRead(t *testing.T) {
 			application.FirstKindVersionName(),
 			object.Select(
 				object.ByDomain(&dom),
-				object.ByUUID(app1.UUID()),
+				object.ByUUID(app1.UUID),
 				object.ByGeneration(42),
 			),
 			nil,
@@ -145,7 +145,7 @@ func TestObjectRead(t *testing.T) {
 			ctx,
 			application.FirstKindVersionName(),
 			object.Select(
-				object.ByUUID(app1.UUID()),
+				object.ByUUID(app1.UUID),
 			),
 			nil,
 			"invalid selector: domain required",
@@ -156,7 +156,7 @@ func TestObjectRead(t *testing.T) {
 			application.FirstKindVersionName(),
 			object.Select(
 				object.ByDomain(&dom),
-				object.ByUUID(app1.UUID()),
+				object.ByUUID(app1.UUID),
 			),
 			app1,
 			"",
@@ -167,7 +167,7 @@ func TestObjectRead(t *testing.T) {
 			application.FirstKindVersionName(),
 			object.Select(
 				object.ByDomain(&dom),
-				object.ByName(app1.Name()),
+				object.ByName(app1.Name),
 			),
 			app1,
 			"",
@@ -178,7 +178,7 @@ func TestObjectRead(t *testing.T) {
 			service.FirstKindVersionName(),
 			object.Select(
 				object.ByDomain(&fixtures.DomainTree_Group1),
-				object.ByUUID(svc1.UUID()),
+				object.ByUUID(svc1.UUID),
 			),
 			svc1,
 			"",
@@ -189,7 +189,7 @@ func TestObjectRead(t *testing.T) {
 			service.FirstKindVersionName(),
 			object.Select(
 				object.ByDomain(&fixtures.DomainTree_Group1),
-				object.ByName(svc1.Name()),
+				object.ByName(svc1.Name),
 			),
 			svc1,
 			"",
@@ -204,13 +204,13 @@ func TestObjectRead(t *testing.T) {
 			} else {
 				require.Nil(err, err)
 				require.NotNil(got)
-				require.Equal(c.exp.KindVersionName(), got.KindVersionName())
-				if c.exp.Domain() != nil {
-					require.NotNil(got.Domain())
-					require.Equal(c.exp.Domain().Name, got.Domain().Name)
+				require.Equal(c.exp.KindVersionName, got.KindVersionName)
+				if c.exp.Domain != nil {
+					require.NotNil(got.Domain)
+					require.Equal(c.exp.Domain.Name, got.Domain.Name)
 				}
-				require.Equal(c.exp.Name(), got.Name())
-				require.Equal(c.exp.UUID(), got.UUID())
+				require.Equal(c.exp.Name, got.Name)
+				require.Equal(c.exp.UUID, got.UUID)
 				// TODO(jaypipes): finish coding Object.Diff
 				//require.Equal(got, c.exp)
 			}
@@ -247,74 +247,74 @@ func TestObjectWrite(t *testing.T) {
 
 	// NOTE: Platform is ScopeSystem which allows us to test the
 	// system-qualified name constraints.
-	plat1 := object.New(
-		object.WithKindVersionName(platform.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithName(testutil.RandomName()),
-	)
-	plat1Name := plat1.Name()
-	platDuplicateName := object.New(
-		object.WithKindVersionName(platform.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithName(plat1Name),
-	)
+	plat1 := &api.Object{
+		KindVersionName: platform.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+		Name:            testutil.RandomName(),
+	}
+	plat1Name := plat1.Name
+	platDuplicateName := &api.Object{
+		KindVersionName: platform.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+		Name:            plat1Name,
+	}
 	plat1Gen1 := plat1.Clone()
-	plat1Gen1.SetGeneration(1)
+	plat1Gen1.Generation = 1
 
 	// NOTE: Application is ScopeDomain which allows us to test the
 	// domain-qualified name constraints.
-	appMissingDomain := object.New(
-		object.WithKindVersionName(application.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithName(testutil.RandomName()),
-	)
-	app1 := object.New(
-		object.WithKindVersionName(application.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithDomain(&dom),
-		object.WithName(testutil.RandomName()),
-	)
-	app1Name := app1.Name()
-	appDuplicateName := object.New(
-		object.WithKindVersionName(application.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithDomain(&dom),
-		object.WithName(app1Name),
-	)
+	appMissingDomain := &api.Object{
+		KindVersionName: application.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+		Name:            testutil.RandomName(),
+	}
+	app1 := &api.Object{
+		KindVersionName: application.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+		Domain:          &dom,
+		Name:            testutil.RandomName(),
+	}
+	app1Name := app1.Name
+	appDuplicateName := &api.Object{
+		KindVersionName: application.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+		Domain:          &dom,
+		Name:            app1Name,
+	}
 	app1Gen1 := app1.Clone()
-	app1Gen1.SetGeneration(1)
+	app1Gen1.Generation = 1
 
 	// We test domain hierarchy management with the Service object by using a
 	// Domain with a parent Domain.
-	svc1 := object.New(
-		object.WithKindVersionName(service.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithDomain(&fixtures.DomainTree_Group1),
-		object.WithName(testutil.RandomName()),
-	)
-	svc1Name := svc1.Name()
-	svcDuplicateName := object.New(
-		object.WithKindVersionName(service.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithDomain(&fixtures.DomainTree_Group1),
-		object.WithName(svc1Name),
-	)
+	svc1 := &api.Object{
+		KindVersionName: service.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+		Domain:          &fixtures.DomainTree_Group1,
+		Name:            testutil.RandomName(),
+	}
+	svc1Name := svc1.Name
+	svcDuplicateName := &api.Object{
+		KindVersionName: service.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+		Domain:          &fixtures.DomainTree_Group1,
+		Name:            svc1Name,
+	}
 
 	ctxMissingIdent := context.TODO()
 
-	svcMissingUUID := object.New(
-		object.WithKindVersionName(service.FirstKindVersionName()),
-		object.WithName(testutil.RandomName()),
-	)
-	svcMissingName := object.New(
-		object.WithKindVersionName(service.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-	)
+	svcMissingUUID := &api.Object{
+		KindVersionName: service.FirstKindVersionName(),
+		Name:            testutil.RandomName(),
+	}
+	svcMissingName := &api.Object{
+		KindVersionName: service.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+	}
 
 	svc1Gen1 := svc1.Clone()
-	svc1Gen1.SetGeneration(1)
+	svc1Gen1.Generation = 1
 	svc1Gen2 := svc1.Clone()
-	svc1Gen2.SetGeneration(2)
+	svc1Gen2.Generation = 2
 
 	cases := []struct {
 		name    string
@@ -326,7 +326,7 @@ func TestObjectWrite(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			fixtures.UnknownObject,
+			&fixtures.UnknownObject,
 			nil,
 			"missing identity",
 		},
@@ -354,7 +354,7 @@ func TestObjectWrite(t *testing.T) {
 		{
 			"unknown kind",
 			ctx,
-			fixtures.UnknownObject,
+			&fixtures.UnknownObject,
 			nil,
 			"unknown kind",
 		},
@@ -427,14 +427,14 @@ func TestObjectWrite(t *testing.T) {
 			} else {
 				require.Nil(err, err)
 				require.NotNil(got)
-				require.Equal(c.exp.KindVersionName(), got.KindVersionName())
-				if c.exp.Domain() != nil {
-					require.NotNil(got.Domain())
-					require.Equal(c.exp.Domain().Name, got.Domain().Name)
+				require.Equal(c.exp.KindVersionName, got.KindVersionName)
+				if c.exp.Domain != nil {
+					require.NotNil(got.Domain)
+					require.Equal(c.exp.Domain.Name, got.Domain.Name)
 				}
-				require.Equal(c.exp.Name(), got.Name())
-				require.Equal(c.exp.UUID(), got.UUID())
-				require.Equal(c.exp.Generation(), got.Generation())
+				require.Equal(c.exp.Name, got.Name)
+				require.Equal(c.exp.UUID, got.UUID)
+				require.Equal(c.exp.Generation, got.Generation)
 				// TODO(jaypipes): finish coding Object.Diff
 				//require.Equal(got, c.exp)
 			}
@@ -455,11 +455,11 @@ func TestObjectQuery(t *testing.T) {
 
 	// NOTE: Platform is NamescopeSystem which allows us to test the
 	// system-qualified name constraints.
-	plat1 := object.New(
-		object.WithKindVersionName(platform.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithName(testutil.RandomName()),
-	)
+	plat1 := &api.Object{
+		KindVersionName: platform.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+		Name:            testutil.RandomName(),
+	}
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, plat1)
 	require.Nil(t, err)
 
@@ -475,12 +475,12 @@ func TestObjectQuery(t *testing.T) {
 
 	// NOTE: Application is NamescopeDomain which allows us to test the
 	// domain-qualified name constraints.
-	app1 := object.New(
-		object.WithKindVersionName(application.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithDomain(&dom),
-		object.WithName(testutil.RandomName()),
-	)
+	app1 := &api.Object{
+		KindVersionName: application.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+		Domain:          &dom,
+		Name:            testutil.RandomName(),
+	}
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, app1)
 	require.Nil(t, err)
 
@@ -490,12 +490,12 @@ func TestObjectQuery(t *testing.T) {
 	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, service.FirstKindVersion())
 	require.Nil(t, err)
 
-	svc1 := object.New(
-		object.WithKindVersionName(service.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithDomain(&dom),
-		object.WithName(testutil.RandomName()),
-	)
+	svc1 := &api.Object{
+		KindVersionName: service.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+		Domain:          &dom,
+		Name:            testutil.RandomName(),
+	}
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, svc1)
 	require.Nil(t, err)
 
@@ -599,7 +599,7 @@ func TestObjectQuery(t *testing.T) {
 				require.Equal(c.expMarkerEmpty, gotMarker == "")
 				require.Len(gotObjs, c.expNumObjs)
 				gotKindNames := lo.Map(gotObjs, func(o *api.Object, _ int) api.KindName {
-					return o.KindVersionName().Kind()
+					return o.KindName()
 				})
 				gotKindNames = lo.Uniq(gotKindNames)
 				require.Equal(c.expOnlyKindNames, gotKindNames)
@@ -621,19 +621,19 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 
 	// NOTE: Platform is NamescopeSystem which allows us to test the
 	// system-qualified name constraints.
-	plat1 := object.New(
-		object.WithKindVersionName(platform.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithName(testutil.RandomName()),
-	)
+	plat1 := &api.Object{
+		KindVersionName: platform.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+		Name:            testutil.RandomName(),
+	}
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, plat1)
 	require.Nil(t, err)
 
-	plat2 := object.New(
-		object.WithKindVersionName(platform.FirstKindVersionName()),
-		object.WithUUID(uuid.NewString()),
-		object.WithName(testutil.RandomName()),
-	)
+	plat2 := &api.Object{
+		KindVersionName: platform.FirstKindVersionName(),
+		UUID:            uuid.NewString(),
+		Name:            testutil.RandomName(),
+	}
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, plat2)
 	require.Nil(t, err)
 
@@ -650,44 +650,44 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"by UUID",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			object.UUIDEqual(plat1.UUID()),
+			object.UUIDEqual(plat1.UUID),
 			[]query.Option{
 				query.Limit(1),
 			},
-			[]string{plat1.UUID()},
+			[]string{plat1.UUID},
 			"",
 		},
 		{
 			"in set of UUIDs",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			object.UUIDIn(plat1.UUID(), plat2.UUID()),
+			object.UUIDIn(plat1.UUID, plat2.UUID),
 			[]query.Option{
 				query.Limit(2),
 			},
-			[]string{plat1.UUID(), plat2.UUID()},
+			[]string{plat1.UUID, plat2.UUID},
 			"",
 		},
 		{
 			"by name",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			object.NameEqual(plat1.Name()),
+			object.NameEqual(plat1.Name),
 			[]query.Option{
 				query.Limit(1),
 			},
-			[]string{plat1.UUID()},
+			[]string{plat1.UUID},
 			"",
 		},
 		{
 			"in set of names",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			object.NameIn(plat1.Name(), plat2.Name()),
+			object.NameIn(plat1.Name, plat2.Name),
 			[]query.Option{
 				query.Limit(2),
 			},
-			[]string{plat1.UUID(), plat2.UUID()},
+			[]string{plat1.UUID, plat2.UUID},
 			"",
 		},
 		{
@@ -695,13 +695,13 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			query.Or(
-				object.UUIDEqual(plat1.UUID()),
-				object.UUIDEqual(plat2.UUID()),
+				object.UUIDEqual(plat1.UUID),
+				object.UUIDEqual(plat2.UUID),
 			),
 			[]query.Option{
 				query.Limit(2),
 			},
-			[]string{plat1.UUID(), plat2.UUID()},
+			[]string{plat1.UUID, plat2.UUID},
 			"",
 		},
 		{
@@ -709,13 +709,13 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			query.Or(
-				object.NameEqual(plat1.Name()),
-				object.NameEqual(plat2.Name()),
+				object.NameEqual(plat1.Name),
+				object.NameEqual(plat2.Name),
 			),
 			[]query.Option{
 				query.Limit(2),
 			},
-			[]string{plat1.UUID(), plat2.UUID()},
+			[]string{plat1.UUID, plat2.UUID},
 			"",
 		},
 		{
@@ -723,13 +723,13 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			query.Or(
-				object.UUIDEqual(plat1.UUID()),
-				object.NameEqual(plat2.Name()),
+				object.UUIDEqual(plat1.UUID),
+				object.NameEqual(plat2.Name),
 			),
 			[]query.Option{
 				query.Limit(2),
 			},
-			[]string{plat1.UUID(), plat2.UUID()},
+			[]string{plat1.UUID, plat2.UUID},
 			"",
 		},
 		{
@@ -737,14 +737,14 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			query.Or(
-				object.UUIDEqual(plat1.UUID()),
-				object.NameEqual(plat2.Name()),
+				object.UUIDEqual(plat1.UUID),
+				object.NameEqual(plat2.Name),
 				object.UUIDEqual(uuid.NewString()),
 			),
 			[]query.Option{
 				query.Limit(2),
 			},
-			[]string{plat1.UUID(), plat2.UUID()},
+			[]string{plat1.UUID, plat2.UUID},
 			"",
 		},
 		{
@@ -752,8 +752,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			query.And(
-				object.UUIDEqual(plat1.UUID()),
-				object.UUIDEqual(plat2.UUID()),
+				object.UUIDEqual(plat1.UUID),
+				object.UUIDEqual(plat2.UUID),
 			),
 			[]query.Option{
 				query.Limit(2),
@@ -766,13 +766,13 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			query.And(
-				object.UUIDEqual(plat1.UUID()),
-				object.NameEqual(plat1.Name()),
+				object.UUIDEqual(plat1.UUID),
+				object.NameEqual(plat1.Name),
 			),
 			[]query.Option{
 				query.Limit(2),
 			},
-			[]string{plat1.UUID()},
+			[]string{plat1.UUID},
 			"",
 		},
 	}
@@ -791,7 +791,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 				expNumObjs := len(c.expUUIDs)
 				require.Len(gotObjs, expNumObjs)
 				gotUUIDs := lo.Map(gotObjs, func(o *api.Object, _ int) string {
-					return o.UUID()
+					return o.UUID
 				})
 				sort.Strings(expUUIDs)
 				sort.Strings(gotUUIDs)

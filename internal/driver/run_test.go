@@ -10,7 +10,6 @@ import (
 	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp-testing/fixtures/runnable"
 	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/run"
 	"github.com/stretchr/testify/require"
 )
@@ -35,19 +34,19 @@ func TestRunRead(t *testing.T) {
 
 	ctxMissingIdent := context.TODO()
 
-	runnable1 := object.New(
-		object.WithKindVersionName(runnable.KindVersion_V1_0_0.Name()),
-		object.WithUUID(uuid.NewString()),
-		object.WithDomain(&dom),
-		object.WithName(testutil.RandomName()),
-	)
+	runnable1 := &api.Object{
+		KindVersionName: runnable.KindVersion_V1_0_0.Name(),
+		UUID:            uuid.NewString(),
+		Domain:          &dom,
+		Name:            testutil.RandomName(),
+	}
 
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, runnable1)
 	require.Nil(t, err, err)
 
 	run1Target := api.RunTarget{
 		KindVersionName: runnable.KindVersion_V1_0_0.Name(),
-		UUID:            runnable1.UUID(),
+		UUID:            runnable1.UUID,
 		Generation:      1,
 	}
 
