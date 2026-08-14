@@ -19,7 +19,7 @@ func (s *Store) Query(
 	expr query.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
-	if kindRec.Kind.Scope() == api.ScopeDomain {
+	if kindRec.Kind.Scope == api.ScopeDomain {
 		return s.dbReadDomainQualifiedByExpression(
 			ctx, kv, sysRec, kindRec, expr, opts,
 		)

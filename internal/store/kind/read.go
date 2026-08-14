@@ -13,7 +13,7 @@ type Record struct {
 	// RowID is the internal database SERIAL for the kinds record.
 	RowID int64
 	// Kind is the publicly-exposed Kind object.
-	Kind *api.Kind
+	Kind api.Kind
 }
 
 // ReadByRowID returns a Record for the Kind with the supplied internal DB

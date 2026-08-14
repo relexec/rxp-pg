@@ -59,7 +59,7 @@ func TestKindRead(t *testing.T) {
 			"happy path",
 			ctx,
 			kind.Select(kind.ByName(service.KindName)),
-			service.Kind,
+			&service.Kind,
 			"",
 		},
 	}
@@ -97,7 +97,7 @@ func TestKindWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject *api.Kind
+		subject api.Kind
 		expErr  string
 	}{
 		{
@@ -122,7 +122,7 @@ func TestKindWrite(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			err := rxp.KindWrite(c.ctx, *c.subject)
+			err := rxp.KindWrite(c.ctx, c.subject)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {
@@ -330,12 +330,12 @@ func TestKindQuery(t *testing.T) {
 				require.Equal(c.expMarker, gotMarker)
 				require.Len(gotItems, c.expNumItems)
 				gotUUIDs := lo.Map(gotItems, func(k *api.Kind, _ int) string {
-					return k.UUID()
+					return k.UUID
 				})
 				gotUUIDs = lo.Uniq(gotUUIDs)
 				require.Equal(c.expOnlyUUIDs, gotUUIDs)
 				for _, item := range gotItems {
-					require.NotNil(item.System())
+					require.NotNil(item.System)
 				}
 			}
 		})

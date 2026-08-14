@@ -75,17 +75,17 @@ func KindVersionCreateIfNotExists(
 func KindCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	k *api.Kind,
+	k api.Kind,
 ) error {
 	_, err := d.KindRead(
 		ctx,
-		kind.Select(kind.ByName(k.Name())),
+		kind.Select(kind.ByName(k.Name)),
 	)
 	if err != nil {
 		if err != errors.ErrNotFound {
 			return err
 		}
-		return d.KindWrite(ctx, *k)
+		return d.KindWrite(ctx, k)
 	}
 	return nil
 }

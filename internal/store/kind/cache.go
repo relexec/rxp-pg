@@ -109,7 +109,7 @@ func (s *Store) cacheWrite(
 	s.cacheLock.Lock()
 	defer s.cacheLock.Unlock()
 
-	uuidKey := byUUIDCacheKey(rec.Kind.UUID())
+	uuidKey := byUUIDCacheKey(rec.Kind.UUID)
 	set := s.byUUID.Set(uuidKey, rec)
 	if !set {
 		return errors.Internal(
@@ -117,8 +117,8 @@ func (s *Store) cacheWrite(
 		)
 	}
 	// Here we populate our row ID -> uuid and name -> uuid maps
-	nameKey := newByNameCacheKey(*rec.Kind.System(), rec.Kind.Name())
-	uuid := rec.Kind.UUID()
+	nameKey := newByNameCacheKey(*rec.Kind.System, rec.Kind.Name)
+	uuid := rec.Kind.UUID
 	set = s.byName.Set(nameKey, byUUIDCacheKey(uuid))
 	if !set {
 		return errors.Internal(

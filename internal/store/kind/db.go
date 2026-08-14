@@ -52,12 +52,12 @@ func (s *Store) dbReadByRowID(
 				errors.WithWrap(err),
 			)
 		}
-		out.Kind = kind.New(
-			kind.WithSystem(&systemRec.System),
-			kind.WithUUID(uuid),
-			kind.WithName(name),
-			kind.WithScope(scope),
-		)
+		out.Kind = api.Kind{
+			System: &systemRec.System,
+			UUID:   uuid,
+			Name:   name,
+			Scope:  scope,
+		}
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
@@ -73,9 +73,9 @@ func (s *Store) dbReadByUUID(
 	uuid string,
 ) (*Record, error) {
 	out := Record{
-		Kind: kind.New(
-			kind.WithUUID(uuid),
-		),
+		Kind: api.Kind{
+			UUID: uuid,
+		},
 	}
 	fn := func(tx pgx.Tx) error {
 		var name api.KindName
@@ -91,8 +91,8 @@ func (s *Store) dbReadByUUID(
 				errors.WithWrap(err),
 			)
 		}
-		out.Kind.SetName(name)
-		out.Kind.SetScope(scope)
+		out.Kind.Name = name
+		out.Kind.Scope = scope
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
@@ -109,10 +109,10 @@ func (s *Store) dbReadByName(
 	name api.KindName,
 ) (*Record, error) {
 	out := Record{
-		Kind: kind.New(
-			kind.WithSystem(&sysRec.System),
-			kind.WithName(name),
-		),
+		Kind: api.Kind{
+			System: &sysRec.System,
+			Name:   name,
+		},
 	}
 	fn := func(tx pgx.Tx) error {
 		var uuid string
@@ -135,8 +135,8 @@ AND name = $2
 				errors.WithWrap(err),
 			)
 		}
-		out.Kind.SetUUID(uuid)
-		out.Kind.SetScope(scope)
+		out.Kind.UUID = uuid
+		out.Kind.Scope = scope
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
@@ -173,13 +173,13 @@ INSERT INTO kinds (
 )`
 		_, err := tx.Exec(
 			ctx, qs, sysRec.RowID,
-			kind.UUID(), kind.Name(), kind.Scope(),
+			kind.UUID, kind.Name, kind.Scope,
 			createdOn, createdBy,
 		)
 		if err != nil {
 			if pgErr, ok := err.(*pgconn.PgError); ok {
 				if pgErr.Code == pgerrcode.UniqueViolation {
-					return errors.DuplicateName("kind", kind.Name())
+					return errors.DuplicateName("kind", kind.Name)
 				}
 			}
 		}
@@ -333,12 +333,12 @@ FROM kinds AS k
 				errors.WithWrap(err),
 			)
 		}
-		k := kind.New(
-			kind.WithUUID(rec.UUID),
-			kind.WithName(rec.Name),
-			kind.WithSystem(&sysRec.System),
-			kind.WithScope(rec.Scope),
-		)
+		k := api.Kind{
+			UUID:   rec.UUID,
+			Name:   rec.Name,
+			System: &sysRec.System,
+			Scope:  rec.Scope,
+		}
 		out = append(out, &Record{
 			RowID: rec.ID,
 			Kind:  k,

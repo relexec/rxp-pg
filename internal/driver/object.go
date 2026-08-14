@@ -155,7 +155,7 @@ func (d *Driver) objectUUIDFromName(
 	qualifier := storeobject.NameQualifier{
 		System: sysRec,
 	}
-	if kindRec.Kind.Scope() == api.ScopeDomain {
+	if kindRec.Kind.Scope == api.ScopeDomain {
 		qualifier.Domain = domRec
 	}
 	return d.objectStore.UUIDFromName(
@@ -175,7 +175,7 @@ func (d *Driver) objectNameFromUUID(
 	qualifier := storeobject.NameQualifier{
 		System: sysRec,
 	}
-	if kindRec.Kind.Scope() == api.ScopeDomain {
+	if kindRec.Kind.Scope == api.ScopeDomain {
 		qualifier.Domain = domRec
 	}
 	return d.objectStore.NameFromUUID(
@@ -190,7 +190,7 @@ func (d *Driver) objectReadValidateScope(
 	kindRec *storekind.Record,
 	sel object.Selector,
 ) error {
-	scope := kindRec.Kind.Scope()
+	scope := kindRec.Kind.Scope
 	switch scope {
 	case api.ScopeDomain:
 		domain := sel.Domain()
@@ -312,7 +312,7 @@ func (d *Driver) objectWriteValidateScope(
 	kindRec storekind.Record,
 	obj api.Object,
 ) error {
-	if kindRec.Kind.Scope() == api.ScopeDomain {
+	if kindRec.Kind.Scope == api.ScopeDomain {
 		domain := obj.Domain()
 		if domain == nil {
 			return errors.ErrObjectDomainRequired

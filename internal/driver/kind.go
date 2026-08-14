@@ -69,7 +69,7 @@ func (d *Driver) KindRead(
 	if err != nil {
 		return nil, err
 	}
-	return rec.Kind, nil
+	return &rec.Kind, nil
 }
 
 // kindReadValidate returns an error if the supplied selector and read
@@ -114,7 +114,7 @@ func (d *Driver) KindWrite(
 
 	var sysRec *storesystem.Record
 
-	sys := k.System()
+	sys := k.System
 
 	// Default the system to the host system if it hasn't been specified.
 	if sys != nil && sys.UUID != d.hostSystemUUID {
@@ -127,7 +127,7 @@ func (d *Driver) KindWrite(
 		}
 	} else {
 		sysRec = d.hostSystemRecord
-		k.SetSystem(&d.hostSystemRecord.System)
+		k.System = &d.hostSystemRecord.System
 	}
 	return d.kindStore.Write(ctx, *sysRec, k)
 }
@@ -189,14 +189,14 @@ func (d *Driver) KindQuery(
 	}
 	out := make([]*api.Kind, 0, len(recs))
 	for _, rec := range recs {
-		out = append(out, rec.Kind)
+		out = append(out, &rec.Kind)
 	}
 	resOpts := query.NewOptions(
 		query.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == int(boundedOpts.Limit()) {
 		resOpts = query.NewOptions(
-			query.ContinueFrom(recs[len(recs)-1].Kind.UUID()),
+			query.ContinueFrom(recs[len(recs)-1].Kind.UUID),
 			query.Limit(boundedOpts.Limit()),
 		)
 	}

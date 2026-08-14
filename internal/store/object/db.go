@@ -330,7 +330,7 @@ func (s *Store) dbInsertFirst(
 	obj api.Object,
 ) (*api.Object, error) {
 	kind := kindRec.Kind
-	if kind.Scope() == api.ScopeDomain && domRec == nil {
+	if kind.Scope == api.ScopeDomain && domRec == nil {
 		return nil, errors.ErrObjectDomainRequired
 	}
 	kv := obj.KindVersionName()
@@ -395,7 +395,7 @@ INSERT INTO objects (
 				errors.WithWrap(err),
 			)
 		}
-		scope := kindRec.Kind.Scope()
+		scope := kindRec.Kind.Scope
 		switch scope {
 		case api.ScopeDomain:
 			qs = `
@@ -434,7 +434,7 @@ INSERT INTO domain_qualified_object_names (
 							domRec.Domain.Name,
 							name,
 						)
-						return errors.DuplicateName(kind.Name(), qn)
+						return errors.DuplicateName(kind.Name, qn)
 					}
 				}
 				return errors.Internal(
@@ -471,7 +471,7 @@ INSERT INTO system_qualified_object_names (
 			if err != nil {
 				if pgErr, ok := err.(*pgconn.PgError); ok {
 					if pgErr.Code == pgerrcode.UniqueViolation {
-						return errors.DuplicateName(kind.Name(), name)
+						return errors.DuplicateName(kind.Name, name)
 					}
 				}
 				return errors.Internal(
@@ -538,7 +538,7 @@ func (s *Store) dbInsertGeneration(
 	expectGeneration api.Generation,
 ) (*api.Object, error) {
 	kind := kindRec.Kind
-	if kind.Scope() == api.ScopeDomain && domRec == nil {
+	if kind.Scope == api.ScopeDomain && domRec == nil {
 		return nil, errors.ErrObjectDomainRequired
 	}
 	kv := obj.KindVersionName()
