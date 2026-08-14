@@ -120,7 +120,7 @@ func (d *Driver) ObjectRead(
 	if err != nil {
 		return nil, err
 	}
-	rec.Object.SetSystem(sysRec.System)
+	rec.Object.SetSystem(&sysRec.System)
 	if dom != nil {
 		rec.Object.SetDomain(dom)
 	}
@@ -245,7 +245,7 @@ func (d *Driver) ObjectWrite(
 
 	// Default the system to the host system if it hasn't been specified.
 	if sys == nil {
-		sys = d.hostSystemRecord.System
+		sys = &d.hostSystemRecord.System
 		if dom != nil {
 			dom.SetSystem(sys)
 		}

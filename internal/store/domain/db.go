@@ -29,7 +29,7 @@ func (s *Store) dbReadByRowID(
 	out := Record{
 		RowID: rowID,
 		Domain: domain.New(
-			domain.WithSystem(sysRec.System),
+			domain.WithSystem(&sysRec.System),
 		),
 	}
 	fn := func(tx pgx.Tx) error {
@@ -107,7 +107,7 @@ func (s *Store) dbReadByUUID(
 	out := Record{
 		Domain: domain.New(
 			domain.WithUUID(uuid),
-			domain.WithSystem(sysRec.System),
+			domain.WithSystem(&sysRec.System),
 		),
 	}
 	fn := func(tx pgx.Tx) error {
@@ -180,7 +180,7 @@ func (s *Store) dbReadByName(
 ) (*Record, error) {
 	out := Record{
 		Domain: domain.New(
-			domain.WithSystem(sysRec.System),
+			domain.WithSystem(&sysRec.System),
 			domain.WithName(name),
 		),
 	}
@@ -622,7 +622,7 @@ FROM domains AS d`
 		dom := domain.New(
 			domain.WithUUID(rec.UUID),
 			domain.WithName(rec.Name),
-			domain.WithSystem(sysRec.System),
+			domain.WithSystem(&sysRec.System),
 		)
 		if rec.ParentID.Valid {
 			// NOTE(jaypipes): This has the potential to do N*M queries where N
@@ -706,7 +706,7 @@ WHERE d.root = $1
 		dom := domain.New(
 			domain.WithUUID(rec.UUID),
 			domain.WithName(rec.Name),
-			domain.WithSystem(sysRec.System),
+			domain.WithSystem(&sysRec.System),
 		)
 		if rec.ParentID.Valid {
 			// NOTE(jaypipes): This has the potential to do N queries where N

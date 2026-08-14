@@ -71,7 +71,7 @@ func (s *Store) dbReadByRowID(
 			)
 		}
 		out.KindVersion = kindversion.New(
-			kindversion.WithSystem(sysRec.System),
+			kindversion.WithSystem(&sysRec.System),
 			kindversion.WithKind(kindRec.Kind),
 			kindversion.WithVersion(*sv),
 			kindversion.WithSchema(&schema),
@@ -132,7 +132,7 @@ AND version = $3
 			}
 		}
 		out.KindVersion = kindversion.New(
-			kindversion.WithSystem(sysRec.System),
+			kindversion.WithSystem(&sysRec.System),
 			kindversion.WithKind(kindRec.Kind),
 			kindversion.WithVersion(*sv),
 			kindversion.WithSchema(&schema),
@@ -458,7 +458,7 @@ FROM kindversions AS kv
 			)
 		}
 		kv := kindversion.New(
-			kindversion.WithSystem(sysRec.System),
+			kindversion.WithSystem(&sysRec.System),
 			kindversion.WithKind(kindRec.Kind),
 			kindversion.WithVersion(*sv),
 			kindversion.WithSchema(&schema),

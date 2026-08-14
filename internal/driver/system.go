@@ -52,7 +52,7 @@ func (d *Driver) SystemRead(
 	if err != nil {
 		return nil, err
 	}
-	return rec.System, nil
+	return &rec.System, nil
 }
 
 // systemReadValidate returns an error if the supplied selector and read
@@ -71,10 +71,10 @@ func (d *Driver) systemRecordFromSystem(
 	ctx context.Context,
 	sys *api.System,
 ) (*storesystem.Record, error) {
-	if sys == nil || sys.UUID() == d.hostSystemUUID {
+	if sys == nil || sys.UUID == d.hostSystemUUID {
 		return d.hostSystemRecord, nil
 	}
-	sysRec, err := d.systemStore.ReadByUUID(ctx, sys.UUID())
+	sysRec, err := d.systemStore.ReadByUUID(ctx, sys.UUID)
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return nil, errors.ErrSystemUnknown
@@ -174,14 +174,14 @@ func (d *Driver) SystemQuery(
 	}
 	out := make([]*api.System, 0, len(recs))
 	for _, rec := range recs {
-		out = append(out, rec.System)
+		out = append(out, &rec.System)
 	}
 	resOpts := query.NewOptions(
 		query.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == int(boundedOpts.Limit()) {
 		resOpts = query.NewOptions(
-			query.ContinueFrom(recs[len(recs)-1].System.UUID()),
+			query.ContinueFrom(recs[len(recs)-1].System.UUID),
 			query.Limit(boundedOpts.Limit()),
 		)
 	}

@@ -39,10 +39,10 @@ func (s *Store) dbReadByRowID(
 				errors.WithWrap(err),
 			)
 		}
-		out.System = system.New(
-			system.WithUUID(uuid),
-			system.WithTag(tag),
-		)
+		out.System = api.System{
+			UUID: uuid,
+			Tag:  tag,
+		}
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
@@ -58,9 +58,9 @@ func (s *Store) dbReadByUUID(
 	uuid string,
 ) (*Record, error) {
 	out := Record{
-		System: system.New(
-			system.WithUUID(uuid),
-		),
+		System: api.System{
+			UUID: uuid,
+		},
 	}
 	fn := func(tx pgx.Tx) error {
 		var tag sql.NullString
@@ -76,7 +76,7 @@ func (s *Store) dbReadByUUID(
 			)
 		}
 		if tag.Valid {
-			out.System.SetTag(tag.String)
+			out.System.Tag = tag.String
 		}
 		return nil
 	}
@@ -95,8 +95,8 @@ func (s *Store) dbInsert(
 	caller := api.CallerFromContext(ctx)
 	createdBy := caller.Identity
 	var tag *string
-	uuid := sys.UUID()
-	sysTag := sys.Tag()
+	uuid := sys.UUID
+	sysTag := sys.Tag
 	if sysTag != "" {
 		tag = &sysTag
 	}
@@ -117,7 +117,7 @@ INSERT INTO systems (
 		if err != nil {
 			if pgErr, ok := err.(*pgconn.PgError); ok {
 				if pgErr.Code == pgerrcode.UniqueViolation {
-					return errors.DuplicateKey("system", "uuid", sys.UUID())
+					return errors.DuplicateKey("system", "uuid", uuid)
 				}
 			}
 		}
@@ -207,10 +207,10 @@ FROM systems AS s
 
 	out := make([]*Record, 0, len(recs))
 	for _, rec := range recs {
-		sys := system.New(
-			system.WithUUID(rec.UUID),
-			system.WithTag(rec.Tag),
-		)
+		sys := api.System{
+			UUID: rec.UUID,
+			Tag:  rec.Tag,
+		}
 		out = append(out, &Record{
 			RowID:  rec.ID,
 			System: sys,

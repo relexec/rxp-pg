@@ -768,7 +768,7 @@ INNER JOIN object_generations AS og
 			object.WithUUID(rec.UUID),
 			object.WithName(rec.Name),
 			object.WithGeneration(rec.Generation),
-			object.WithSystem(sysRec.System),
+			object.WithSystem(&sysRec.System),
 			object.WithDomain(domRec.Domain),
 		)
 		if rec.Spec.Valid {
@@ -982,7 +982,7 @@ INNER JOIN object_generations AS og
 			object.WithUUID(rec.UUID),
 			object.WithName(rec.Name),
 			object.WithGeneration(rec.Generation),
-			object.WithSystem(sysRec.System),
+			object.WithSystem(&sysRec.System),
 		)
 		if rec.Spec.Valid {
 			obj.SetSpec(rec.Spec.String)

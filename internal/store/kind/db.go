@@ -53,7 +53,7 @@ func (s *Store) dbReadByRowID(
 			)
 		}
 		out.Kind = kind.New(
-			kind.WithSystem(systemRec.System),
+			kind.WithSystem(&systemRec.System),
 			kind.WithUUID(uuid),
 			kind.WithName(name),
 			kind.WithScope(scope),
@@ -110,7 +110,7 @@ func (s *Store) dbReadByName(
 ) (*Record, error) {
 	out := Record{
 		Kind: kind.New(
-			kind.WithSystem(sysRec.System),
+			kind.WithSystem(&sysRec.System),
 			kind.WithName(name),
 		),
 	}
@@ -336,7 +336,7 @@ FROM kinds AS k
 		k := kind.New(
 			kind.WithUUID(rec.UUID),
 			kind.WithName(rec.Name),
-			kind.WithSystem(sysRec.System),
+			kind.WithSystem(&sysRec.System),
 			kind.WithScope(rec.Scope),
 		)
 		out = append(out, &Record{

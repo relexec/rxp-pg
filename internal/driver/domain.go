@@ -54,11 +54,11 @@ func (d *Driver) DomainRead(
 	// Default the system to the host system if it hasn't been specified in the
 	// selector.
 	if sys == nil {
-		sys = d.hostSystemRecord.System
+		sys = &d.hostSystemRecord.System
 	}
 
-	if sys.UUID() != d.hostSystemUUID {
-		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID())
+	if sys.UUID != d.hostSystemUUID {
+		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
 			if err == errors.ErrNotFound {
 				return nil, errors.ErrSystemUnknown
@@ -155,12 +155,12 @@ func (d *Driver) DomainWrite(
 	// Default the system to the host system if it hasn't been specified in the
 	// selector.
 	if sys == nil {
-		sys = d.hostSystemRecord.System
+		sys = &d.hostSystemRecord.System
 		dom.SetSystem(sys)
 	}
 
-	if sys.UUID() != d.hostSystemUUID {
-		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID())
+	if sys.UUID != d.hostSystemUUID {
+		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
 			if err == errors.ErrNotFound {
 				return errors.ErrSystemUnknown

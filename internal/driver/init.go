@@ -9,7 +9,6 @@ import (
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/api/metrics"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/system"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
@@ -202,11 +201,11 @@ func (d *Driver) initHostSystemRecord(ctx context.Context) error {
 			d.Logger.Debug("creating host system record")
 			initCaller := api.Caller{Identity: "rxp.system"}
 			initCtx := api.CallerToContext(ctx, initCaller)
-			sys := system.New(
-				system.WithUUID(d.hostSystemUUID),
-				system.WithTag(d.hostSystemTag),
-			)
-			err = d.systemStore.Write(initCtx, *sys)
+			sys := api.System{
+				UUID: d.hostSystemUUID,
+				Tag:  d.hostSystemTag,
+			}
+			err = d.systemStore.Write(initCtx, sys)
 			if err != nil {
 				return err
 			}

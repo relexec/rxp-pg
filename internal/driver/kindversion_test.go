@@ -249,7 +249,7 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"no results when looking up kindversions by non-existing system",
 			ctx,
-			system.Equal(fixtures.UnknownSystem),
+			system.Equal(&fixtures.UnknownSystem),
 			nil,
 			0,
 			[]api.KindVersionName{},

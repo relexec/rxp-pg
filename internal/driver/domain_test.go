@@ -408,7 +408,7 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"no results when looking up domains by non-existing system",
 			ctx,
-			system.Equal(fixtures.UnknownSystem),
+			system.Equal(&fixtures.UnknownSystem),
 			nil,
 			0,
 			[]string{},

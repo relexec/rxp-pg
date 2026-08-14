@@ -229,7 +229,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"no results when looking up kinds by non-existing system",
 			ctx,
-			system.Equal(fixtures.UnknownSystem),
+			system.Equal(&fixtures.UnknownSystem),
 			nil,
 			0,
 			[]string{},

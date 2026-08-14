@@ -47,7 +47,7 @@ func (s *Store) cacheWrite(
 	if s.byUUID == nil {
 		return nil
 	}
-	key := byUUIDCacheKey(rec.System.UUID())
+	key := byUUIDCacheKey(rec.System.UUID)
 	set := s.byUUID.Set(key, rec)
 	if !set {
 		return errors.Internal(

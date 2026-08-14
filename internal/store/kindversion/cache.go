@@ -23,10 +23,10 @@ func (k byNameCacheKey) KindVersion() api.KindVersionName {
 }
 
 func newByNameCacheKey(
-	system *api.System,
+	system api.System,
 	kv api.KindVersionName,
 ) byNameCacheKey {
-	return byNameCacheKey(system.UUID() + "|" + string(kv))
+	return byNameCacheKey(system.UUID + "|" + string(kv))
 }
 
 // cacheReadByRowID looks up a cached KindVersion by RowID, returning the cached
@@ -89,7 +89,7 @@ func (s *Store) cacheWrite(
 	defer s.cacheLock.Unlock()
 
 	nameKey := newByNameCacheKey(
-		rec.KindVersion.System(),
+		*rec.KindVersion.System(),
 		rec.KindVersion.Name(),
 	)
 	set := s.byName.Set(nameKey, rec)

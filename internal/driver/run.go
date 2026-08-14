@@ -125,13 +125,13 @@ func (d *Driver) RunWrite(
 	// Default the target and caller system to the host system if it hasn't
 	// been specified.
 	if callerSys == nil {
-		callerSys = d.hostSystemRecord.System
+		callerSys = &d.hostSystemRecord.System
 		if callerDom != nil {
 			callerDom.SetSystem(callerSys)
 		}
 	}
 	if targetSys == nil {
-		targetSys = d.hostSystemRecord.System
+		targetSys = &d.hostSystemRecord.System
 		if targetDom != nil {
 			targetDom.SetSystem(targetSys)
 		}
@@ -191,7 +191,7 @@ func (d *Driver) RunWrite(
 	if err != nil {
 		return nil, err
 	}
-	targetRec.Object.SetSystem(targetSysRec.System)
+	targetRec.Object.SetSystem(&targetSysRec.System)
 	if targetDom != nil {
 		targetRec.Object.SetDomain(targetDom)
 	}

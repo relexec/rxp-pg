@@ -53,7 +53,7 @@ func TestSystemRead(t *testing.T) {
 			"happy path",
 			ctx,
 			system.Select(system.ByUUID(fixtures.SystemUUID)),
-			fixtures.System,
+			&fixtures.System,
 			"",
 		},
 	}
@@ -89,13 +89,13 @@ func TestSystemWrite(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			fixtures.UnknownSystem,
+			&fixtures.UnknownSystem,
 			"missing identity",
 		},
 		{
 			"duplicate system",
 			ctx,
-			fixtures.System,
+			&fixtures.System,
 			"conflict: \"system\" already exists",
 		},
 	}
@@ -238,7 +238,7 @@ func TestSystemQuery(t *testing.T) {
 				require.Equal(c.expMarker, gotMarker)
 				require.Len(gotItems, c.expNumItems)
 				gotUUIDs := lo.Map(gotItems, func(s *api.System, _ int) string {
-					return s.UUID()
+					return s.UUID
 				})
 				gotUUIDs = lo.Uniq(gotUUIDs)
 				require.Equal(c.expOnlyUUIDs, gotUUIDs)

@@ -56,8 +56,8 @@ func (d *Driver) KindVersionRead(
 
 	// Default the system to the host system if it hasn't been specified in the
 	// selector.
-	if sys != nil && sys.UUID() != d.hostSystemUUID {
-		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID())
+	if sys != nil && sys.UUID != d.hostSystemUUID {
+		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
 			if err == errors.ErrNotFound {
 				return nil, errors.ErrSystemUnknown
@@ -134,8 +134,8 @@ func (d *Driver) KindVersionWrite(
 	sys := kv.System()
 
 	// Default the system to the host system if it hasn't been specified.
-	if sys != nil && sys.UUID() != d.hostSystemUUID {
-		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID())
+	if sys != nil && sys.UUID != d.hostSystemUUID {
+		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
 			if err == errors.ErrNotFound {
 				return errors.ErrSystemUnknown
@@ -144,7 +144,7 @@ func (d *Driver) KindVersionWrite(
 		}
 	} else {
 		sysRec = d.hostSystemRecord
-		kv.SetSystem(d.hostSystemRecord.System)
+		kv.SetSystem(&d.hostSystemRecord.System)
 	}
 
 	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, kn.Kind())
