@@ -95,17 +95,17 @@ func KindCreateIfNotExists(
 func DomainCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	dom *api.Domain,
+	dom api.Domain,
 ) error {
 	_, err := d.DomainRead(
 		ctx,
-		domain.Select(domain.ByName(dom.Name())),
+		domain.Select(domain.ByName(dom.Name)),
 	)
 	if err != nil {
 		if err != errors.ErrNotFound {
 			return err
 		}
-		return d.DomainWrite(ctx, *dom)
+		return d.DomainWrite(ctx, dom)
 	}
 	return nil
 }

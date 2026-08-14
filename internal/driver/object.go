@@ -66,7 +66,7 @@ func (d *Driver) ObjectRead(
 	dom := sel.Domain()
 
 	if dom != nil {
-		sys = dom.System()
+		sys = dom.System
 	}
 
 	sysRec, err := d.systemRecordFromSystem(ctx, sys)
@@ -240,14 +240,14 @@ func (d *Driver) ObjectWrite(
 	dom := obj.Domain()
 
 	if dom != nil {
-		sys = dom.System()
+		sys = dom.System
 	}
 
 	// Default the system to the host system if it hasn't been specified.
 	if sys == nil {
 		sys = &d.hostSystemRecord.System
 		if dom != nil {
-			dom.SetSystem(sys)
+			dom.System = sys
 		}
 	}
 

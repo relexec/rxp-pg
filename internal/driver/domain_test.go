@@ -66,15 +66,15 @@ func TestDomainRead(t *testing.T) {
 		{
 			"happy path by uuid",
 			ctx,
-			domain.Select(domain.ByUUID(fixtures.Domain.UUID())),
-			fixtures.Domain,
+			domain.Select(domain.ByUUID(fixtures.Domain.UUID)),
+			&fixtures.Domain,
 			"",
 		},
 		{
 			"happy path by name",
 			ctx,
-			domain.Select(domain.ByName(fixtures.Domain.Name())),
-			fixtures.Domain,
+			domain.Select(domain.ByName(fixtures.Domain.Name)),
+			&fixtures.Domain,
 			"",
 		},
 	}
@@ -113,7 +113,7 @@ func TestDomainWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject *api.Domain
+		subject api.Domain
 		expErr  string
 	}{
 		{
@@ -125,13 +125,13 @@ func TestDomainWrite(t *testing.T) {
 		{
 			"missing uuid",
 			ctx,
-			domain.New(),
+			api.Domain{},
 			"invalid domain: uuid required",
 		},
 		{
 			"missing name",
 			ctx,
-			domain.New(domain.WithUUID(uuid.NewString())),
+			api.Domain{UUID: uuid.NewString()},
 			"invalid domain: name required",
 		},
 		{
@@ -143,37 +143,37 @@ func TestDomainWrite(t *testing.T) {
 		{
 			"duplicate domain UUID",
 			ctx,
-			domain.New(
-				domain.WithUUID(fixtures.Domain.UUID()),
-				domain.WithName("othername"),
-			),
+			api.Domain{
+				UUID: fixtures.Domain.UUID,
+				Name: api.DomainName("othername"),
+			},
 			"conflict: \"domain\" already exists",
 		},
 		{
 			"duplicate domain name",
 			ctx,
-			domain.New(
-				domain.WithUUID(uuid.NewString()),
-				domain.WithName(fixtures.Domain.Name()),
-			),
+			api.Domain{
+				UUID: uuid.NewString(),
+				Name: fixtures.Domain.Name,
+			},
 			"conflict: \"domain\" already exists",
 		},
 		{
 			"parent domain does not exist",
 			ctx,
-			domain.New(
-				domain.WithUUID(uuid.NewString()),
-				domain.WithName("parent.not.exist"),
-				domain.WithRoot(fixtures.UnknownDomain),
-				domain.WithParent(fixtures.UnknownDomain),
-			),
+			api.Domain{
+				UUID:   uuid.NewString(),
+				Name:   api.DomainName("parent.not.exist"),
+				Root:   &fixtures.UnknownDomain,
+				Parent: &fixtures.UnknownDomain,
+			},
 			"invalid domain: parent not found",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			err := rxp.DomainWrite(c.ctx, *c.subject)
+			err := rxp.DomainWrite(c.ctx, c.subject)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {
@@ -189,21 +189,21 @@ func TestDomainTree(t *testing.T) {
 	require.Nil(t, err)
 
 	treeDoms := []*api.Domain{
-		fixtures.DomainTree_Root,
-		fixtures.DomainTree_Group1,
-		fixtures.DomainTree_Group2,
-		fixtures.DomainTree_Group1Leaf1,
-		fixtures.DomainTree_Group1Leaf2,
-		fixtures.DomainTree_Group2Leaf1,
-		fixtures.DomainTree_Group2Leaf2,
+		&fixtures.DomainTree_Root,
+		&fixtures.DomainTree_Group1,
+		&fixtures.DomainTree_Group2,
+		&fixtures.DomainTree_Group1Leaf1,
+		&fixtures.DomainTree_Group1Leaf2,
+		&fixtures.DomainTree_Group2Leaf1,
+		&fixtures.DomainTree_Group2Leaf2,
 	}
 	treeDomUUIDs := lo.Map(treeDoms, func(d *api.Domain, _ int) string {
-		return d.UUID()
+		return d.UUID
 	})
 	sort.Strings(treeDomUUIDs)
 
 	for _, dom := range treeDoms {
-		err = testutil.DomainCreateIfNotExists(ctx, rxp, dom)
+		err = testutil.DomainCreateIfNotExists(ctx, rxp, *dom)
 		require.Nil(t, err, err)
 	}
 
@@ -215,7 +215,7 @@ func TestDomainTree(t *testing.T) {
 	require.Nil(t, err)
 	items := got.Items()
 	require.Len(t, items, 1)
-	require.Nil(t, items[0].Parent())
+	require.Nil(t, items[0].Parent)
 
 	// Grabbing all domains in the domain tree should yield all domains in the
 	// tree.
@@ -229,7 +229,7 @@ func TestDomainTree(t *testing.T) {
 	require.Len(t, items, len(treeDoms))
 
 	gotDomUUIDs := lo.Map(items, func(d *api.Domain, _ int) string {
-		return d.UUID()
+		return d.UUID
 	})
 	sort.Strings(gotDomUUIDs)
 
@@ -246,7 +246,7 @@ func TestDomainTree(t *testing.T) {
 	require.Len(t, items, len(treeDoms))
 
 	gotDomUUIDs = lo.Map(items, func(d *api.Domain, _ int) string {
-		return d.UUID()
+		return d.UUID
 	})
 	sort.Strings(gotDomUUIDs)
 
@@ -264,7 +264,7 @@ func TestDomainTree(t *testing.T) {
 	require.Len(t, items, len(treeDoms))
 
 	gotDomUUIDs = lo.Map(items, func(d *api.Domain, _ int) string {
-		return d.UUID()
+		return d.UUID
 	})
 	sort.Strings(gotDomUUIDs)
 
@@ -273,9 +273,9 @@ func TestDomainTree(t *testing.T) {
 	// Grabbing domains within a subdomain should yield only that subdomain and
 	// its child domains.
 	groupDoms := []*api.Domain{
-		fixtures.DomainTree_Group1,
-		fixtures.DomainTree_Group1Leaf1,
-		fixtures.DomainTree_Group1Leaf2,
+		&fixtures.DomainTree_Group1,
+		&fixtures.DomainTree_Group1Leaf1,
+		&fixtures.DomainTree_Group1Leaf2,
 	}
 	got, err = rxp.DomainQuery(
 		ctx, domain.ParentUUIDEqual(
@@ -287,11 +287,11 @@ func TestDomainTree(t *testing.T) {
 	require.Len(t, items, len(groupDoms))
 
 	groupDomUUIDs := lo.Map(groupDoms, func(d *api.Domain, _ int) string {
-		return d.UUID()
+		return d.UUID
 	})
 	sort.Strings(groupDomUUIDs)
 	gotDomUUIDs = lo.Map(items, func(d *api.Domain, _ int) string {
-		return d.UUID()
+		return d.UUID
 	})
 	sort.Strings(gotDomUUIDs)
 
@@ -308,7 +308,7 @@ func TestDomainTree(t *testing.T) {
 	items = got.Items()
 	require.Len(t, items, 1)
 
-	require.Equal(t, fixtures.DomainTree_Group1Leaf1UUID, items[0].UUID())
+	require.Equal(t, fixtures.DomainTree_Group1Leaf1UUID, items[0].UUID)
 }
 
 func TestDomainQuery(t *testing.T) {
@@ -509,12 +509,12 @@ func TestDomainQuery(t *testing.T) {
 				require.Equal(c.expMarker, gotMarker)
 				require.Len(gotItems, c.expNumItems)
 				gotUUIDs := lo.Map(gotItems, func(d *api.Domain, _ int) string {
-					return d.UUID()
+					return d.UUID
 				})
 				gotUUIDs = lo.Uniq(gotUUIDs)
 				require.Equal(c.expOnlyUUIDs, gotUUIDs)
 				for _, item := range gotItems {
-					require.NotNil(item.System())
+					require.NotNil(item.System)
 				}
 			}
 		})

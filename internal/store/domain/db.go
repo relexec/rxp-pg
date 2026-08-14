@@ -28,9 +28,9 @@ func (s *Store) dbReadByRowID(
 ) (*Record, error) {
 	out := Record{
 		RowID: rowID,
-		Domain: domain.New(
-			domain.WithSystem(&sysRec.System),
-		),
+		Domain: api.Domain{
+			System: &sysRec.System,
+		},
 	}
 	fn := func(tx pgx.Tx) error {
 		var name api.DomainName
@@ -75,17 +75,17 @@ WHERE id = $1
 			if err != nil {
 				return err
 			}
-			out.Domain.SetParent(parentRec.Domain)
+			out.Domain.Parent = &parentRec.Domain
 		}
 		if rootRowID != rowID {
 			rootDomRec, err := s.ReadByRowID(ctx, sysRec, rootRowID)
 			if err != nil {
 				return err
 			}
-			out.Domain.SetRoot(rootDomRec.Domain)
+			out.Domain.Root = &rootDomRec.Domain
 		}
-		out.Domain.SetUUID(uuid)
-		out.Domain.SetName(name)
+		out.Domain.UUID = uuid
+		out.Domain.Name = name
 		out.Root = rootRowID
 		out.Left = left
 		out.Right = right
@@ -105,10 +105,10 @@ func (s *Store) dbReadByUUID(
 	uuid string,
 ) (*Record, error) {
 	out := Record{
-		Domain: domain.New(
-			domain.WithUUID(uuid),
-			domain.WithSystem(&sysRec.System),
-		),
+		Domain: api.Domain{
+			UUID:   uuid,
+			System: &sysRec.System,
+		},
 	}
 	fn := func(tx pgx.Tx) error {
 		var name api.DomainName
@@ -152,14 +152,14 @@ WHERE uuid = $1
 			if err != nil {
 				return err
 			}
-			out.Domain.SetParent(parentRec.Domain)
+			out.Domain.Parent = &parentRec.Domain
 		}
 		rootDomRec, err := s.ReadByRowID(ctx, sysRec, rootRowID)
 		if err != nil {
 			return err
 		}
-		out.Domain.SetRoot(rootDomRec.Domain)
-		out.Domain.SetName(name)
+		out.Domain.Root = &rootDomRec.Domain
+		out.Domain.Name = name
 		out.Root = rootRowID
 		out.Left = left
 		out.Right = right
@@ -179,10 +179,10 @@ func (s *Store) dbReadByName(
 	name api.DomainName,
 ) (*Record, error) {
 	out := Record{
-		Domain: domain.New(
-			domain.WithSystem(&sysRec.System),
-			domain.WithName(name),
-		),
+		Domain: api.Domain{
+			System: &sysRec.System,
+			Name:   name,
+		},
 	}
 	fn := func(tx pgx.Tx) error {
 		var uuid string
@@ -227,14 +227,14 @@ AND name = $2
 			if err != nil {
 				return err
 			}
-			out.Domain.SetParent(parentRec.Domain)
+			out.Domain.Parent = &parentRec.Domain
 		}
 		rootDomRec, err := s.ReadByRowID(ctx, sysRec, rootRowID)
 		if err != nil {
 			return err
 		}
-		out.Domain.SetRoot(rootDomRec.Domain)
-		out.Domain.SetUUID(uuid)
+		out.Domain.Root = &rootDomRec.Domain
+		out.Domain.UUID = uuid
 		out.Root = rootRowID
 		out.Left = left
 		out.Right = right
@@ -252,7 +252,7 @@ func (s *Store) dbInsert(
 	sysRec storesystem.Record,
 	dom api.Domain,
 ) error {
-	parent := dom.Parent()
+	parent := dom.Parent
 	if parent == nil {
 		return s.dbInsertRoot(ctx, sysRec, dom)
 	}
@@ -270,8 +270,8 @@ func (s *Store) dbInsertRoot(
 	createdOn := time.Now().UnixNano()
 	caller := api.CallerFromContext(ctx)
 	createdBy := caller.Identity
-	uuid := dom.UUID()
-	name := dom.Name()
+	uuid := dom.UUID
+	name := dom.Name
 	fn := func(tx pgx.Tx) error {
 		qs := `
 INSERT INTO domains (
@@ -334,7 +334,7 @@ func (s *Store) dbInsertNonRoot(
 	parent api.Domain,
 	dom api.Domain,
 ) error {
-	parentRec, err := s.ReadByUUID(ctx, sysRec, parent.UUID())
+	parentRec, err := s.ReadByUUID(ctx, sysRec, parent.UUID)
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return errors.ErrDomainParentNotFound
@@ -350,8 +350,8 @@ func (s *Store) dbInsertNonRoot(
 	createdOn := time.Now().UnixNano()
 	caller := api.CallerFromContext(ctx)
 	createdBy := caller.Identity
-	uuid := dom.UUID()
-	name := dom.Name()
+	uuid := dom.UUID
+	name := dom.Name
 	fn := func(tx pgx.Tx) error {
 		// Before inserting the new node in the domain tree, we need to make
 		// spec in the nested sets for our new node.
@@ -619,11 +619,11 @@ FROM domains AS d`
 				errors.WithWrap(err),
 			)
 		}
-		dom := domain.New(
-			domain.WithUUID(rec.UUID),
-			domain.WithName(rec.Name),
-			domain.WithSystem(&sysRec.System),
-		)
+		dom := api.Domain{
+			UUID:   rec.UUID,
+			Name:   rec.Name,
+			System: &sysRec.System,
+		}
 		if rec.ParentID.Valid {
 			// NOTE(jaypipes): This has the potential to do N*M queries where N
 			// is the limit of records fetched and M is the the depth of the
@@ -633,13 +633,13 @@ FROM domains AS d`
 			if err != nil {
 				return nil, err
 			}
-			dom.SetParent(parentRec.Domain)
+			dom.Parent = &parentRec.Domain
 		}
 		rootDomRec, err := s.ReadByRowID(ctx, *sysRec, rec.RootID)
 		if err != nil {
 			return nil, err
 		}
-		dom.SetRoot(rootDomRec.Domain)
+		dom.Root = &rootDomRec.Domain
 		out = append(out, &Record{
 			RowID:  rec.ID,
 			Root:   rec.RootID,
@@ -703,11 +703,11 @@ WHERE d.root = $1
 				errors.WithWrap(err),
 			)
 		}
-		dom := domain.New(
-			domain.WithUUID(rec.UUID),
-			domain.WithName(rec.Name),
-			domain.WithSystem(&sysRec.System),
-		)
+		dom := api.Domain{
+			UUID:   rec.UUID,
+			Name:   rec.Name,
+			System: &sysRec.System,
+		}
 		if rec.ParentID.Valid {
 			// NOTE(jaypipes): This has the potential to do N queries where N
 			// is the depth of the domain tree. Consider constraining the
@@ -716,13 +716,13 @@ WHERE d.root = $1
 			if err != nil {
 				return nil, err
 			}
-			dom.SetParent(parentRec.Domain)
+			dom.Parent = &parentRec.Domain
 		}
 		rootDomRec, err := s.ReadByRowID(ctx, *sysRec, rec.RootID)
 		if err != nil {
 			return nil, err
 		}
-		dom.SetRoot(rootDomRec.Domain)
+		dom.Root = &rootDomRec.Domain
 		out = append(out, &Record{
 			RowID:  rec.ID,
 			Root:   rootRowID,

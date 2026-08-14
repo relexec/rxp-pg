@@ -52,7 +52,7 @@ func TestObjectRead(t *testing.T) {
 	app1 := object.New(
 		object.WithKindVersionName(application.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
-		object.WithDomain(dom),
+		object.WithDomain(&dom),
 		object.WithName(testutil.RandomName()),
 	)
 
@@ -62,7 +62,7 @@ func TestObjectRead(t *testing.T) {
 	svc1 := object.New(
 		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
-		object.WithDomain(fixtures.DomainTree_Group1),
+		object.WithDomain(&fixtures.DomainTree_Group1),
 		object.WithName(testutil.RandomName()),
 	)
 
@@ -122,7 +122,7 @@ func TestObjectRead(t *testing.T) {
 			ctx,
 			application.FirstKindVersionName(),
 			object.Select(
-				object.ByDomain(dom),
+				object.ByDomain(&dom),
 				object.ByUUID(svc1.UUID()),
 			),
 			nil,
@@ -133,7 +133,7 @@ func TestObjectRead(t *testing.T) {
 			ctx,
 			application.FirstKindVersionName(),
 			object.Select(
-				object.ByDomain(dom),
+				object.ByDomain(&dom),
 				object.ByUUID(app1.UUID()),
 				object.ByGeneration(42),
 			),
@@ -155,7 +155,7 @@ func TestObjectRead(t *testing.T) {
 			ctx,
 			application.FirstKindVersionName(),
 			object.Select(
-				object.ByDomain(dom),
+				object.ByDomain(&dom),
 				object.ByUUID(app1.UUID()),
 			),
 			app1,
@@ -166,7 +166,7 @@ func TestObjectRead(t *testing.T) {
 			ctx,
 			application.FirstKindVersionName(),
 			object.Select(
-				object.ByDomain(dom),
+				object.ByDomain(&dom),
 				object.ByName(app1.Name()),
 			),
 			app1,
@@ -177,7 +177,7 @@ func TestObjectRead(t *testing.T) {
 			ctx,
 			service.FirstKindVersionName(),
 			object.Select(
-				object.ByDomain(fixtures.DomainTree_Group1),
+				object.ByDomain(&fixtures.DomainTree_Group1),
 				object.ByUUID(svc1.UUID()),
 			),
 			svc1,
@@ -188,7 +188,7 @@ func TestObjectRead(t *testing.T) {
 			ctx,
 			service.FirstKindVersionName(),
 			object.Select(
-				object.ByDomain(fixtures.DomainTree_Group1),
+				object.ByDomain(&fixtures.DomainTree_Group1),
 				object.ByName(svc1.Name()),
 			),
 			svc1,
@@ -207,7 +207,7 @@ func TestObjectRead(t *testing.T) {
 				require.Equal(c.exp.KindVersionName(), got.KindVersionName())
 				if c.exp.Domain() != nil {
 					require.NotNil(got.Domain())
-					require.Equal(c.exp.Domain().Name(), got.Domain().Name())
+					require.Equal(c.exp.Domain().Name, got.Domain().Name)
 				}
 				require.Equal(c.exp.Name(), got.Name())
 				require.Equal(c.exp.UUID(), got.UUID())
@@ -229,8 +229,8 @@ func TestObjectWrite(t *testing.T) {
 	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, platform.FirstKindVersion())
 	require.Nil(t, err)
 
-	domain := fixtures.Domain
-	err = testutil.DomainCreateIfNotExists(ctx, rxp, domain)
+	dom := fixtures.Domain
+	err = testutil.DomainCreateIfNotExists(ctx, rxp, dom)
 	require.Nil(t, err)
 
 	err = testutil.KindCreateIfNotExists(ctx, rxp, application.Kind)
@@ -271,14 +271,14 @@ func TestObjectWrite(t *testing.T) {
 	app1 := object.New(
 		object.WithKindVersionName(application.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
-		object.WithDomain(domain),
+		object.WithDomain(&dom),
 		object.WithName(testutil.RandomName()),
 	)
 	app1Name := app1.Name()
 	appDuplicateName := object.New(
 		object.WithKindVersionName(application.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
-		object.WithDomain(domain),
+		object.WithDomain(&dom),
 		object.WithName(app1Name),
 	)
 	app1Gen1 := app1.Clone()
@@ -289,14 +289,14 @@ func TestObjectWrite(t *testing.T) {
 	svc1 := object.New(
 		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
-		object.WithDomain(fixtures.DomainTree_Group1),
+		object.WithDomain(&fixtures.DomainTree_Group1),
 		object.WithName(testutil.RandomName()),
 	)
 	svc1Name := svc1.Name()
 	svcDuplicateName := object.New(
 		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
-		object.WithDomain(fixtures.DomainTree_Group1),
+		object.WithDomain(&fixtures.DomainTree_Group1),
 		object.WithName(svc1Name),
 	)
 
@@ -430,7 +430,7 @@ func TestObjectWrite(t *testing.T) {
 				require.Equal(c.exp.KindVersionName(), got.KindVersionName())
 				if c.exp.Domain() != nil {
 					require.NotNil(got.Domain())
-					require.Equal(c.exp.Domain().Name(), got.Domain().Name())
+					require.Equal(c.exp.Domain().Name, got.Domain().Name)
 				}
 				require.Equal(c.exp.Name(), got.Name())
 				require.Equal(c.exp.UUID(), got.UUID())
@@ -478,7 +478,7 @@ func TestObjectQuery(t *testing.T) {
 	app1 := object.New(
 		object.WithKindVersionName(application.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
-		object.WithDomain(dom),
+		object.WithDomain(&dom),
 		object.WithName(testutil.RandomName()),
 	)
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, app1)
@@ -493,7 +493,7 @@ func TestObjectQuery(t *testing.T) {
 	svc1 := object.New(
 		object.WithKindVersionName(service.FirstKindVersionName()),
 		object.WithUUID(uuid.NewString()),
-		object.WithDomain(dom),
+		object.WithDomain(&dom),
 		object.WithName(testutil.RandomName()),
 	)
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, svc1)
@@ -529,7 +529,7 @@ func TestObjectQuery(t *testing.T) {
 			"invalid kindversion",
 			ctx,
 			api.KindVersionName(fixtures.InvalidKindName),
-			domain.NameEqual(dom.Name()),
+			domain.NameEqual(dom.Name),
 			nil,
 			0,
 			nil,

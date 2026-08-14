@@ -431,7 +431,7 @@ INSERT INTO domain_qualified_object_names (
 					if pgErr.Code == pgerrcode.UniqueViolation {
 						qn := fmt.Sprintf(
 							"%s:%s",
-							domRec.Domain.Name(),
+							domRec.Domain.Name,
 							name,
 						)
 						return errors.DuplicateName(kind.Name(), qn)
@@ -769,7 +769,7 @@ INNER JOIN object_generations AS og
 			object.WithName(rec.Name),
 			object.WithGeneration(rec.Generation),
 			object.WithSystem(&sysRec.System),
-			object.WithDomain(domRec.Domain),
+			object.WithDomain(&domRec.Domain),
 		)
 		if rec.Spec.Valid {
 			obj.SetSpec(rec.Spec.String)

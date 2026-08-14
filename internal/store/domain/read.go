@@ -20,7 +20,7 @@ type Record struct {
 	// Right is the nested set model's right side value for this node.
 	Right int64
 	// Domain is the publicly-exposed Domain object.
-	Domain *api.Domain
+	Domain api.Domain
 }
 
 // ReadByRowID returns a Record for the Domain with the supplied internal DB

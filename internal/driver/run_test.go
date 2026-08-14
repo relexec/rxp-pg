@@ -38,7 +38,7 @@ func TestRunRead(t *testing.T) {
 	runnable1 := object.New(
 		object.WithKindVersionName(runnable.KindVersion_V1_0_0.Name()),
 		object.WithUUID(uuid.NewString()),
-		object.WithDomain(dom),
+		object.WithDomain(&dom),
 		object.WithName(testutil.RandomName()),
 	)
 

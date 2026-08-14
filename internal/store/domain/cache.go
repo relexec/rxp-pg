@@ -109,7 +109,7 @@ func (s *Store) cacheWrite(
 	s.cacheLock.Lock()
 	defer s.cacheLock.Unlock()
 
-	uuidKey := byUUIDCacheKey(rec.Domain.UUID())
+	uuidKey := byUUIDCacheKey(rec.Domain.UUID)
 	set := s.byUUID.Set(uuidKey, rec)
 	if !set {
 		return errors.Internal(
@@ -117,8 +117,8 @@ func (s *Store) cacheWrite(
 		)
 	}
 	// Here we populate our row ID -> uuid and name -> uuid maps
-	nameKey := newByNameCacheKey(*rec.Domain.System(), rec.Domain.Name())
-	uuid := rec.Domain.UUID()
+	nameKey := newByNameCacheKey(*rec.Domain.System, rec.Domain.Name)
+	uuid := rec.Domain.UUID
 	set = s.byName.Set(nameKey, byUUIDCacheKey(uuid))
 	if !set {
 		return errors.Internal(
@@ -147,7 +147,7 @@ func (s *Store) cacheEvict(
 	s.cacheLock.Lock()
 	defer s.cacheLock.Unlock()
 
-	uuid := dom.UUID()
+	uuid := dom.UUID
 	rec, found := s.cacheReadByUUIDNoLock(ctx, byUUIDCacheKey(uuid))
 	if !found {
 		return nil
@@ -173,10 +173,10 @@ func (s *Store) cacheEvictNoLock(
 	ctx context.Context,
 	rec *Record,
 ) error {
-	uuidKey := byUUIDCacheKey(rec.Domain.UUID())
+	uuidKey := byUUIDCacheKey(rec.Domain.UUID)
 	s.byUUID.Del(uuidKey)
 	// Here we populate our row ID -> uuid and name -> uuid maps
-	nameKey := newByNameCacheKey(*rec.Domain.System(), rec.Domain.Name())
+	nameKey := newByNameCacheKey(*rec.Domain.System, rec.Domain.Name)
 	s.byName.Del(nameKey)
 	rowIDKey := byRowIDCacheKey(rec.RowID)
 	s.byRowID.Del(rowIDKey)

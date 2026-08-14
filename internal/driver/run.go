@@ -112,14 +112,14 @@ func (d *Driver) RunWrite(
 	caller := req.Caller
 
 	if targetDom != nil {
-		targetSys = targetDom.System()
+		targetSys = targetDom.System
 	}
 
 	callerSys := caller.System
 	callerDom := caller.Domain
 
 	if callerDom != nil {
-		callerSys = callerDom.System()
+		callerSys = callerDom.System
 	}
 
 	// Default the target and caller system to the host system if it hasn't
@@ -127,13 +127,13 @@ func (d *Driver) RunWrite(
 	if callerSys == nil {
 		callerSys = &d.hostSystemRecord.System
 		if callerDom != nil {
-			callerDom.SetSystem(callerSys)
+			callerDom.System = callerSys
 		}
 	}
 	if targetSys == nil {
 		targetSys = &d.hostSystemRecord.System
 		if targetDom != nil {
-			targetDom.SetSystem(targetSys)
+			targetDom.System = targetSys
 		}
 	}
 

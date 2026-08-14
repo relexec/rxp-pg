@@ -19,7 +19,7 @@ func (s *Store) Write(
 	if err != nil {
 		return err
 	}
-	if dom.Parent() != nil {
+	if dom.Parent != nil {
 		// Simply wipe out the cache entries for all domains in the domain
 		// tree, since the nested set left/right values will have changed for
 		// all nodes in the domain tree. This is easier and faster than trying

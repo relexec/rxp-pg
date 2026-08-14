@@ -75,7 +75,7 @@ func (d *Driver) DomainRead(
 		if err != nil {
 			return nil, err
 		}
-		return rec.Domain, nil
+		return &rec.Domain, nil
 	}
 
 	name := sel.Name()
@@ -85,7 +85,7 @@ func (d *Driver) DomainRead(
 	if err != nil {
 		return nil, err
 	}
-	return rec.Domain, nil
+	return &rec.Domain, nil
 }
 
 // domainReadValidate returns an error if the supplied selector and read
@@ -107,13 +107,13 @@ func (d *Driver) domainRecordFromDomain(
 	if dom == nil {
 		return nil, nil
 	}
-	if dom.UUID() != "" {
+	if dom.UUID != "" {
 		return d.domainStore.ReadByUUID(
-			ctx, sysRec, dom.UUID(),
+			ctx, sysRec, dom.UUID,
 		)
 	}
 	return d.domainStore.ReadByName(
-		ctx, sysRec, dom.Name(),
+		ctx, sysRec, dom.Name,
 	)
 }
 
@@ -150,13 +150,13 @@ func (d *Driver) DomainWrite(
 
 	var sysRec *storesystem.Record
 
-	sys := dom.System()
+	sys := dom.System
 
 	// Default the system to the host system if it hasn't been specified in the
 	// selector.
 	if sys == nil {
 		sys = &d.hostSystemRecord.System
-		dom.SetSystem(sys)
+		dom.System = sys
 	}
 
 	if sys.UUID != d.hostSystemUUID {
@@ -231,14 +231,14 @@ func (d *Driver) DomainQuery(
 	}
 	out := make([]*api.Domain, 0, len(recs))
 	for _, rec := range recs {
-		out = append(out, rec.Domain)
+		out = append(out, &rec.Domain)
 	}
 	resOpts := query.NewOptions(
 		query.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == int(boundedOpts.Limit()) {
 		resOpts = query.NewOptions(
-			query.ContinueFrom(recs[len(recs)-1].Domain.UUID()),
+			query.ContinueFrom(recs[len(recs)-1].Domain.UUID),
 			query.Limit(boundedOpts.Limit()),
 		)
 	}
