@@ -83,8 +83,8 @@ func TestKindVersionRead(t *testing.T) {
 			} else {
 				require.Nil(err)
 				require.Equal(c.exp.Name(), got.Name())
-				expSchema := c.exp.Schema()
-				gotSchema := got.Schema()
+				expSchema := c.exp.Schema
+				gotSchema := got.Schema
 				delta, err := expSchema.Diff(gotSchema)
 				require.Nil(err)
 				require.False(delta.Different())
@@ -115,7 +115,7 @@ func TestKindVersionWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject *api.KindVersion
+		subject api.KindVersion
 		expErr  string
 	}{
 		{
@@ -133,7 +133,7 @@ func TestKindVersionWrite(t *testing.T) {
 		{
 			"duplicate kindversion",
 			ctx,
-			service.FirstKindVersion(),
+			*service.KindVersion_V1_0_0,
 			"precondition failed: expected \"service.testing.rxp@1.0.0\" not to exist",
 		},
 		{
@@ -146,7 +146,7 @@ func TestKindVersionWrite(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
-			err := rxp.KindVersionWrite(c.ctx, *c.subject)
+			err := rxp.KindVersionWrite(c.ctx, c.subject)
 			if c.expErr != "" {
 				require.ErrorContains(err, c.expErr)
 			} else {
@@ -325,7 +325,7 @@ func TestKindVersionQuery(t *testing.T) {
 				gotNames = lo.Uniq(gotNames)
 				require.Equal(c.expOnlyNames, gotNames)
 				for _, item := range gotItems {
-					require.NotNil(item.System())
+					require.NotNil(item.System)
 				}
 			}
 		})

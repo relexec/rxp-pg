@@ -89,7 +89,7 @@ func (s *Store) cacheWrite(
 	defer s.cacheLock.Unlock()
 
 	nameKey := newByNameCacheKey(
-		*rec.KindVersion.System(),
+		*rec.KindVersion.System,
 		rec.KindVersion.Name(),
 	)
 	set := s.byName.Set(nameKey, rec)

@@ -70,12 +70,12 @@ func (s *Store) dbReadByRowID(
 				errors.WithWrap(err),
 			)
 		}
-		out.KindVersion = kindversion.New(
-			kindversion.WithSystem(&sysRec.System),
-			kindversion.WithKind(&kindRec.Kind),
-			kindversion.WithVersion(*sv),
-			kindversion.WithSchema(&schema),
-		)
+		out.KindVersion = api.KindVersion{
+			System:  &sysRec.System,
+			Kind:    kindRec.Kind,
+			Version: *sv,
+			Schema:  &schema,
+		}
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
@@ -131,12 +131,12 @@ AND version = $3
 				)
 			}
 		}
-		out.KindVersion = kindversion.New(
-			kindversion.WithSystem(&sysRec.System),
-			kindversion.WithKind(&kindRec.Kind),
-			kindversion.WithVersion(*sv),
-			kindversion.WithSchema(&schema),
-		)
+		out.KindVersion = api.KindVersion{
+			System:  &sysRec.System,
+			Kind:    kindRec.Kind,
+			Version: *sv,
+			Schema:  &schema,
+		}
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
@@ -457,12 +457,12 @@ FROM kindversions AS kv
 				errors.WithWrap(err),
 			)
 		}
-		kv := kindversion.New(
-			kindversion.WithSystem(&sysRec.System),
-			kindversion.WithKind(&kindRec.Kind),
-			kindversion.WithVersion(*sv),
-			kindversion.WithSchema(&schema),
-		)
+		kv := api.KindVersion{
+			System:  &sysRec.System,
+			Kind:    kindRec.Kind,
+			Version: *sv,
+			Schema:  &schema,
+		}
 		out = append(out, &Record{
 			RowID:       rec.ID,
 			KindVersion: kv,

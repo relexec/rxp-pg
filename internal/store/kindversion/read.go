@@ -14,7 +14,7 @@ type Record struct {
 	// RowID is the internal database SERIAL for the kindversions record.
 	RowID int64
 	// KindVersion is the publicly-exposed KindVersion object.
-	KindVersion *api.KindVersion
+	KindVersion api.KindVersion
 }
 
 // ReadByRowID returns a Record for the KindVersion with the supplied internal DB

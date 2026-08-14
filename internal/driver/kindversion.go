@@ -82,7 +82,7 @@ func (d *Driver) KindVersionRead(
 	if err != nil {
 		return nil, err
 	}
-	return rec.KindVersion, nil
+	return &rec.KindVersion, nil
 }
 
 // kindversionReadValidate returns an error if the supplied selector and read
@@ -131,7 +131,7 @@ func (d *Driver) KindVersionWrite(
 	var sysRec *storesystem.Record
 
 	kn := kv.Name()
-	sys := kv.System()
+	sys := kv.System
 
 	// Default the system to the host system if it hasn't been specified.
 	if sys != nil && sys.UUID != d.hostSystemUUID {
@@ -144,7 +144,7 @@ func (d *Driver) KindVersionWrite(
 		}
 	} else {
 		sysRec = d.hostSystemRecord
-		kv.SetSystem(&d.hostSystemRecord.System)
+		kv.System = &d.hostSystemRecord.System
 	}
 
 	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, kn.Kind())
@@ -216,7 +216,7 @@ func (d *Driver) KindVersionQuery(
 	}
 	out := make([]*api.KindVersion, 0, len(recs))
 	for _, rec := range recs {
-		out = append(out, rec.KindVersion)
+		out = append(out, &rec.KindVersion)
 	}
 	resOpts := query.NewOptions(
 		query.Limit(boundedOpts.Limit()),
