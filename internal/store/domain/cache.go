@@ -31,11 +31,11 @@ func newByNameCacheKey(
 }
 
 // cacheReadByRowID looks up a cached Domain by RowID, returning the cached
-// Record and whether or not the entry was found.
+// api.Domain and whether or not the entry was found.
 func (s *Store) cacheReadByRowID(
 	ctx context.Context,
 	key byRowIDCacheKey,
-) (*Record, bool) {
+) (*api.Domain, bool) {
 	if s.byRowID == nil {
 		return nil, false
 	}
@@ -51,11 +51,11 @@ func (s *Store) cacheReadByRowID(
 }
 
 // cacheReadByUUID looks up a cached Domain by UUID, returning the cached
-// Record and whether or not the entry was found.
+// api.Domain and whether or not the entry was found.
 func (s *Store) cacheReadByUUID(
 	ctx context.Context,
 	key byUUIDCacheKey,
-) (*Record, bool) {
+) (*api.Domain, bool) {
 	if s.byUUID == nil {
 		return nil, false
 	}
@@ -67,21 +67,21 @@ func (s *Store) cacheReadByUUID(
 }
 
 // cacheReadByUUIDNoLock looks up a cached Domain by UUID, returning the cached
-// Record and whether or not the entry was found. This method assumes the cache
+// api.Domain and whether or not the entry was found. This method assumes the cache
 // lock is already held.
 func (s *Store) cacheReadByUUIDNoLock(
 	ctx context.Context,
 	key byUUIDCacheKey,
-) (*Record, bool) {
+) (*api.Domain, bool) {
 	return s.byUUID.Get(key)
 }
 
 // cacheReadByName looks up a cached Domain by System UUID + Name, returning the cached
-// Record and whether or not the entry was found.
+// api.Domain and whether or not the entry was found.
 func (s *Store) cacheReadByName(
 	ctx context.Context,
 	key byNameCacheKey,
-) (*Record, bool) {
+) (*api.Domain, bool) {
 	if s.byName == nil {
 		return nil, false
 	}
@@ -96,11 +96,11 @@ func (s *Store) cacheReadByName(
 	return s.cacheReadByUUIDNoLock(ctx, uuid)
 }
 
-// cacheWrite ensures the supplied Record is written to the lookup caches if
+// cacheWrite ensures the supplied api.Domain is written to the lookup caches if
 // enabled.
 func (s *Store) cacheWrite(
 	ctx context.Context,
-	rec *Record,
+	rec *api.Domain,
 ) error {
 	if s.byUUID == nil {
 		return nil
@@ -109,7 +109,7 @@ func (s *Store) cacheWrite(
 	s.cacheLock.Lock()
 	defer s.cacheLock.Unlock()
 
-	uuidKey := byUUIDCacheKey(rec.Domain.UUID)
+	uuidKey := byUUIDCacheKey(rec.UUID)
 	set := s.byUUID.Set(uuidKey, rec)
 	if !set {
 		return errors.Internal(
@@ -117,15 +117,16 @@ func (s *Store) cacheWrite(
 		)
 	}
 	// Here we populate our row ID -> uuid and name -> uuid maps
-	nameKey := newByNameCacheKey(rec.Domain.System, rec.Domain.Name)
-	uuid := rec.Domain.UUID
+	nameKey := newByNameCacheKey(rec.System, rec.Name)
+	uuid := rec.UUID
 	set = s.byName.Set(nameKey, byUUIDCacheKey(uuid))
 	if !set {
 		return errors.Internal(
 			fmt.Sprintf("failed setting domain cache name key %q", nameKey),
 		)
 	}
-	rowIDKey := byRowIDCacheKey(rec.RowID)
+	rowID := rec.SystemInternalIDInt64()
+	rowIDKey := byRowIDCacheKey(rowID)
 	set = s.byRowID.Set(rowIDKey, byUUIDCacheKey(uuid))
 	if !set {
 		return errors.Internal(
@@ -153,7 +154,12 @@ func (s *Store) cacheEvict(
 		return nil
 	}
 
-	recsInTree, err := s.dbReadDomainsInTreeByRootRowID(ctx, rec.Root)
+	rootRowID := dom.SystemInternalIDInt64()
+	if rec.Root == nil {
+		rootRowID = rec.Root.SystemInternalIDInt64()
+	}
+
+	recsInTree, err := s.dbReadDomainsInTreeByRootRowID(ctx, rootRowID)
 	if err != nil {
 		return fmt.Errorf(
 			"failed reading domain records in tree by root: %w", err)
@@ -171,14 +177,15 @@ func (s *Store) cacheEvict(
 // assumes the cache lock is already held.
 func (s *Store) cacheEvictNoLock(
 	ctx context.Context,
-	rec *Record,
+	rec *api.Domain,
 ) error {
-	uuidKey := byUUIDCacheKey(rec.Domain.UUID)
+	uuidKey := byUUIDCacheKey(rec.UUID)
 	s.byUUID.Del(uuidKey)
 	// Here we populate our row ID -> uuid and name -> uuid maps
-	nameKey := newByNameCacheKey(rec.Domain.System, rec.Domain.Name)
+	nameKey := newByNameCacheKey(rec.System, rec.Name)
 	s.byName.Del(nameKey)
-	rowIDKey := byRowIDCacheKey(rec.RowID)
+	rowID := rec.SystemInternalIDInt64()
+	rowIDKey := byRowIDCacheKey(rowID)
 	s.byRowID.Del(rowIDKey)
 	return nil
 }

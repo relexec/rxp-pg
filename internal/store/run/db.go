@@ -15,7 +15,6 @@ import (
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/run"
 
-	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
 )
 
@@ -313,7 +312,7 @@ func (s *Store) dbInsert(
 	ctx context.Context,
 	targetRec storeobject.Record,
 	callerSysRec *api.System,
-	callerDomRec *storedomain.Record,
+	callerDomRec *api.Domain,
 	rootRec *Record,
 	parentRec *Record,
 	run api.Run,
@@ -324,7 +323,8 @@ func (s *Store) dbInsert(
 	caller := rr.Caller
 	var callerDomRowID *int64
 	if callerDomRec != nil {
-		callerDomRowID = &callerDomRec.RowID
+		tmp := callerDomRec.SystemInternalIDInt64()
+		callerDomRowID = &tmp
 	}
 
 	var rootRowID int64 = -1

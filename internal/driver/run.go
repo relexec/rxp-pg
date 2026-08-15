@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storerun "github.com/relexec/rxp-pg/internal/store/run"
 	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/api/metrics"
@@ -147,7 +146,7 @@ func (d *Driver) RunWrite(
 		return nil, err
 	}
 
-	var callerDomRec *storedomain.Record
+	var callerDomRec *api.Domain
 
 	if callerDom != nil {
 		callerDomRec, err = d.domainRecordFromDomain(
@@ -176,7 +175,7 @@ func (d *Driver) RunWrite(
 		return nil, err
 	}
 
-	_, err = d.kindversionStore.ReadByName(
+	targetKVRec, err := d.kindversionStore.ReadByName(
 		ctx, targetSysRec, targetKindRec, targetKV,
 	)
 	if err != nil {
@@ -186,7 +185,7 @@ func (d *Driver) RunWrite(
 		return nil, err
 	}
 	targetRec, err := d.objectStore.ReadByUUIDAndGeneration(
-		ctx, target.UUID, target.Generation,
+		ctx, targetKVRec, target.UUID, target.Generation,
 	)
 	if err != nil {
 		return nil, err

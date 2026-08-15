@@ -23,13 +23,11 @@ func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	sysRec *api.System,
 	rowID int64,
-) (*Record, error) {
-	out := Record{
-		RowID: rowID,
-		Domain: api.Domain{
-			System: sysRec,
-		},
+) (*api.Domain, error) {
+	out := &api.Domain{
+		System: sysRec,
 	}
+	out.SetSystemInternalID(rowID)
 	fn := func(tx pgx.Tx) error {
 		var name api.DomainName
 		var uuid string
@@ -73,26 +71,24 @@ WHERE id = $1
 			if err != nil {
 				return err
 			}
-			out.Domain.Parent = &parentRec.Domain
+			out.Parent = parentRec
 		}
 		if rootRowID != rowID {
 			rootDomRec, err := s.ReadByRowID(ctx, sysRec, rootRowID)
 			if err != nil {
 				return err
 			}
-			out.Domain.Root = &rootDomRec.Domain
+			out.Root = rootDomRec
 		}
-		out.Domain.UUID = uuid
-		out.Domain.Name = name
-		out.Root = rootRowID
-		out.Left = left
-		out.Right = right
+		out.UUID = uuid
+		out.Name = name
+		out.SetNestedSet(left, right)
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return out, nil
 }
 
 // dbReadByUUID performs a SELECT query to return the stored domain record
@@ -101,14 +97,13 @@ func (s *Store) dbReadByUUID(
 	ctx context.Context,
 	sysRec *api.System,
 	uuid string,
-) (*Record, error) {
-	out := Record{
-		Domain: api.Domain{
-			UUID:   uuid,
-			System: sysRec,
-		},
+) (*api.Domain, error) {
+	out := &api.Domain{
+		UUID:   uuid,
+		System: sysRec,
 	}
 	fn := func(tx pgx.Tx) error {
+		var rowID int64
 		var name api.DomainName
 		var rootRowID int64
 		var parentRowID sql.NullInt64
@@ -126,7 +121,7 @@ FROM domains
 WHERE uuid = $1
 `
 		err := tx.QueryRow(ctx, qs, uuid).Scan(
-			&out.RowID,
+			&rowID,
 			&name,
 			&rootRowID,
 			&parentRowID,
@@ -150,23 +145,24 @@ WHERE uuid = $1
 			if err != nil {
 				return err
 			}
-			out.Domain.Parent = &parentRec.Domain
+			out.Parent = parentRec
 		}
-		rootDomRec, err := s.ReadByRowID(ctx, sysRec, rootRowID)
-		if err != nil {
-			return err
+		if rootRowID != rowID {
+			rootDomRec, err := s.ReadByRowID(ctx, sysRec, rootRowID)
+			if err != nil {
+				return err
+			}
+			out.Root = rootDomRec
 		}
-		out.Domain.Root = &rootDomRec.Domain
-		out.Domain.Name = name
-		out.Root = rootRowID
-		out.Left = left
-		out.Right = right
+		out.Name = name
+		out.SetSystemInternalID(rowID)
+		out.SetNestedSet(left, right)
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return out, nil
 }
 
 // dbReadByName performs a SELECT query to return the stored domain record
@@ -175,15 +171,14 @@ func (s *Store) dbReadByName(
 	ctx context.Context,
 	sysRec *api.System,
 	name api.DomainName,
-) (*Record, error) {
+) (*api.Domain, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
-	out := Record{
-		Domain: api.Domain{
-			System: sysRec,
-			Name:   name,
-		},
+	out := &api.Domain{
+		System: sysRec,
+		Name:   name,
 	}
 	fn := func(tx pgx.Tx) error {
+		var rowID int64
 		var uuid string
 		var rootRowID int64
 		var parentRowID sql.NullInt64
@@ -202,7 +197,7 @@ WHERE system = $1
 AND name = $2
 `
 		err := tx.QueryRow(ctx, qs, sysRowID, name).Scan(
-			&out.RowID,
+			&rowID,
 			&uuid,
 			&rootRowID,
 			&parentRowID,
@@ -226,23 +221,25 @@ AND name = $2
 			if err != nil {
 				return err
 			}
-			out.Domain.Parent = &parentRec.Domain
+			out.Parent = parentRec
 		}
-		rootDomRec, err := s.ReadByRowID(ctx, sysRec, rootRowID)
-		if err != nil {
-			return err
+		if rootRowID != rowID {
+			rootDomRec, err := s.ReadByRowID(ctx, sysRec, rootRowID)
+			if err != nil {
+				return err
+			}
+			out.Root = rootDomRec
 		}
-		out.Domain.Root = &rootDomRec.Domain
-		out.Domain.UUID = uuid
-		out.Root = rootRowID
-		out.Left = left
-		out.Right = right
+		out.UUID = uuid
+		out.Name = name
+		out.SetSystemInternalID(rowID)
+		out.SetNestedSet(left, right)
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return out, nil
 }
 
 // dbInsert atomically writes the supplied Domain to persistent storage.
@@ -334,17 +331,30 @@ func (s *Store) dbInsertNonRoot(
 	parent api.Domain,
 	dom api.Domain,
 ) error {
-	parentRec, err := s.ReadByUUID(ctx, sysRec, parent.UUID)
-	if err != nil {
-		if err == errors.ErrNotFound {
-			return errors.ErrDomainParentNotFound
-		}
-	}
-
 	sysRowID := sysRec.SystemInternalIDInt64()
-	rootRowID := parentRec.Root
-	parentRowID := parentRec.RowID
-	parentRight := parentRec.Right
+	if !parent.HasSystemInternalID() {
+		return fmt.Errorf(
+			"parent does not have system internal id set",
+		)
+	}
+	parentRowID := parent.SystemInternalIDInt64()
+	var rootRowID int64
+	parentRoot := parent.Root
+	if parentRoot == nil {
+		// the parent IS the root and we already verified the parent has a
+		// system internal ID.
+		rootRowID = parent.SystemInternalIDInt64()
+	} else {
+		// the parent is NOT the root, so grab the parent's root system
+		// internal ID
+		if !parentRoot.HasSystemInternalID() {
+			return fmt.Errorf(
+				"parent's root does not have system internal id set",
+			)
+		}
+		rootRowID = parentRoot.SystemInternalIDInt64()
+	}
+	parentRight := parent.NestedSetRight()
 	thisLeft := parentRight
 	thisRight := thisLeft + 1
 
@@ -452,7 +462,7 @@ func (s *Store) dbReadByExpression(
 	ctx context.Context,
 	expr query.Expression,
 	opts query.Options,
-) ([]*Record, error) {
+) ([]*api.Domain, error) {
 	qargs := []any{}
 	wheres := []string{}
 	treeOp := false
@@ -613,7 +623,7 @@ FROM domains AS d`
 		return nil, err
 	}
 
-	out := make([]*Record, 0, len(recs))
+	out := make([]*api.Domain, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
@@ -622,11 +632,12 @@ FROM domains AS d`
 				errors.WithWrap(err),
 			)
 		}
-		dom := api.Domain{
+		dom := &api.Domain{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
 			System: sysRec,
 		}
+		dom.SetSystemInternalID(rec.ID)
 		if rec.ParentID.Valid {
 			// NOTE(jaypipes): This has the potential to do N*M queries where N
 			// is the limit of records fetched and M is the the depth of the
@@ -636,31 +647,28 @@ FROM domains AS d`
 			if err != nil {
 				return nil, err
 			}
-			dom.Parent = &parentRec.Domain
+			dom.Parent = parentRec
 		}
-		rootDomRec, err := s.ReadByRowID(ctx, sysRec, rec.RootID)
-		if err != nil {
-			return nil, err
+		if rec.RootID != rec.ID {
+			rootDomRec, err := s.ReadByRowID(ctx, sysRec, rec.RootID)
+			if err != nil {
+				return nil, err
+			}
+			dom.Root = rootDomRec
 		}
-		dom.Root = &rootDomRec.Domain
-		out = append(out, &Record{
-			RowID:  rec.ID,
-			Root:   rec.RootID,
-			Left:   rec.LeftSide,
-			Right:  rec.RightSide,
-			Domain: dom,
-		})
+		dom.SetNestedSet(rec.LeftSide, rec.RightSide)
+		out = append(out, dom)
 	}
 
 	return out, nil
 }
 
-// dbReadDomainsInTreeByRootRowID returns the set of Records comprising the
+// dbReadDomainsInTreeByRootRowID returns the set of api.Domains comprising the
 // "domain tree" rooted at the supplied root domain row ID.
 func (s *Store) dbReadDomainsInTreeByRootRowID(
 	ctx context.Context,
 	rootRowID int64,
-) ([]*Record, error) {
+) ([]*api.Domain, error) {
 	var recs []domainRecord
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -697,7 +705,7 @@ WHERE d.root = $1
 		return nil, err
 	}
 
-	out := make([]*Record, 0, len(recs))
+	out := make([]*api.Domain, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
@@ -706,11 +714,12 @@ WHERE d.root = $1
 				errors.WithWrap(err),
 			)
 		}
-		dom := api.Domain{
+		dom := &api.Domain{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
 			System: sysRec,
 		}
+		dom.SetSystemInternalID(rec.ID)
 		if rec.ParentID.Valid {
 			// NOTE(jaypipes): This has the potential to do N queries where N
 			// is the depth of the domain tree. Consider constraining the
@@ -719,20 +728,17 @@ WHERE d.root = $1
 			if err != nil {
 				return nil, err
 			}
-			dom.Parent = &parentRec.Domain
+			dom.Parent = parentRec
 		}
-		rootDomRec, err := s.ReadByRowID(ctx, sysRec, rec.RootID)
-		if err != nil {
-			return nil, err
+		if rec.RootID != rec.ID {
+			rootDomRec, err := s.ReadByRowID(ctx, sysRec, rec.RootID)
+			if err != nil {
+				return nil, err
+			}
+			dom.Root = rootDomRec
 		}
-		dom.Root = &rootDomRec.Domain
-		out = append(out, &Record{
-			RowID:  rec.ID,
-			Root:   rootRowID,
-			Left:   rec.LeftSide,
-			Right:  rec.RightSide,
-			Domain: dom,
-		})
+		dom.SetNestedSet(rec.LeftSide, rec.RightSide)
+		out = append(out, dom)
 	}
 
 	return out, nil

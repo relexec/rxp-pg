@@ -12,7 +12,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
-	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
 )
 
@@ -59,6 +58,10 @@ func (d *Driver) ObjectRead(
 	// up the name associated with the UUID and verify that the system/domain
 	// specified for the Object is valid and matches the system/domain we had
 	// stored for the Object with that UUID.
+	//
+	// We also want to ensure that the KindVersion they specified in the
+	// ObjectRead call matches the KindVersion associated with the object
+	// record itself.
 
 	sys := sel.System()
 	dom := sel.Domain()
@@ -114,7 +117,7 @@ func (d *Driver) ObjectRead(
 			return nil, err
 		}
 	}
-	rec, err = d.objectStore.ReadByUUIDAndGeneration(ctx, uuid, objGen)
+	rec, err = d.objectStore.ReadByUUIDAndGeneration(ctx, kvRec, uuid, objGen)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +151,7 @@ func (d *Driver) objectUUIDFromName(
 	sysRec *api.System,
 	kindRec *api.Kind,
 	name string,
-	domRec *storedomain.Record,
+	domRec *api.Domain,
 ) (string, error) {
 	qualifier := storeobject.NameQualifier{
 		System: sysRec,
@@ -168,7 +171,7 @@ func (d *Driver) objectNameFromUUID(
 	sysRec *api.System,
 	kindRec *api.Kind,
 	uuid string,
-	domRec *storedomain.Record,
+	domRec *api.Domain,
 ) (string, error) {
 	qualifier := storeobject.NameQualifier{
 		System: sysRec,

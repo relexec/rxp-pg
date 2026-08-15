@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
-
-	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 )
 
 // Write atomically writes the supplied Object to persistent storage. On
@@ -15,7 +13,7 @@ func (s *Store) Write(
 	sysRec *api.System,
 	kindRec *api.Kind,
 	kvRec *api.KindVersion,
-	domRec *storedomain.Record,
+	domRec *api.Domain,
 	obj api.Object,
 ) (*api.Object, error) {
 	expectGeneration := obj.Generation

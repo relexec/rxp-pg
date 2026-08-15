@@ -6,28 +6,13 @@ import (
 	"github.com/relexec/rxp/api"
 )
 
-// Record decorates a Domain with internal DB information.
-type Record struct {
-	// RowID is the internal database SERIAL for the domains record.
-	RowID int64
-	// Root is the internal database SERIAL for the domains record that is the
-	// root of this "domain tree".
-	Root int64
-	// Left is the nested set model's left side value for this node.
-	Left int64
-	// Right is the nested set model's right side value for this node.
-	Right int64
-	// Domain is the publicly-exposed Domain object.
-	Domain api.Domain
-}
-
-// ReadByRowID returns a Record for the Domain with the supplied internal DB
-// row ID. This method will populate any caches with any read records.
+// ReadByRowID returns a api.Domain for the Domain with the supplied internal
+// DB row ID. This method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
 	sysRec *api.System,
 	rowID int64,
-) (*Record, error) {
+) (*api.Domain, error) {
 	cacheKey := byRowIDCacheKey(rowID)
 	cached, found := s.cacheReadByRowID(ctx, cacheKey)
 	if found {
@@ -44,13 +29,13 @@ func (s *Store) ReadByRowID(
 	return record, nil
 }
 
-// ReadByUUID returns a Record for the Domain with the supplied UUID. This
+// ReadByUUID returns a api.Domain for the Domain with the supplied UUID. This
 // method will populate any caches with any read records.
 func (s *Store) ReadByUUID(
 	ctx context.Context,
 	sysRec *api.System,
 	uuid string,
-) (*Record, error) {
+) (*api.Domain, error) {
 	cacheKey := byUUIDCacheKey(uuid)
 	cached, found := s.cacheReadByUUID(ctx, cacheKey)
 	if found {
@@ -67,13 +52,13 @@ func (s *Store) ReadByUUID(
 	return record, nil
 }
 
-// ReadByName returns a Record for the Domain with the supplied Name. This
+// ReadByName returns a api.Domain for the Domain with the supplied Name. This
 // method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
 	sysRec *api.System,
 	name api.DomainName,
-) (*Record, error) {
+) (*api.Domain, error) {
 	cacheKey := newByNameCacheKey(sysRec, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)
 	if found {

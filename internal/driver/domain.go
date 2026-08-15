@@ -11,8 +11,6 @@ import (
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-
-	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 )
 
 // DomainRead reads a Domain from persistent storage.
@@ -70,19 +68,11 @@ func (d *Driver) DomainRead(
 
 	uuid := sel.UUID()
 	if uuid != "" {
-		rec, err := d.domainStore.ReadByUUID(ctx, sysRec, uuid)
-		if err != nil {
-			return nil, err
-		}
-		return &rec.Domain, nil
+		return d.domainStore.ReadByUUID(ctx, sysRec, uuid)
 	}
 
 	name := sel.Name()
-	rec, err := d.domainStore.ReadByName(ctx, sysRec, name)
-	if err != nil {
-		return nil, err
-	}
-	return &rec.Domain, nil
+	return d.domainStore.ReadByName(ctx, sysRec, name)
 }
 
 // domainReadValidate returns an error if the supplied selector and read
@@ -100,7 +90,7 @@ func (d *Driver) domainRecordFromDomain(
 	ctx context.Context,
 	sysRec *api.System,
 	dom *api.Domain,
-) (*storedomain.Record, error) {
+) (*api.Domain, error) {
 	if dom == nil {
 		return nil, nil
 	}
@@ -168,6 +158,29 @@ func (d *Driver) DomainWrite(
 		sysRec = d.hostSystemRecord
 	}
 
+	// if we're creating/updating a non-root domain, we need to ensure the
+	// parent domain exists.
+	parDom := dom.Parent
+	if parDom != nil {
+		parRowID := parDom.SystemInternalIDInt64()
+		parUUID := parDom.UUID
+		if parDom.HasSystemInternalID() {
+			parDom, err = d.domainStore.ReadByRowID(ctx, sysRec, parRowID)
+		} else if parUUID != "" {
+			parDom, err = d.domainStore.ReadByUUID(ctx, sysRec, parUUID)
+		} else {
+			parName := parDom.Name
+			parDom, err = d.domainStore.ReadByName(ctx, sysRec, parName)
+		}
+		if err != nil {
+			if err == errors.ErrNotFound {
+				return errors.ErrDomainParentNotFound
+			}
+			return err
+		}
+		dom.Parent = parDom
+	}
+
 	return d.domainStore.Write(ctx, sysRec, dom)
 }
 
@@ -226,21 +239,17 @@ func (d *Driver) DomainQuery(
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*api.Domain, 0, len(recs))
-	for _, rec := range recs {
-		out = append(out, &rec.Domain)
-	}
 	resOpts := query.NewOptions(
 		query.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == int(boundedOpts.Limit()) {
 		resOpts = query.NewOptions(
-			query.ContinueFrom(recs[len(recs)-1].Domain.UUID),
+			query.ContinueFrom(recs[len(recs)-1].UUID),
 			query.Limit(boundedOpts.Limit()),
 		)
 	}
 	resNewOpts := []query.ResultModifier[*api.Domain]{
-		query.ResultWithItems(out),
+		query.ResultWithItems(recs),
 		query.ResultWithOptions[*api.Domain](resOpts),
 	}
 	return query.NewResult[*api.Domain](resNewOpts...), nil

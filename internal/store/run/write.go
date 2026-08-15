@@ -5,7 +5,6 @@ import (
 
 	"github.com/relexec/rxp/api"
 
-	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
 )
 
@@ -15,7 +14,7 @@ func (s *Store) Write(
 	ctx context.Context,
 	targetRec storeobject.Record,
 	callerSysRec *api.System,
-	callerDomRec *storedomain.Record,
+	callerDomRec *api.Domain,
 	rootRec *Record,
 	parentRec *Record,
 	run api.Run,

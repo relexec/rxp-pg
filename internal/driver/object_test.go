@@ -23,29 +23,29 @@ import (
 func TestObjectRead(t *testing.T) {
 	ctx := testutil.Context(testutil.UserIdentity)
 	rxp, err := testutil.Driver(ctx)
-	require.Nil(t, err)
+	require.Nil(t, err, err)
 
 	err = testutil.KindCreateIfNotExists(ctx, rxp, platform.Kind)
 	require.Nil(t, err, err)
 
 	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, platform.FirstKindVersion())
-	require.Nil(t, err)
+	require.Nil(t, err, err)
 
 	err = testutil.KindCreateIfNotExists(ctx, rxp, application.Kind)
 	require.Nil(t, err, err)
 
 	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, application.FirstKindVersion())
-	require.Nil(t, err)
+	require.Nil(t, err, err)
 
 	err = testutil.KindCreateIfNotExists(ctx, rxp, service.Kind)
 	require.Nil(t, err, err)
 
 	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, service.FirstKindVersion())
-	require.Nil(t, err)
+	require.Nil(t, err, err)
 
 	dom := fixtures.Domain
 	err = testutil.DomainCreateIfNotExists(ctx, rxp, dom)
-	require.Nil(t, err)
+	require.Nil(t, err, err)
 
 	ctxMissingIdent := context.TODO()
 
@@ -57,6 +57,27 @@ func TestObjectRead(t *testing.T) {
 	}
 
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, app1)
+	require.Nil(t, err, err)
+
+	err = testutil.DomainCreateIfNotExists(ctx, rxp, fixtures.DomainTree_Root)
+	require.Nil(t, err, err)
+
+	err = testutil.DomainCreateIfNotExists(ctx, rxp, fixtures.DomainTree_Group1)
+	require.Nil(t, err, err)
+
+	err = testutil.DomainCreateIfNotExists(ctx, rxp, fixtures.DomainTree_Group1Leaf1)
+	require.Nil(t, err, err)
+
+	err = testutil.DomainCreateIfNotExists(ctx, rxp, fixtures.DomainTree_Group1Leaf2)
+	require.Nil(t, err, err)
+
+	err = testutil.DomainCreateIfNotExists(ctx, rxp, fixtures.DomainTree_Group2)
+	require.Nil(t, err, err)
+
+	err = testutil.DomainCreateIfNotExists(ctx, rxp, fixtures.DomainTree_Group2Leaf1)
+	require.Nil(t, err, err)
+
+	err = testutil.DomainCreateIfNotExists(ctx, rxp, fixtures.DomainTree_Group2Leaf2)
 	require.Nil(t, err, err)
 
 	svc1 := &api.Object{

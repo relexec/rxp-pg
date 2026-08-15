@@ -17,7 +17,7 @@ type Store struct {
 	// cacheLock protects the set of lookup caches.
 	cacheLock sync.RWMutex
 	// byUUID is a cache that stores known Domains keyed by domain UUID.
-	byUUID *cache.Cache[byUUIDCacheKey, *Record]
+	byUUID *cache.Cache[byUUIDCacheKey, *api.Domain]
 	// byName is a cache that stores a lookup map of System UUID+DomainName to
 	// Domain UUID.
 	byName *cache.Cache[byNameCacheKey, byUUIDCacheKey]

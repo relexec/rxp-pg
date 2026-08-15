@@ -16,8 +16,6 @@ import (
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
-
-	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 )
 
 // dbUUIDFromNameDomainQualified returns the UUID associated with the object
@@ -25,10 +23,11 @@ import (
 func (s *Store) dbUUIDFromNameDomainQualified(
 	ctx context.Context,
 	sysRec *api.System,
-	domRec storedomain.Record,
+	domRec api.Domain,
 	name string,
 ) (string, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
+	domRowID := domRec.SystemInternalIDInt64()
 	var uuid string
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -45,7 +44,7 @@ AND n.name = $3
 		err := tx.QueryRow(
 			ctx, qs,
 			sysRowID,
-			domRec.RowID,
+			domRowID,
 			name,
 		).Scan(&uuid)
 		if err != nil {
@@ -70,10 +69,11 @@ AND n.name = $3
 func (s *Store) dbNameFromUUIDDomainQualified(
 	ctx context.Context,
 	sysRec *api.System,
-	domRec storedomain.Record,
+	domRec api.Domain,
 	uuid string,
 ) (string, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
+	domRowID := domRec.SystemInternalIDInt64()
 	var name string
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -90,7 +90,7 @@ AND o.uuid = $3
 		err := tx.QueryRow(
 			ctx, qs,
 			sysRowID,
-			domRec.RowID,
+			domRowID,
 			uuid,
 		).Scan(&name)
 		if err != nil {
@@ -196,7 +196,7 @@ const (
 	latestSentinel = api.Generation(0)
 )
 
-// dbReadByRowIDAndGeneration returns the object record havingthe supplied
+// dbReadByRowIDAndGeneration returns the object record having the supplied
 // internal DB RowID and generation.
 func (s *Store) dbReadByRowIDAndGeneration(
 	ctx context.Context,
@@ -260,16 +260,22 @@ WHERE o.id = $1
 }
 
 // dbReadByUUIDAndGeneration returns the object record having the supplied
-// object UUID and generation.
+// object UUID and generation. We pass a KindVersion record that we use to add
+// a WHERE clause that matches the kind version's rowid. This causes
+// ErrNotFound to be returned (properly) when the user has requested to fetch
+// an object where the UUID is found but they specific a KindVersion that
+// doesn't match that object's KindVersion.
 func (s *Store) dbReadByUUIDAndGeneration(
 	ctx context.Context,
+	kvRec *api.KindVersion,
 	uuid string,
 	requestedGen api.Generation,
 ) (*Record, error) {
 	var generation api.Generation
 	var spec sql.NullString
 	out := Record{}
-	qargs := []any{uuid}
+	kvRowID := kvRec.SystemInternalIDInt64()
+	qargs := []any{uuid, kvRowID}
 	fn := func(tx pgx.Tx) error {
 		qs := `
 SELECT
@@ -285,9 +291,10 @@ INNER JOIN object_generations AS og
 `
 		}
 		qs += `WHERE o.uuid = $1
+AND o.kindversion = $2
 `
 		if requestedGen != latestSentinel {
-			qs += `AND og.generation = $2
+			qs += `AND og.generation = $3
 `
 			qargs = append(qargs, requestedGen)
 		}
@@ -306,12 +313,14 @@ INNER JOIN object_generations AS og
 			)
 		}
 		out.Object = &api.Object{
-			UUID:       uuid,
-			Generation: generation,
+			KindVersionName: kvRec.Name(),
+			UUID:            uuid,
+			Generation:      generation,
 		}
 		if spec.Valid {
 			out.Object.Spec = spec.String
 		}
+
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
@@ -327,7 +336,7 @@ func (s *Store) dbInsertFirst(
 	sysRec *api.System,
 	kindRec *api.Kind,
 	kvRec *api.KindVersion,
-	domRec *storedomain.Record,
+	domRec *api.Domain,
 	obj api.Object,
 ) (*api.Object, error) {
 	if kindRec.Scope == api.ScopeDomain && domRec == nil {
@@ -345,10 +354,11 @@ func (s *Store) dbInsertFirst(
 
 	specJSON := obj.Spec
 
-	var domainRowID *int64
+	var domRowID *int64
 
 	if domRec != nil {
-		domainRowID = &domRec.RowID
+		tmp := domRec.SystemInternalIDInt64()
+		domRowID = &tmp
 	}
 
 	fn := func(tx pgx.Tx) error {
@@ -377,7 +387,7 @@ INSERT INTO objects (
 			kvRowID,
 			uuid,
 			1, /* we expect we are the first generation */
-			domainRowID,
+			domRowID,
 			createdOn,
 			createdBy,
 		).Scan(&objRowID)
@@ -424,7 +434,7 @@ INSERT INTO domain_qualified_object_names (
 				objRowID,
 				sysRowID,
 				kindRowID,
-				domRec.RowID,
+				*domRowID,
 				name,
 				createdOn,
 				createdBy,
@@ -434,7 +444,7 @@ INSERT INTO domain_qualified_object_names (
 					if pgErr.Code == pgerrcode.UniqueViolation {
 						qn := fmt.Sprintf(
 							"%s:%s",
-							domRec.Domain.Name,
+							domRec.Name,
 							name,
 						)
 						return errors.DuplicateName(kindRec.Name, qn)
@@ -535,7 +545,7 @@ func (s *Store) dbInsertGeneration(
 	ctx context.Context,
 	kindRec *api.Kind,
 	kvRec *api.KindVersion,
-	domRec *storedomain.Record,
+	domRec *api.Domain,
 	obj api.Object,
 	expectGeneration api.Generation,
 ) (*api.Object, error) {
@@ -772,7 +782,7 @@ INNER JOIN object_generations AS og
 			Name:            rec.Name,
 			Generation:      rec.Generation,
 			System:          sysRec,
-			Domain:          &domRec.Domain,
+			Domain:          domRec,
 		}
 		if rec.Spec.Valid {
 			obj.Spec = rec.Spec.String

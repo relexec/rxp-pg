@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
-
-	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 )
 
 // Record decorates an Object with internal DB information.
@@ -20,7 +18,7 @@ type Record struct {
 // an Object name.
 type NameQualifier struct {
 	System *api.System
-	Domain *storedomain.Record
+	Domain *api.Domain
 }
 
 // UUIDFromName returns the UUID associated with the supplied object name with
@@ -67,8 +65,9 @@ func (s *Store) ReadByRowIDAndGeneration(
 // UUID amd generation.
 func (s *Store) ReadByUUIDAndGeneration(
 	ctx context.Context,
+	kvRec *api.KindVersion,
 	uuid string,
 	requestedGen api.Generation,
 ) (*Record, error) {
-	return s.dbReadByUUIDAndGeneration(ctx, uuid, requestedGen)
+	return s.dbReadByUUIDAndGeneration(ctx, kvRec, uuid, requestedGen)
 }
