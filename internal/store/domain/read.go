@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
-
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // Record decorates a Domain with internal DB information.
@@ -27,7 +25,7 @@ type Record struct {
 // row ID. This method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	rowID int64,
 ) (*Record, error) {
 	cacheKey := byRowIDCacheKey(rowID)
@@ -50,7 +48,7 @@ func (s *Store) ReadByRowID(
 // method will populate any caches with any read records.
 func (s *Store) ReadByUUID(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	uuid string,
 ) (*Record, error) {
 	cacheKey := byUUIDCacheKey(uuid)
@@ -73,10 +71,10 @@ func (s *Store) ReadByUUID(
 // method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	name api.DomainName,
 ) (*Record, error) {
-	cacheKey := newByNameCacheKey(sysRec.System, name)
+	cacheKey := newByNameCacheKey(sysRec, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)
 	if found {
 		return cached, nil

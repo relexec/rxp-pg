@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
-
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // Record decorates a Kind with internal DB information.
@@ -64,10 +62,10 @@ func (s *Store) ReadByUUID(
 // method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	name api.KindName,
 ) (*Record, error) {
-	cacheKey := newByNameCacheKey(sysRec.System, name)
+	cacheKey := newByNameCacheKey(sysRec, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)
 	if found {
 		return cached, nil

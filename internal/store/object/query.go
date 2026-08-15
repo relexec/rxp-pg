@@ -7,14 +7,13 @@ import (
 	"github.com/relexec/rxp/query"
 
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // Query queries zero or more Objects from persistent storage.
 func (s *Store) Query(
 	ctx context.Context,
 	kv api.KindVersionName,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	kindRec storekind.Record,
 	expr query.Expression,
 	opts query.Options,

@@ -7,7 +7,6 @@ import (
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // Write atomically writes the supplied Run to persistent storage. On
@@ -15,7 +14,7 @@ import (
 func (s *Store) Write(
 	ctx context.Context,
 	targetRec storeobject.Record,
-	callerSysRec storesystem.Record,
+	callerSysRec *api.System,
 	callerDomRec *storedomain.Record,
 	rootRec *Record,
 	parentRec *Record,

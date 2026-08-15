@@ -6,7 +6,6 @@ import (
 	"github.com/relexec/rxp/api"
 
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // Record decorates a KindVersion with internal DB information.
@@ -21,7 +20,7 @@ type Record struct {
 // row ID. This method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	kindRec storekind.Record,
 	rowID int64,
 ) (*Record, error) {
@@ -45,11 +44,11 @@ func (s *Store) ReadByRowID(
 // KindVersionName. This method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	kindRec storekind.Record,
 	name api.KindVersionName,
 ) (*Record, error) {
-	cacheKey := newByNameCacheKey(sysRec.System, name)
+	cacheKey := newByNameCacheKey(sysRec, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)
 	if found {
 		return cached, nil

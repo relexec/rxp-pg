@@ -11,8 +11,6 @@ import (
 	"github.com/relexec/rxp/system"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // SystemRead reads a System from persistent storage.
@@ -48,11 +46,7 @@ func (d *Driver) SystemRead(
 
 	uuid := sel.UUID()
 
-	rec, err := d.systemStore.ReadByUUID(ctx, uuid)
-	if err != nil {
-		return nil, err
-	}
-	return &rec.System, nil
+	return d.systemStore.ReadByUUID(ctx, uuid)
 }
 
 // systemReadValidate returns an error if the supplied selector and read
@@ -70,7 +64,7 @@ func (d *Driver) systemReadValidate(
 func (d *Driver) systemRecordFromSystem(
 	ctx context.Context,
 	sys *api.System,
-) (*storesystem.Record, error) {
+) (*api.System, error) {
 	if sys == nil || sys.UUID == d.hostSystemUUID {
 		return d.hostSystemRecord, nil
 	}
@@ -172,21 +166,17 @@ func (d *Driver) SystemQuery(
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*api.System, 0, len(recs))
-	for _, rec := range recs {
-		out = append(out, &rec.System)
-	}
 	resOpts := query.NewOptions(
 		query.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == int(boundedOpts.Limit()) {
 		resOpts = query.NewOptions(
-			query.ContinueFrom(recs[len(recs)-1].System.UUID),
+			query.ContinueFrom(recs[len(recs)-1].UUID),
 			query.Limit(boundedOpts.Limit()),
 		)
 	}
 	resNewOpts := []query.ResultModifier[*api.System]{
-		query.ResultWithItems(out),
+		query.ResultWithItems(recs),
 		query.ResultWithOptions[*api.System](resOpts),
 	}
 	return query.NewResult[*api.System](resNewOpts...), nil

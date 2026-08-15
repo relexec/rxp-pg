@@ -11,8 +11,6 @@ import (
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // KindVersionRead reads a KindVersion from persistent storage.
@@ -49,7 +47,7 @@ func (d *Driver) KindVersionRead(
 		return nil, err
 	}
 
-	var sysRec *storesystem.Record
+	var sysRec *api.System
 
 	name = sel.Name()
 	sys := sel.System()
@@ -68,7 +66,7 @@ func (d *Driver) KindVersionRead(
 		sysRec = d.hostSystemRecord
 	}
 
-	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, name.Kind())
+	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, name.Kind())
 	if err != nil {
 		if err != nil {
 			if err == errors.ErrNotFound {
@@ -78,7 +76,7 @@ func (d *Driver) KindVersionRead(
 		}
 	}
 
-	rec, err := d.kindversionStore.ReadByName(ctx, *sysRec, *kindRec, name)
+	rec, err := d.kindversionStore.ReadByName(ctx, sysRec, *kindRec, name)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +126,7 @@ func (d *Driver) KindVersionWrite(
 		return err
 	}
 
-	var sysRec *storesystem.Record
+	var sysRec *api.System
 
 	kn := kv.Name()
 	sys := kv.System
@@ -144,10 +142,10 @@ func (d *Driver) KindVersionWrite(
 		}
 	} else {
 		sysRec = d.hostSystemRecord
-		kv.System = &d.hostSystemRecord.System
+		kv.System = d.hostSystemRecord
 	}
 
-	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, kn.Kind())
+	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, kn.Kind())
 	if err != nil {
 		if err != nil {
 			if err == errors.ErrNotFound {
@@ -156,7 +154,7 @@ func (d *Driver) KindVersionWrite(
 			return err
 		}
 	}
-	return d.kindversionStore.Write(ctx, *sysRec, *kindRec, kv)
+	return d.kindversionStore.Write(ctx, sysRec, *kindRec, kv)
 }
 
 // kindversionWriteValidate returns an error if the supplied kindversion and write

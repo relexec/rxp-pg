@@ -20,17 +20,17 @@ import (
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // dbUUIDFromNameDomainQualified returns the UUID associated with the object
 // with the supplied name and domain.
 func (s *Store) dbUUIDFromNameDomainQualified(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	domRec storedomain.Record,
 	name string,
 ) (string, error) {
+	sysRowID := sysRec.SystemInternalIDInt64()
 	var uuid string
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -46,7 +46,7 @@ AND n.name = $3
 `
 		err := tx.QueryRow(
 			ctx, qs,
-			sysRec.RowID,
+			sysRowID,
 			domRec.RowID,
 			name,
 		).Scan(&uuid)
@@ -71,10 +71,11 @@ AND n.name = $3
 // with the supplied UUID and domain.
 func (s *Store) dbNameFromUUIDDomainQualified(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	domRec storedomain.Record,
 	uuid string,
 ) (string, error) {
+	sysRowID := sysRec.SystemInternalIDInt64()
 	var name string
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -90,7 +91,7 @@ AND o.uuid = $3
 `
 		err := tx.QueryRow(
 			ctx, qs,
-			sysRec.RowID,
+			sysRowID,
 			domRec.RowID,
 			uuid,
 		).Scan(&name)
@@ -115,9 +116,10 @@ AND o.uuid = $3
 // with the supplied name and system.
 func (s *Store) dbUUIDFromNameSystemQualified(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	name string,
 ) (string, error) {
+	sysRowID := sysRec.SystemInternalIDInt64()
 	var uuid string
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -131,7 +133,7 @@ AND n.name = $2
 `
 		err := tx.QueryRow(
 			ctx, qs,
-			sysRec.RowID,
+			sysRowID,
 			name,
 		).Scan(&uuid)
 		if err != nil {
@@ -155,9 +157,10 @@ AND n.name = $2
 // with the supplied name and system.
 func (s *Store) dbNameFromUUIDSystemQualified(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	uuid string,
 ) (string, error) {
+	sysRowID := sysRec.SystemInternalIDInt64()
 	var name string
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -171,7 +174,7 @@ AND o.uuid = $2
 `
 		err := tx.QueryRow(
 			ctx, qs,
-			sysRec.RowID,
+			sysRowID,
 			uuid,
 		).Scan(&name)
 		if err != nil {
@@ -323,7 +326,7 @@ INNER JOIN object_generations AS og
 // writer of an object.
 func (s *Store) dbInsertFirst(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	kindRec storekind.Record,
 	kvRec storekindversion.Record,
 	domRec *storedomain.Record,
@@ -333,6 +336,7 @@ func (s *Store) dbInsertFirst(
 	if kind.Scope == api.ScopeDomain && domRec == nil {
 		return nil, errors.ErrObjectDomainRequired
 	}
+	sysRowID := sysRec.SystemInternalIDInt64()
 	kv := obj.KindVersionName
 	uuid := obj.UUID
 	name := obj.Name
@@ -370,7 +374,7 @@ INSERT INTO objects (
 ) RETURNING id`
 		err := tx.QueryRow(
 			ctx, qs,
-			sysRec.RowID,
+			sysRowID,
 			kvRec.RowID,
 			uuid,
 			1, /* we expect we are the first generation */
@@ -419,7 +423,7 @@ INSERT INTO domain_qualified_object_names (
 			_, err = tx.Exec(
 				ctx, qs,
 				objRowID,
-				sysRec.RowID,
+				sysRowID,
 				kindRec.RowID,
 				domRec.RowID,
 				name,
@@ -462,7 +466,7 @@ INSERT INTO system_qualified_object_names (
 			_, err = tx.Exec(
 				ctx, qs,
 				objRowID,
-				sysRec.RowID,
+				sysRowID,
 				kindRec.RowID,
 				name,
 				createdOn,
@@ -530,7 +534,6 @@ INSERT INTO object_generations (
 // writer of an object and expect to see a supplied generation.
 func (s *Store) dbInsertGeneration(
 	ctx context.Context,
-	sysRec storesystem.Record,
 	kindRec storekind.Record,
 	kvRec storekindversion.Record,
 	domRec *storedomain.Record,
@@ -636,7 +639,7 @@ AND generation = $5`
 	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
-	out := obj
+	out := obj.Clone()
 	out.Generation = expectGeneration + 1
 	return &out, nil
 }
@@ -672,7 +675,7 @@ type dqObjectRecord struct {
 func (s *Store) dbReadDomainQualifiedByExpression(
 	ctx context.Context,
 	kv api.KindVersionName,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	kindRec storekind.Record,
 	expr query.Expression,
 	opts query.Options,
@@ -680,9 +683,9 @@ func (s *Store) dbReadDomainQualifiedByExpression(
 	if query.ContainsPredicate(expr, isKindishPredicate) {
 		return nil, errors.ErrInvalidQueryKindPredicate
 	}
-
+	sysRowID := sysRec.SystemInternalIDInt64()
 	qargs := []any{
-		sysRec.RowID,
+		sysRowID,
 		kindRec.RowID,
 	}
 	wheres := []string{
@@ -768,7 +771,7 @@ INNER JOIN object_generations AS og
 			UUID:            rec.UUID,
 			Name:            rec.Name,
 			Generation:      rec.Generation,
-			System:          &sysRec.System,
+			System:          sysRec,
 			Domain:          &domRec.Domain,
 		}
 		if rec.Spec.Valid {
@@ -798,7 +801,7 @@ type sqObjectRecord struct {
 func (s *Store) dbReadSystemQualifiedByExpression(
 	ctx context.Context,
 	kv api.KindVersionName,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	kindRec storekind.Record,
 	expr query.Expression,
 	opts query.Options,
@@ -806,9 +809,9 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 	if query.ContainsPredicate(expr, isKindishPredicate) {
 		return nil, errors.ErrInvalidQueryKindPredicate
 	}
-
+	sysRowID := sysRec.SystemInternalIDInt64()
 	qargs := []any{
-		sysRec.RowID,
+		sysRowID,
 		kindRec.RowID,
 	}
 	wheres := []string{
@@ -982,7 +985,7 @@ INNER JOIN object_generations AS og
 			UUID:            rec.UUID,
 			Name:            rec.Name,
 			Generation:      rec.Generation,
-			System:          &sysRec.System,
+			System:          sysRec,
 		}
 		if rec.Spec.Valid {
 			obj.Spec = rec.Spec.String

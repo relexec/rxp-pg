@@ -13,7 +13,6 @@ import (
 	"go.opentelemetry.io/otel/metric"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // DomainRead reads a Domain from persistent storage.
@@ -47,14 +46,14 @@ func (d *Driver) DomainRead(
 		return nil, err
 	}
 
-	var sysRec *storesystem.Record
+	var sysRec *api.System
 
 	sys := sel.System()
 
 	// Default the system to the host system if it hasn't been specified in the
 	// selector.
 	if sys == nil {
-		sys = &d.hostSystemRecord.System
+		sys = d.hostSystemRecord
 	}
 
 	if sys.UUID != d.hostSystemUUID {
@@ -71,7 +70,7 @@ func (d *Driver) DomainRead(
 
 	uuid := sel.UUID()
 	if uuid != "" {
-		rec, err := d.domainStore.ReadByUUID(ctx, *sysRec, uuid)
+		rec, err := d.domainStore.ReadByUUID(ctx, sysRec, uuid)
 		if err != nil {
 			return nil, err
 		}
@@ -79,9 +78,7 @@ func (d *Driver) DomainRead(
 	}
 
 	name := sel.Name()
-	rec, err := d.domainStore.ReadByName(
-		ctx, *sysRec, name,
-	)
+	rec, err := d.domainStore.ReadByName(ctx, sysRec, name)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +98,7 @@ func (d *Driver) domainReadValidate(
 // associated Record from the domain store.
 func (d *Driver) domainRecordFromDomain(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	dom *api.Domain,
 ) (*storedomain.Record, error) {
 	if dom == nil {
@@ -148,14 +145,14 @@ func (d *Driver) DomainWrite(
 		return err
 	}
 
-	var sysRec *storesystem.Record
+	var sysRec *api.System
 
 	sys := dom.System
 
 	// Default the system to the host system if it hasn't been specified in the
 	// selector.
 	if sys == nil {
-		sys = &d.hostSystemRecord.System
+		sys = d.hostSystemRecord
 		dom.System = sys
 	}
 
@@ -171,7 +168,7 @@ func (d *Driver) DomainWrite(
 		sysRec = d.hostSystemRecord
 	}
 
-	return d.domainStore.Write(ctx, *sysRec, dom)
+	return d.domainStore.Write(ctx, sysRec, dom)
 }
 
 // domainWriteValidate returns an error if the supplied domain and write

@@ -8,14 +8,13 @@ import (
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // Write atomically writes the supplied Object to persistent storage. On
 // successful write, the newly created or updated Object is returned.
 func (s *Store) Write(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	kindRec storekind.Record,
 	kvRec storekindversion.Record,
 	domRec *storedomain.Record,
@@ -42,7 +41,7 @@ func (s *Store) Write(
 	// fail.
 	return s.dbInsertGeneration(
 		ctx,
-		sysRec, kindRec, kvRec, domRec,
+		kindRec, kvRec, domRec,
 		obj, expectGeneration,
 	)
 }

@@ -21,10 +21,9 @@ import (
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*Record, error) {
-	out := Record{
-		RowID: rowID,
-	}
+) (*api.System, error) {
+	out := &api.System{}
+	out.SetSystemInternalID(rowID)
 	fn := func(tx pgx.Tx) error {
 		var uuid string
 		var tag string
@@ -35,20 +34,18 @@ func (s *Store) dbReadByRowID(
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading systems record",
+				"failed reading systems record by rowid",
 				errors.WithWrap(err),
 			)
 		}
-		out.System = api.System{
-			UUID: uuid,
-			Tag:  tag,
-		}
+		out.UUID = uuid
+		out.Tag = tag
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return out, nil
 }
 
 // dbReadByUUID performs a SELECT query to return the stored system record
@@ -56,34 +53,32 @@ func (s *Store) dbReadByRowID(
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*Record, error) {
-	out := Record{
-		System: api.System{
-			UUID: uuid,
-		},
-	}
+) (*api.System, error) {
+	out := &api.System{UUID: uuid}
 	fn := func(tx pgx.Tx) error {
+		var rowID int64
 		var tag sql.NullString
 		qs := "SELECT id, tag FROM systems WHERE uuid = $1"
-		err := tx.QueryRow(ctx, qs, uuid).Scan(&out.RowID, &tag)
+		err := tx.QueryRow(ctx, qs, uuid).Scan(&rowID, &tag)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading systems record",
+				"failed reading systems record by uuid",
 				errors.WithWrap(err),
 			)
 		}
+		out.SetSystemInternalID(rowID)
 		if tag.Valid {
-			out.System.Tag = tag.String
+			out.Tag = tag.String
 		}
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return out, nil
 }
 
 // dbInsert atomically writes the supplied System to persistent storage.
@@ -144,7 +139,7 @@ func (s *Store) dbReadByExpression(
 	ctx context.Context,
 	expr query.Expression,
 	opts query.Options,
-) ([]*Record, error) {
+) ([]*api.System, error) {
 	qargs := []any{}
 	wheres := []string{}
 
@@ -205,16 +200,14 @@ FROM systems AS s
 		return nil, err
 	}
 
-	out := make([]*Record, 0, len(recs))
+	out := make([]*api.System, 0, len(recs))
 	for _, rec := range recs {
-		sys := api.System{
+		sys := &api.System{
 			UUID: rec.UUID,
 			Tag:  rec.Tag,
 		}
-		out = append(out, &Record{
-			RowID:  rec.ID,
-			System: sys,
-		})
+		sys.SetSystemInternalID(rec.ID)
+		out = append(out, sys)
 	}
 
 	return out, nil

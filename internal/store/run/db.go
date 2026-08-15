@@ -17,7 +17,6 @@ import (
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // dbReadByRowID returns the run record having the supplied
@@ -313,7 +312,7 @@ WHERE object = $1 AND generation = $2
 func (s *Store) dbInsert(
 	ctx context.Context,
 	targetRec storeobject.Record,
-	callerSysRec storesystem.Record,
+	callerSysRec *api.System,
 	callerDomRec *storedomain.Record,
 	rootRec *Record,
 	parentRec *Record,
@@ -403,6 +402,7 @@ INSERT INTO runs (
 				)
 			}
 		}
+		callerSysRowID := callerSysRec.SystemInternalIDInt64()
 		// Now store the caller, options and input parameters in the
 		// run_requests table.
 		qs = `
@@ -428,7 +428,7 @@ INSERT INTO run_requests (
 			runRowID,
 			createdOn,
 			caller.Identity,
-			callerSysRec.RowID,
+			callerSysRowID,
 			callerDomRowID,
 			rr.Options,
 			rr.In,

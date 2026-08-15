@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/relexec/rxp-pg/internal/cache"
+	"github.com/relexec/rxp/api"
 )
 
 func (s *Store) init(ctx context.Context) error {
@@ -28,9 +29,9 @@ func (s *Store) initCache(ctx context.Context) error {
 	if cfg.Cache.System.Enabled {
 		s.Logger.Debug("initializing system cache")
 		cacheCfg := cfg.Cache.System
-		byUUID, err := cache.New[byUUIDCacheKey, *Record](
+		byUUID, err := cache.New[byUUIDCacheKey, *api.System](
 			ctx,
-			cache.WithConfig[byUUIDCacheKey, *Record](cacheCfg),
+			cache.WithConfig[byUUIDCacheKey, *api.System](cacheCfg),
 		)
 		if err != nil {
 			return err

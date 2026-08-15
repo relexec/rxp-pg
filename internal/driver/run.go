@@ -125,13 +125,13 @@ func (d *Driver) RunWrite(
 	// Default the target and caller system to the host system if it hasn't
 	// been specified.
 	if callerSys == nil {
-		callerSys = &d.hostSystemRecord.System
+		callerSys = d.hostSystemRecord
 		if callerDom != nil {
 			callerDom.System = callerSys
 		}
 	}
 	if targetSys == nil {
-		targetSys = &d.hostSystemRecord.System
+		targetSys = d.hostSystemRecord
 		if targetDom != nil {
 			targetDom.System = targetSys
 		}
@@ -151,7 +151,7 @@ func (d *Driver) RunWrite(
 
 	if callerDom != nil {
 		callerDomRec, err = d.domainRecordFromDomain(
-			ctx, *callerSysRec, callerDom,
+			ctx, callerSysRec, callerDom,
 		)
 		if err != nil {
 			return nil, err
@@ -159,7 +159,7 @@ func (d *Driver) RunWrite(
 	}
 	if targetDom != nil {
 		_, err := d.domainRecordFromDomain(
-			ctx, *targetSysRec, targetDom,
+			ctx, targetSysRec, targetDom,
 		)
 		if err != nil {
 			return nil, err
@@ -167,7 +167,7 @@ func (d *Driver) RunWrite(
 	}
 
 	targetKindRec, err := d.kindStore.ReadByName(
-		ctx, *targetSysRec, targetKV.Kind(),
+		ctx, targetSysRec, targetKV.Kind(),
 	)
 	if err != nil {
 		if err == errors.ErrNotFound {
@@ -177,7 +177,7 @@ func (d *Driver) RunWrite(
 	}
 
 	_, err = d.kindversionStore.ReadByName(
-		ctx, *targetSysRec, *targetKindRec, targetKV,
+		ctx, targetSysRec, *targetKindRec, targetKV,
 	)
 	if err != nil {
 		if err == errors.ErrNotFound {
@@ -191,7 +191,7 @@ func (d *Driver) RunWrite(
 	if err != nil {
 		return nil, err
 	}
-	targetRec.Object.System = &targetSysRec.System
+	targetRec.Object.System = targetSysRec
 	if targetDom != nil {
 		targetRec.Object.Domain = targetDom
 	}
@@ -227,7 +227,7 @@ func (d *Driver) RunWrite(
 	return d.runStore.Write(
 		ctx,
 		*targetRec,
-		*callerSysRec, callerDomRec,
+		callerSysRec, callerDomRec,
 		rootRec, parentRec, run,
 	)
 }

@@ -15,7 +15,6 @@ import (
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // ObjectRead reads a single Object from persistent storage.
@@ -74,7 +73,7 @@ func (d *Driver) ObjectRead(
 		return nil, err
 	}
 
-	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, kv.Kind())
+	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, kv.Kind())
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return nil, errors.ErrKindUnknown
@@ -87,7 +86,7 @@ func (d *Driver) ObjectRead(
 		return nil, err
 	}
 
-	kvRec, err := d.kindversionStore.ReadByName(ctx, *sysRec, *kindRec, kv)
+	kvRec, err := d.kindversionStore.ReadByName(ctx, sysRec, *kindRec, kv)
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return nil, errors.ErrKindVersionUnknown
@@ -95,7 +94,7 @@ func (d *Driver) ObjectRead(
 		return nil, err
 	}
 
-	domRec, err := d.domainRecordFromDomain(ctx, *sysRec, dom)
+	domRec, err := d.domainRecordFromDomain(ctx, sysRec, dom)
 	if err != nil {
 		return nil, err
 	}
@@ -106,12 +105,12 @@ func (d *Driver) ObjectRead(
 
 	var rec *storeobject.Record
 	if uuid == "" {
-		uuid, err = d.objectUUIDFromName(ctx, *sysRec, *kindRec, name, domRec)
+		uuid, err = d.objectUUIDFromName(ctx, sysRec, *kindRec, name, domRec)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		name, err = d.objectNameFromUUID(ctx, *sysRec, *kindRec, uuid, domRec)
+		name, err = d.objectNameFromUUID(ctx, sysRec, *kindRec, uuid, domRec)
 		if err != nil {
 			return nil, err
 		}
@@ -120,7 +119,7 @@ func (d *Driver) ObjectRead(
 	if err != nil {
 		return nil, err
 	}
-	rec.Object.System = &sysRec.System
+	rec.Object.System = sysRec
 	if dom != nil {
 		rec.Object.Domain = dom
 	}
@@ -147,7 +146,7 @@ func (d *Driver) objectReadValidate(
 // record, name and optional domain record.
 func (d *Driver) objectUUIDFromName(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	kindRec storekind.Record,
 	name string,
 	domRec *storedomain.Record,
@@ -167,7 +166,7 @@ func (d *Driver) objectUUIDFromName(
 // record, object UUID and optional domain record.
 func (d *Driver) objectNameFromUUID(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	kindRec storekind.Record,
 	uuid string,
 	domRec *storedomain.Record,
@@ -245,7 +244,7 @@ func (d *Driver) ObjectWrite(
 
 	// Default the system to the host system if it hasn't been specified.
 	if sys == nil {
-		sys = &d.hostSystemRecord.System
+		sys = d.hostSystemRecord
 		if dom != nil {
 			dom.System = sys
 		}
@@ -256,7 +255,7 @@ func (d *Driver) ObjectWrite(
 		return nil, err
 	}
 
-	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, kv.Kind())
+	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, kv.Kind())
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return nil, errors.ErrKindUnknown
@@ -269,7 +268,7 @@ func (d *Driver) ObjectWrite(
 		return nil, err
 	}
 
-	kvRec, err := d.kindversionStore.ReadByName(ctx, *sysRec, *kindRec, kv)
+	kvRec, err := d.kindversionStore.ReadByName(ctx, sysRec, *kindRec, kv)
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return nil, errors.ErrKindUnknown
@@ -277,11 +276,11 @@ func (d *Driver) ObjectWrite(
 		return nil, err
 	}
 
-	domRec, err := d.domainRecordFromDomain(ctx, *sysRec, dom)
+	domRec, err := d.domainRecordFromDomain(ctx, sysRec, dom)
 	if err != nil {
 		return nil, err
 	}
-	return d.objectStore.Write(ctx, *sysRec, *kindRec, *kvRec, domRec, obj)
+	return d.objectStore.Write(ctx, sysRec, *kindRec, *kvRec, domRec, obj)
 }
 
 // objectWriteValidate returns an error if the supplied object and write
@@ -365,7 +364,7 @@ func (d *Driver) ObjectQuery(
 
 	sysRec := d.hostSystemRecord
 
-	kindRec, err := d.kindStore.ReadByName(ctx, *sysRec, kv.Kind())
+	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, kv.Kind())
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return nil, errors.ErrKindUnknown
@@ -376,7 +375,7 @@ func (d *Driver) ObjectQuery(
 	boundedOpts := d.objectQueryBoundedOptions(ctx, qopts)
 
 	recs, err := d.objectStore.Query(
-		ctx, kv, *sysRec, *kindRec, expr, boundedOpts,
+		ctx, kv, sysRec, *kindRec, expr, boundedOpts,
 	)
 	if err != nil {
 		return nil, err

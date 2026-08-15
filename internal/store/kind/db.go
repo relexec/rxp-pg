@@ -14,8 +14,6 @@ import (
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/system"
-
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored kind record
@@ -41,11 +39,11 @@ func (s *Store) dbReadByRowID(
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading kinds record",
+				"failed reading kinds record by rowid",
 				errors.WithWrap(err),
 			)
 		}
-		systemRec, err := s.systemStore.ReadByRowID(ctx, systemRowID)
+		sysRec, err := s.systemStore.ReadByRowID(ctx, systemRowID)
 		if err != nil {
 			return errors.Internal(
 				"failed reading system record for kind",
@@ -53,7 +51,7 @@ func (s *Store) dbReadByRowID(
 			)
 		}
 		out.Kind = api.Kind{
-			System: &systemRec.System,
+			System: sysRec,
 			UUID:   uuid,
 			Name:   name,
 			Scope:  scope,
@@ -87,7 +85,7 @@ func (s *Store) dbReadByUUID(
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading kinds record",
+				"failed reading kinds record by uuid",
 				errors.WithWrap(err),
 			)
 		}
@@ -105,15 +103,16 @@ func (s *Store) dbReadByUUID(
 // having the supplied Name.
 func (s *Store) dbReadByName(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	name api.KindName,
 ) (*Record, error) {
 	out := Record{
 		Kind: api.Kind{
-			System: &sysRec.System,
+			System: sysRec,
 			Name:   name,
 		},
 	}
+	sysRowID := sysRec.SystemInternalIDInt64()
 	fn := func(tx pgx.Tx) error {
 		var uuid string
 		var scope api.Scope
@@ -124,14 +123,14 @@ WHERE system = $1
 AND name = $2
 `
 		err := tx.QueryRow(
-			ctx, qs, sysRec.RowID, name,
+			ctx, qs, sysRowID, name,
 		).Scan(&out.RowID, &uuid, &scope)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading kinds record",
+				"failed reading kinds record by name",
 				errors.WithWrap(err),
 			)
 		}
@@ -148,9 +147,10 @@ AND name = $2
 // dbInsert atomically writes the supplied Kind to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	kind api.Kind,
 ) error {
+	sysRowID := sysRec.SystemInternalIDInt64()
 	createdOn := time.Now().UnixNano()
 	caller := api.CallerFromContext(ctx)
 	createdBy := caller.Identity
@@ -172,7 +172,7 @@ INSERT INTO kinds (
 , $6
 )`
 		_, err := tx.Exec(
-			ctx, qs, sysRec.RowID,
+			ctx, qs, sysRowID,
 			kind.UUID, kind.Name, kind.Scope,
 			createdOn, createdBy,
 		)
@@ -255,8 +255,9 @@ func (s *Store) dbReadByExpression(
 					}
 					return nil, err
 				}
+				sysRowID := sysRec.SystemInternalIDInt64()
 				wheres = append(wheres, fmt.Sprintf("k.system = $%d", len(qargs)+1))
-				qargs = append(qargs, sysRec.RowID)
+				qargs = append(qargs, sysRowID)
 			case query.PredicateOperatorIn:
 				sysRowIDs := []int64{}
 				sysUUIDs := pred.Value.([]string)
@@ -268,7 +269,8 @@ func (s *Store) dbReadByExpression(
 						}
 						return nil, err
 					}
-					sysRowIDs = append(sysRowIDs, sysRec.RowID)
+					sysRowID := sysRec.SystemInternalIDInt64()
+					sysRowIDs = append(sysRowIDs, sysRowID)
 				}
 				if len(sysRowIDs) == 0 {
 					// If we're looking up kinds by a non-existent system,
@@ -336,7 +338,7 @@ FROM kinds AS k
 		k := api.Kind{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
-			System: &sysRec.System,
+			System: sysRec,
 			Scope:  rec.Scope,
 		}
 		out = append(out, &Record{

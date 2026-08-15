@@ -6,7 +6,6 @@ import (
 	"github.com/relexec/rxp/api"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // Record decorates an Object with internal DB information.
@@ -20,7 +19,7 @@ type Record struct {
 // NameQualifier contains either a System or Domain store record that qualifies
 // an Object name.
 type NameQualifier struct {
-	System storesystem.Record
+	System *api.System
 	Domain *storedomain.Record
 }
 

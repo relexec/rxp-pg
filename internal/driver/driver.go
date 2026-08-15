@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/relexec/rxp/api"
 	"github.com/relexec/rxp/api/metrics"
 
 	"github.com/relexec/rxp-pg/config"
@@ -38,7 +39,7 @@ type Driver struct {
 	// any.
 	hostSystemTag string
 	// hostSystemRecord is the host System managed by this Driver.
-	hostSystemRecord *storesystem.Record
+	hostSystemRecord *api.System
 
 	// systemStore contains the Store for reading and writing System data.
 	systemStore *storesystem.Store

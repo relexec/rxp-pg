@@ -24,7 +24,7 @@ func (k byNameCacheKey) DomainName() api.DomainName {
 }
 
 func newByNameCacheKey(
-	system api.System,
+	system *api.System,
 	name api.DomainName,
 ) byNameCacheKey {
 	return byNameCacheKey(system.UUID + "|" + string(name))
@@ -117,7 +117,7 @@ func (s *Store) cacheWrite(
 		)
 	}
 	// Here we populate our row ID -> uuid and name -> uuid maps
-	nameKey := newByNameCacheKey(*rec.Domain.System, rec.Domain.Name)
+	nameKey := newByNameCacheKey(rec.Domain.System, rec.Domain.Name)
 	uuid := rec.Domain.UUID
 	set = s.byName.Set(nameKey, byUUIDCacheKey(uuid))
 	if !set {
@@ -176,7 +176,7 @@ func (s *Store) cacheEvictNoLock(
 	uuidKey := byUUIDCacheKey(rec.Domain.UUID)
 	s.byUUID.Del(uuidKey)
 	// Here we populate our row ID -> uuid and name -> uuid maps
-	nameKey := newByNameCacheKey(*rec.Domain.System, rec.Domain.Name)
+	nameKey := newByNameCacheKey(rec.Domain.System, rec.Domain.Name)
 	s.byName.Del(nameKey)
 	rowIDKey := byRowIDCacheKey(rec.RowID)
 	s.byRowID.Del(rowIDKey)

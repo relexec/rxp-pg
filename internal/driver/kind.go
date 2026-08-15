@@ -11,8 +11,6 @@ import (
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // KindRead reads a Kind from persistent storage.
@@ -46,7 +44,7 @@ func (d *Driver) KindRead(
 		return nil, err
 	}
 
-	var sysRec *storesystem.Record
+	var sysRec *api.System
 
 	name := sel.Name()
 	sys := sel.System()
@@ -65,7 +63,7 @@ func (d *Driver) KindRead(
 		sysRec = d.hostSystemRecord
 	}
 
-	rec, err := d.kindStore.ReadByName(ctx, *sysRec, name)
+	rec, err := d.kindStore.ReadByName(ctx, sysRec, name)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +110,7 @@ func (d *Driver) KindWrite(
 		return err
 	}
 
-	var sysRec *storesystem.Record
+	var sysRec *api.System
 
 	sys := k.System
 
@@ -127,9 +125,9 @@ func (d *Driver) KindWrite(
 		}
 	} else {
 		sysRec = d.hostSystemRecord
-		k.System = &d.hostSystemRecord.System
+		k.System = d.hostSystemRecord
 	}
-	return d.kindStore.Write(ctx, *sysRec, k)
+	return d.kindStore.Write(ctx, sysRec, k)
 }
 
 // kindWriteValidate returns an error if the supplied kind and write

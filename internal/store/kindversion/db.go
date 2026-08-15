@@ -21,14 +21,13 @@ import (
 	"github.com/relexec/rxp/system"
 
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored kindversion
 // record having the supplied internal DB RowID.
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	kindRec storekind.Record,
 	rowID int64,
 ) (*Record, error) {
@@ -71,7 +70,7 @@ func (s *Store) dbReadByRowID(
 			)
 		}
 		out.KindVersion = api.KindVersion{
-			System:  &sysRec.System,
+			System:  sysRec,
 			Kind:    kindRec.Kind,
 			Version: *sv,
 			Schema:  &schema,
@@ -88,10 +87,11 @@ func (s *Store) dbReadByRowID(
 // having the supplied KindVersion.
 func (s *Store) dbReadByName(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	kindRec storekind.Record,
 	kv api.KindVersionName,
 ) (*Record, error) {
+	sysRowID := sysRec.SystemInternalIDInt64()
 	sv, _ := kv.Version()
 	verStr := kv.VersionString()
 	var schemaBytes sql.NullString
@@ -109,7 +109,7 @@ AND version = $3
 `
 		err := tx.QueryRow(
 			ctx, qs,
-			sysRec.RowID, kindRec.RowID, verStr,
+			sysRowID, kindRec.RowID, verStr,
 		).Scan(
 			&out.RowID, &schemaBytes,
 		)
@@ -132,7 +132,7 @@ AND version = $3
 			}
 		}
 		out.KindVersion = api.KindVersion{
-			System:  &sysRec.System,
+			System:  sysRec,
 			Kind:    kindRec.Kind,
 			Version: *sv,
 			Schema:  &schema,
@@ -149,9 +149,10 @@ AND version = $3
 // versions known for the supplied Kind.
 func (s *Store) dbVersionsForKind(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	kindRec storekind.Record,
 ) (version.Set, error) {
+	sysRowID := sysRec.SystemInternalIDInt64()
 	var versionStrs []string
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -160,7 +161,7 @@ FROM kindversions
 WHERE system = $1
 AND kind = $2
 `
-		rows, err := tx.Query(ctx, qs, sysRec.RowID, kindRec.RowID)
+		rows, err := tx.Query(ctx, qs, sysRowID, kindRec.RowID)
 		if err != nil {
 			return errors.Internal(
 				"failed reading kindversion records",
@@ -200,10 +201,11 @@ AND kind = $2
 // dbInsert atomically writes the supplied KindVersion to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	kindRec storekind.Record,
 	kv api.KindVersion,
 ) error {
+	sysRowID := sysRec.SystemInternalIDInt64()
 	name := kv.Name()
 	ver, _ := name.Version()
 	createdOn := time.Now().UnixNano()
@@ -250,7 +252,7 @@ INSERT INTO kindversions (
 )`
 		_, err = tx.Exec(
 			ctx, qs,
-			sysRec.RowID,
+			sysRowID,
 			kindRec.RowID,
 			name.VersionString(),
 			schemaJSON,
@@ -302,7 +304,7 @@ func (s *Store) dbReadByExpression(
 				kvName := pred.Value.(api.KindVersionName)
 				kindName := kvName.Kind()
 				kindRec, err := s.kindStore.ReadByName(
-					ctx, s.hostSystemRecord, kindName,
+					ctx, &s.hostSystemRecord, kindName,
 				)
 				if err != nil {
 					// If we're looking up kindversions by a non-existent kind,
@@ -323,7 +325,7 @@ func (s *Store) dbReadByExpression(
 				for _, kvName := range kvNames {
 					kindName := kvName.Kind()
 					kindRec, err := s.kindStore.ReadByName(
-						ctx, s.hostSystemRecord, kindName,
+						ctx, &s.hostSystemRecord, kindName,
 					)
 					if err != nil {
 						if err == errors.ErrNotFound {
@@ -355,8 +357,9 @@ func (s *Store) dbReadByExpression(
 					}
 					return nil, err
 				}
+				sysRowID := sysRec.SystemInternalIDInt64()
 				wheres = append(wheres, fmt.Sprintf("kv.system = $%d", len(qargs)+1))
-				qargs = append(qargs, sysRec.RowID)
+				qargs = append(qargs, sysRowID)
 			case query.PredicateOperatorIn:
 				sysRowIDs := []int64{}
 				sysUUIDs := pred.Value.([]string)
@@ -368,7 +371,8 @@ func (s *Store) dbReadByExpression(
 						}
 						return nil, err
 					}
-					sysRowIDs = append(sysRowIDs, sysRec.RowID)
+					sysRowID := sysRec.SystemInternalIDInt64()
+					sysRowIDs = append(sysRowIDs, sysRowID)
 				}
 				if len(sysRowIDs) == 0 {
 					// If we're looking up kindversions by a non-existent system,
@@ -458,7 +462,7 @@ FROM kindversions AS kv
 			)
 		}
 		kv := api.KindVersion{
-			System:  &sysRec.System,
+			System:  sysRec,
 			Kind:    kindRec.Kind,
 			Version: *sv,
 			Schema:  &schema,

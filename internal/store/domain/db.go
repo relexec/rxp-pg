@@ -15,21 +15,19 @@ import (
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/system"
-
-	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored domain record
 // having the supplied internal DB RowID.
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	rowID int64,
 ) (*Record, error) {
 	out := Record{
 		RowID: rowID,
 		Domain: api.Domain{
-			System: &sysRec.System,
+			System: sysRec,
 		},
 	}
 	fn := func(tx pgx.Tx) error {
@@ -63,7 +61,7 @@ WHERE id = $1
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading domains record",
+				"failed reading domains record by rowid",
 				errors.WithWrap(err),
 			)
 		}
@@ -101,13 +99,13 @@ WHERE id = $1
 // having the supplied UUID.
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	uuid string,
 ) (*Record, error) {
 	out := Record{
 		Domain: api.Domain{
 			UUID:   uuid,
-			System: &sysRec.System,
+			System: sysRec,
 		},
 	}
 	fn := func(tx pgx.Tx) error {
@@ -140,7 +138,7 @@ WHERE uuid = $1
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading domains record",
+				"failed reading domains record by uuid",
 				errors.WithWrap(err),
 			)
 		}
@@ -175,12 +173,13 @@ WHERE uuid = $1
 // having the supplied Name.
 func (s *Store) dbReadByName(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	name api.DomainName,
 ) (*Record, error) {
+	sysRowID := sysRec.SystemInternalIDInt64()
 	out := Record{
 		Domain: api.Domain{
-			System: &sysRec.System,
+			System: sysRec,
 			Name:   name,
 		},
 	}
@@ -202,7 +201,7 @@ FROM domains
 WHERE system = $1
 AND name = $2
 `
-		err := tx.QueryRow(ctx, qs, sysRec.RowID, name).Scan(
+		err := tx.QueryRow(ctx, qs, sysRowID, name).Scan(
 			&out.RowID,
 			&uuid,
 			&rootRowID,
@@ -215,7 +214,7 @@ AND name = $2
 				return errors.ErrNotFound
 			}
 			return errors.Internal(
-				"failed reading domains record",
+				"failed reading domains record by name",
 				errors.WithWrap(err),
 			)
 		}
@@ -249,7 +248,7 @@ AND name = $2
 // dbInsert atomically writes the supplied Domain to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	dom api.Domain,
 ) error {
 	parent := dom.Parent
@@ -262,9 +261,10 @@ func (s *Store) dbInsert(
 // dbInsertRoot creates a new domain record for a root node in a "domain tree".
 func (s *Store) dbInsertRoot(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	dom api.Domain,
 ) error {
+	sysRowID := sysRec.SystemInternalIDInt64()
 	left := 1
 	right := 2
 	createdOn := time.Now().UnixNano()
@@ -295,7 +295,7 @@ INSERT INTO domains (
 )`
 		_, err := tx.Exec(
 			ctx, qs,
-			sysRec.RowID,
+			sysRowID,
 			uuid,
 			name,
 			left,
@@ -330,7 +330,7 @@ INSERT INTO domains (
 // set model values for the domain tree.
 func (s *Store) dbInsertNonRoot(
 	ctx context.Context,
-	sysRec storesystem.Record,
+	sysRec *api.System,
 	parent api.Domain,
 	dom api.Domain,
 ) error {
@@ -341,6 +341,7 @@ func (s *Store) dbInsertNonRoot(
 		}
 	}
 
+	sysRowID := sysRec.SystemInternalIDInt64()
 	rootRowID := parentRec.Root
 	parentRowID := parentRec.RowID
 	parentRight := parentRec.Right
@@ -401,7 +402,7 @@ INSERT INTO domains (
 )`
 		_, err = tx.Exec(
 			ctx, qs,
-			sysRec.RowID,
+			sysRowID,
 			uuid,
 			name,
 			rootRowID,
@@ -499,8 +500,9 @@ func (s *Store) dbReadByExpression(
 					}
 					return nil, err
 				}
+				sysRowID := sysRec.SystemInternalIDInt64()
 				wheres = append(wheres, fmt.Sprintf("d.system = $%d", len(qargs)+1))
-				qargs = append(qargs, sysRec.RowID)
+				qargs = append(qargs, sysRowID)
 			case query.PredicateOperatorIn:
 				sysRowIDs := []int64{}
 				sysUUIDs := pred.Value.([]string)
@@ -512,7 +514,8 @@ func (s *Store) dbReadByExpression(
 						}
 						return nil, err
 					}
-					sysRowIDs = append(sysRowIDs, sysRec.RowID)
+					sysRowID := sysRec.SystemInternalIDInt64()
+					sysRowIDs = append(sysRowIDs, sysRowID)
 				}
 				if len(sysRowIDs) == 0 {
 					// If we're looking up domains by a non-existent system,
@@ -622,20 +625,20 @@ FROM domains AS d`
 		dom := api.Domain{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
-			System: &sysRec.System,
+			System: sysRec,
 		}
 		if rec.ParentID.Valid {
 			// NOTE(jaypipes): This has the potential to do N*M queries where N
 			// is the limit of records fetched and M is the the depth of the
 			// domain tree of that domain record. Consider constraining the
 			// behaviour here if we know there is a deep tree.
-			parentRec, err := s.ReadByRowID(ctx, *sysRec, rec.ParentID.Int64)
+			parentRec, err := s.ReadByRowID(ctx, sysRec, rec.ParentID.Int64)
 			if err != nil {
 				return nil, err
 			}
 			dom.Parent = &parentRec.Domain
 		}
-		rootDomRec, err := s.ReadByRowID(ctx, *sysRec, rec.RootID)
+		rootDomRec, err := s.ReadByRowID(ctx, sysRec, rec.RootID)
 		if err != nil {
 			return nil, err
 		}
@@ -676,7 +679,7 @@ WHERE d.root = $1
 		rows, err := tx.Query(ctx, qs, rootRowID)
 		if err != nil {
 			return errors.Internal(
-				"failed reading domain records",
+				"failed reading domain records in tree by root rowid",
 				errors.WithWrap(err),
 			)
 		}
@@ -684,7 +687,7 @@ WHERE d.root = $1
 		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[domainRecord])
 		if err != nil {
 			return errors.Internal(
-				"failed collecting domain records",
+				"failed collecting domain records in tree by root rowid",
 				errors.WithWrap(err),
 			)
 		}
@@ -706,19 +709,19 @@ WHERE d.root = $1
 		dom := api.Domain{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
-			System: &sysRec.System,
+			System: sysRec,
 		}
 		if rec.ParentID.Valid {
 			// NOTE(jaypipes): This has the potential to do N queries where N
 			// is the depth of the domain tree. Consider constraining the
 			// behaviour here if we know there is a deep tree.
-			parentRec, err := s.ReadByRowID(ctx, *sysRec, rec.ParentID.Int64)
+			parentRec, err := s.ReadByRowID(ctx, sysRec, rec.ParentID.Int64)
 			if err != nil {
 				return nil, err
 			}
 			dom.Parent = &parentRec.Domain
 		}
-		rootDomRec, err := s.ReadByRowID(ctx, *sysRec, rec.RootID)
+		rootDomRec, err := s.ReadByRowID(ctx, sysRec, rec.RootID)
 		if err != nil {
 			return nil, err
 		}

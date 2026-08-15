@@ -6,20 +6,12 @@ import (
 	"github.com/relexec/rxp/api"
 )
 
-// Record decorates a System with internal DB information.
-type Record struct {
-	// RowID is the internal database SERIAL for the systems record.
-	RowID int64
-	// System is the publicly-exposed System object.
-	System api.System
-}
-
 // ReadByRowID returns a Record for the System with the supplied RowID. This
 // method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*Record, error) {
+) (*api.System, error) {
 	cacheKey := byRowIDCacheKey(rowID)
 	cached, found := s.cacheReadByRowID(ctx, cacheKey)
 	if found {
@@ -41,7 +33,7 @@ func (s *Store) ReadByRowID(
 func (s *Store) ReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*Record, error) {
+) (*api.System, error) {
 	cacheKey := byUUIDCacheKey(uuid)
 	cached, found := s.cacheReadByUUID(ctx, cacheKey)
 	if found {

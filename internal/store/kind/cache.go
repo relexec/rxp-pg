@@ -24,7 +24,7 @@ func (k byNameCacheKey) KindName() api.KindName {
 }
 
 func newByNameCacheKey(
-	system api.System,
+	system *api.System,
 	name api.KindName,
 ) byNameCacheKey {
 	return byNameCacheKey(system.UUID + "|" + string(name))
@@ -117,7 +117,7 @@ func (s *Store) cacheWrite(
 		)
 	}
 	// Here we populate our row ID -> uuid and name -> uuid maps
-	nameKey := newByNameCacheKey(*rec.Kind.System, rec.Kind.Name)
+	nameKey := newByNameCacheKey(rec.Kind.System, rec.Kind.Name)
 	uuid := rec.Kind.UUID
 	set = s.byName.Set(nameKey, byUUIDCacheKey(uuid))
 	if !set {
