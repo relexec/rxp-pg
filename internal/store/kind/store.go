@@ -17,7 +17,7 @@ type Store struct {
 	// cacheLock protects the set of lookup caches.
 	cacheLock sync.RWMutex
 	// byUUID is a cache that stores known Kinds keyed by kind UUID.
-	byUUID *cache.Cache[byUUIDCacheKey, *Record]
+	byUUID *cache.Cache[byUUIDCacheKey, *api.Kind]
 	// byName is a cache that stores a lookup map of System UUID+KindName to
 	// Kind UUID.
 	byName *cache.Cache[byNameCacheKey, byUUIDCacheKey]

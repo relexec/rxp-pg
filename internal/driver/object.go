@@ -13,7 +13,6 @@ import (
 	"go.opentelemetry.io/otel/metric"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
-	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
 )
 
@@ -86,7 +85,7 @@ func (d *Driver) ObjectRead(
 		return nil, err
 	}
 
-	kvRec, err := d.kindversionStore.ReadByName(ctx, sysRec, *kindRec, kv)
+	kvRec, err := d.kindversionStore.ReadByName(ctx, sysRec, kindRec, kv)
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return nil, errors.ErrKindVersionUnknown
@@ -105,12 +104,12 @@ func (d *Driver) ObjectRead(
 
 	var rec *storeobject.Record
 	if uuid == "" {
-		uuid, err = d.objectUUIDFromName(ctx, sysRec, *kindRec, name, domRec)
+		uuid, err = d.objectUUIDFromName(ctx, sysRec, kindRec, name, domRec)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		name, err = d.objectNameFromUUID(ctx, sysRec, *kindRec, uuid, domRec)
+		name, err = d.objectNameFromUUID(ctx, sysRec, kindRec, uuid, domRec)
 		if err != nil {
 			return nil, err
 		}
@@ -147,14 +146,14 @@ func (d *Driver) objectReadValidate(
 func (d *Driver) objectUUIDFromName(
 	ctx context.Context,
 	sysRec *api.System,
-	kindRec storekind.Record,
+	kindRec *api.Kind,
 	name string,
 	domRec *storedomain.Record,
 ) (string, error) {
 	qualifier := storeobject.NameQualifier{
 		System: sysRec,
 	}
-	if kindRec.Kind.Scope == api.ScopeDomain {
+	if kindRec.Scope == api.ScopeDomain {
 		qualifier.Domain = domRec
 	}
 	return d.objectStore.UUIDFromName(
@@ -167,14 +166,14 @@ func (d *Driver) objectUUIDFromName(
 func (d *Driver) objectNameFromUUID(
 	ctx context.Context,
 	sysRec *api.System,
-	kindRec storekind.Record,
+	kindRec *api.Kind,
 	uuid string,
 	domRec *storedomain.Record,
 ) (string, error) {
 	qualifier := storeobject.NameQualifier{
 		System: sysRec,
 	}
-	if kindRec.Kind.Scope == api.ScopeDomain {
+	if kindRec.Scope == api.ScopeDomain {
 		qualifier.Domain = domRec
 	}
 	return d.objectStore.NameFromUUID(
@@ -186,10 +185,10 @@ func (d *Driver) objectNameFromUUID(
 // domain in the selector if the scope of Kind is ScopeDomain.
 func (d *Driver) objectReadValidateScope(
 	ctx context.Context,
-	kindRec *storekind.Record,
+	kindRec *api.Kind,
 	sel object.Selector,
 ) error {
-	scope := kindRec.Kind.Scope
+	scope := kindRec.Scope
 	switch scope {
 	case api.ScopeDomain:
 		domain := sel.Domain()
@@ -263,12 +262,12 @@ func (d *Driver) ObjectWrite(
 		return nil, err
 	}
 
-	err = d.objectWriteValidateScope(ctx, *kindRec, obj)
+	err = d.objectWriteValidateScope(ctx, kindRec, obj)
 	if err != nil {
 		return nil, err
 	}
 
-	kvRec, err := d.kindversionStore.ReadByName(ctx, sysRec, *kindRec, kv)
+	kvRec, err := d.kindversionStore.ReadByName(ctx, sysRec, kindRec, kv)
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return nil, errors.ErrKindUnknown
@@ -280,7 +279,7 @@ func (d *Driver) ObjectWrite(
 	if err != nil {
 		return nil, err
 	}
-	return d.objectStore.Write(ctx, sysRec, *kindRec, *kvRec, domRec, obj)
+	return d.objectStore.Write(ctx, sysRec, kindRec, *kvRec, domRec, obj)
 }
 
 // objectWriteValidate returns an error if the supplied object and write
@@ -308,10 +307,10 @@ func (d *Driver) objectWriteValidate(
 // required domain qualification if the scope of Kind is ScopeDomain.
 func (d *Driver) objectWriteValidateScope(
 	ctx context.Context,
-	kindRec storekind.Record,
+	kindRec *api.Kind,
 	obj api.Object,
 ) error {
-	if kindRec.Kind.Scope == api.ScopeDomain {
+	if kindRec.Scope == api.ScopeDomain {
 		dom := obj.Domain
 		if dom == nil {
 			return errors.ErrObjectDomainRequired
@@ -375,7 +374,7 @@ func (d *Driver) ObjectQuery(
 	boundedOpts := d.objectQueryBoundedOptions(ctx, qopts)
 
 	recs, err := d.objectStore.Query(
-		ctx, kv, sysRec, *kindRec, expr, boundedOpts,
+		ctx, kv, sysRec, kindRec, expr, boundedOpts,
 	)
 	if err != nil {
 		return nil, err

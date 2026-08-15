@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/relexec/rxp/api"
+
 	"github.com/relexec/rxp-pg/internal/cache"
 )
 
@@ -28,9 +30,9 @@ func (s *Store) initCache(ctx context.Context) error {
 	if cfg.Cache.Kind.Enabled {
 		s.Logger.Debug("initializing kind cache")
 		cacheCfg := cfg.Cache.Kind
-		byUUID, err := cache.New[byUUIDCacheKey, *Record](
+		byUUID, err := cache.New[byUUIDCacheKey, *api.Kind](
 			ctx,
-			cache.WithConfig[byUUIDCacheKey, *Record](cacheCfg),
+			cache.WithConfig[byUUIDCacheKey, *api.Kind](cacheCfg),
 		)
 		if err != nil {
 			return err

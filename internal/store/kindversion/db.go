@@ -19,8 +19,6 @@ import (
 	"github.com/relexec/rxp/kind/kindversion/schema"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/system"
-
-	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored kindversion
@@ -28,7 +26,7 @@ import (
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	sysRec *api.System,
-	kindRec storekind.Record,
+	kindRec *api.Kind,
 	rowID int64,
 ) (*Record, error) {
 	var verStr string
@@ -71,7 +69,7 @@ func (s *Store) dbReadByRowID(
 		}
 		out.KindVersion = api.KindVersion{
 			System:  sysRec,
-			Kind:    kindRec.Kind,
+			Kind:    *kindRec,
 			Version: *sv,
 			Schema:  &schema,
 		}
@@ -88,10 +86,11 @@ func (s *Store) dbReadByRowID(
 func (s *Store) dbReadByName(
 	ctx context.Context,
 	sysRec *api.System,
-	kindRec storekind.Record,
+	kindRec *api.Kind,
 	kv api.KindVersionName,
 ) (*Record, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
+	kindRowID := kindRec.SystemInternalIDInt64()
 	sv, _ := kv.Version()
 	verStr := kv.VersionString()
 	var schemaBytes sql.NullString
@@ -109,7 +108,7 @@ AND version = $3
 `
 		err := tx.QueryRow(
 			ctx, qs,
-			sysRowID, kindRec.RowID, verStr,
+			sysRowID, kindRowID, verStr,
 		).Scan(
 			&out.RowID, &schemaBytes,
 		)
@@ -133,7 +132,7 @@ AND version = $3
 		}
 		out.KindVersion = api.KindVersion{
 			System:  sysRec,
-			Kind:    kindRec.Kind,
+			Kind:    *kindRec,
 			Version: *sv,
 			Schema:  &schema,
 		}
@@ -150,9 +149,10 @@ AND version = $3
 func (s *Store) dbVersionsForKind(
 	ctx context.Context,
 	sysRec *api.System,
-	kindRec storekind.Record,
+	kindRec *api.Kind,
 ) (version.Set, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
+	kindRowID := kindRec.SystemInternalIDInt64()
 	var versionStrs []string
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -161,7 +161,7 @@ FROM kindversions
 WHERE system = $1
 AND kind = $2
 `
-		rows, err := tx.Query(ctx, qs, sysRowID, kindRec.RowID)
+		rows, err := tx.Query(ctx, qs, sysRowID, kindRowID)
 		if err != nil {
 			return errors.Internal(
 				"failed reading kindversion records",
@@ -202,10 +202,11 @@ AND kind = $2
 func (s *Store) dbInsert(
 	ctx context.Context,
 	sysRec *api.System,
-	kindRec storekind.Record,
+	kindRec *api.Kind,
 	kv api.KindVersion,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
+	kindRowID := kindRec.SystemInternalIDInt64()
 	name := kv.Name()
 	ver, _ := name.Version()
 	createdOn := time.Now().UnixNano()
@@ -253,7 +254,7 @@ INSERT INTO kindversions (
 		_, err = tx.Exec(
 			ctx, qs,
 			sysRowID,
-			kindRec.RowID,
+			kindRowID,
 			name.VersionString(),
 			schemaJSON,
 			createdOn,
@@ -315,9 +316,10 @@ func (s *Store) dbReadByExpression(
 					}
 					return nil, err
 				}
+				kindRowID := kindRec.SystemInternalIDInt64()
 				verStr := kvName.VersionString()
 				wheres = append(wheres, fmt.Sprintf("(kv.kind = $%d AND kv.version = $%d)", len(qargs)+1, len(qargs)+2))
-				qargs = append(qargs, kindRec.RowID)
+				qargs = append(qargs, kindRowID)
 				qargs = append(qargs, verStr)
 			case query.PredicateOperatorIn:
 				ors := []string{}
@@ -333,9 +335,10 @@ func (s *Store) dbReadByExpression(
 						}
 						return nil, err
 					}
+					kindRowID := kindRec.SystemInternalIDInt64()
 					verStr := kvName.VersionString()
 					ors = append(ors, fmt.Sprintf("(kv.kind = $%d AND kv.version = $%d)", len(qargs)+1, len(qargs)+2))
-					qargs = append(qargs, kindRec.RowID)
+					qargs = append(qargs, kindRowID)
 					qargs = append(qargs, verStr)
 				}
 				wheres = append(wheres, "("+strings.Join(ors, " OR ")+")")
@@ -463,7 +466,7 @@ FROM kindversions AS kv
 		}
 		kv := api.KindVersion{
 			System:  sysRec,
-			Kind:    kindRec.Kind,
+			Kind:    *kindRec,
 			Version: *sv,
 			Schema:  &schema,
 		}

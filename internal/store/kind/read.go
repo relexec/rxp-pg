@@ -6,20 +6,12 @@ import (
 	"github.com/relexec/rxp/api"
 )
 
-// Record decorates a Kind with internal DB information.
-type Record struct {
-	// RowID is the internal database SERIAL for the kinds record.
-	RowID int64
-	// Kind is the publicly-exposed Kind object.
-	Kind api.Kind
-}
-
-// ReadByRowID returns a Record for the Kind with the supplied internal DB
+// ReadByRowID returns a api.Kind for the Kind with the supplied internal DB
 // row ID. This method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*Record, error) {
+) (*api.Kind, error) {
 	cacheKey := byRowIDCacheKey(rowID)
 	cached, found := s.cacheReadByRowID(ctx, cacheKey)
 	if found {
@@ -36,12 +28,12 @@ func (s *Store) ReadByRowID(
 	return record, nil
 }
 
-// ReadByUUID returns a Record for the Kind with the supplied UUID. This
+// ReadByUUID returns a api.Kind for the Kind with the supplied UUID. This
 // method will populate any caches with any read records.
 func (s *Store) ReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*Record, error) {
+) (*api.Kind, error) {
 	cacheKey := byUUIDCacheKey(uuid)
 	cached, found := s.cacheReadByUUID(ctx, cacheKey)
 	if found {
@@ -58,13 +50,13 @@ func (s *Store) ReadByUUID(
 	return record, nil
 }
 
-// ReadByName returns a Record for the Kind with the supplied Name. This
+// ReadByName returns a api.Kind for the Kind with the supplied Name. This
 // method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
 	sysRec *api.System,
 	name api.KindName,
-) (*Record, error) {
+) (*api.Kind, error) {
 	cacheKey := newByNameCacheKey(sysRec, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)
 	if found {

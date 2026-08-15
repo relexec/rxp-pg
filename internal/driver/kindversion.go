@@ -76,7 +76,7 @@ func (d *Driver) KindVersionRead(
 		}
 	}
 
-	rec, err := d.kindversionStore.ReadByName(ctx, sysRec, *kindRec, name)
+	rec, err := d.kindversionStore.ReadByName(ctx, sysRec, kindRec, name)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (d *Driver) KindVersionWrite(
 			return err
 		}
 	}
-	return d.kindversionStore.Write(ctx, sysRec, *kindRec, kv)
+	return d.kindversionStore.Write(ctx, sysRec, kindRec, kv)
 }
 
 // kindversionWriteValidate returns an error if the supplied kindversion and write

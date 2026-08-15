@@ -21,10 +21,9 @@ import (
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*Record, error) {
-	out := Record{
-		RowID: rowID,
-	}
+) (*api.Kind, error) {
+	out := &api.Kind{}
+	out.SetSystemInternalID(rowID)
 	fn := func(tx pgx.Tx) error {
 		var systemRowID int64
 		var uuid string
@@ -50,18 +49,16 @@ func (s *Store) dbReadByRowID(
 				errors.WithWrap(err),
 			)
 		}
-		out.Kind = api.Kind{
-			System: sysRec,
-			UUID:   uuid,
-			Name:   name,
-			Scope:  scope,
-		}
+		out.System = sysRec
+		out.UUID = uuid
+		out.Name = name
+		out.Scope = scope
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return out, nil
 }
 
 // dbReadByUUID performs a SELECT query to return the stored kind record
@@ -69,17 +66,16 @@ func (s *Store) dbReadByRowID(
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*Record, error) {
-	out := Record{
-		Kind: api.Kind{
-			UUID: uuid,
-		},
+) (*api.Kind, error) {
+	out := &api.Kind{
+		UUID: uuid,
 	}
 	fn := func(tx pgx.Tx) error {
+		var rowID int64
 		var name api.KindName
 		var scope api.Scope
 		qs := "SELECT id, name, scope FROM kinds WHERE uuid = $1"
-		err := tx.QueryRow(ctx, qs, uuid).Scan(&out.RowID, &name, &scope)
+		err := tx.QueryRow(ctx, qs, uuid).Scan(&rowID, &name, &scope)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -89,14 +85,15 @@ func (s *Store) dbReadByUUID(
 				errors.WithWrap(err),
 			)
 		}
-		out.Kind.Name = name
-		out.Kind.Scope = scope
+		out.SetSystemInternalID(rowID)
+		out.Name = name
+		out.Scope = scope
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return out, nil
 }
 
 // dbReadByName performs a SELECT query to return the stored kind record
@@ -105,15 +102,14 @@ func (s *Store) dbReadByName(
 	ctx context.Context,
 	sysRec *api.System,
 	name api.KindName,
-) (*Record, error) {
-	out := Record{
-		Kind: api.Kind{
-			System: sysRec,
-			Name:   name,
-		},
+) (*api.Kind, error) {
+	out := &api.Kind{
+		System: sysRec,
+		Name:   name,
 	}
 	sysRowID := sysRec.SystemInternalIDInt64()
 	fn := func(tx pgx.Tx) error {
+		var rowID int64
 		var uuid string
 		var scope api.Scope
 		qs := `
@@ -124,7 +120,7 @@ AND name = $2
 `
 		err := tx.QueryRow(
 			ctx, qs, sysRowID, name,
-		).Scan(&out.RowID, &uuid, &scope)
+		).Scan(&rowID, &uuid, &scope)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				return errors.ErrNotFound
@@ -134,14 +130,15 @@ AND name = $2
 				errors.WithWrap(err),
 			)
 		}
-		out.Kind.UUID = uuid
-		out.Kind.Scope = scope
+		out.SetSystemInternalID(rowID)
+		out.UUID = uuid
+		out.Scope = scope
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return out, nil
 }
 
 // dbInsert atomically writes the supplied Kind to persistent storage.
@@ -208,7 +205,7 @@ func (s *Store) dbReadByExpression(
 	ctx context.Context,
 	expr query.Expression,
 	opts query.Options,
-) ([]*Record, error) {
+) ([]*api.Kind, error) {
 	qargs := []any{}
 	wheres := []string{}
 
@@ -326,7 +323,7 @@ FROM kinds AS k
 		return nil, err
 	}
 
-	out := make([]*Record, 0, len(recs))
+	out := make([]*api.Kind, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
@@ -335,16 +332,15 @@ FROM kinds AS k
 				errors.WithWrap(err),
 			)
 		}
-		k := api.Kind{
+		k := &api.Kind{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
 			System: sysRec,
 			Scope:  rec.Scope,
 		}
-		out = append(out, &Record{
-			RowID: rec.ID,
-			Kind:  k,
-		})
+		k.SetSystemInternalID(rec.ID)
+
+		out = append(out, k)
 	}
 
 	return out, nil

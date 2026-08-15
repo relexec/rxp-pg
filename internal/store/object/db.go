@@ -18,7 +18,6 @@ import (
 	"github.com/relexec/rxp/query"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
-	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
 )
 
@@ -327,16 +326,16 @@ INNER JOIN object_generations AS og
 func (s *Store) dbInsertFirst(
 	ctx context.Context,
 	sysRec *api.System,
-	kindRec storekind.Record,
+	kindRec *api.Kind,
 	kvRec storekindversion.Record,
 	domRec *storedomain.Record,
 	obj api.Object,
 ) (*api.Object, error) {
-	kind := kindRec.Kind
-	if kind.Scope == api.ScopeDomain && domRec == nil {
+	if kindRec.Scope == api.ScopeDomain && domRec == nil {
 		return nil, errors.ErrObjectDomainRequired
 	}
 	sysRowID := sysRec.SystemInternalIDInt64()
+	kindRowID := kindRec.SystemInternalIDInt64()
 	kv := obj.KindVersionName
 	uuid := obj.UUID
 	name := obj.Name
@@ -399,7 +398,7 @@ INSERT INTO objects (
 				errors.WithWrap(err),
 			)
 		}
-		scope := kindRec.Kind.Scope
+		scope := kindRec.Scope
 		switch scope {
 		case api.ScopeDomain:
 			qs = `
@@ -424,7 +423,7 @@ INSERT INTO domain_qualified_object_names (
 				ctx, qs,
 				objRowID,
 				sysRowID,
-				kindRec.RowID,
+				kindRowID,
 				domRec.RowID,
 				name,
 				createdOn,
@@ -438,7 +437,7 @@ INSERT INTO domain_qualified_object_names (
 							domRec.Domain.Name,
 							name,
 						)
-						return errors.DuplicateName(kind.Name, qn)
+						return errors.DuplicateName(kindRec.Name, qn)
 					}
 				}
 				return errors.Internal(
@@ -467,7 +466,7 @@ INSERT INTO system_qualified_object_names (
 				ctx, qs,
 				objRowID,
 				sysRowID,
-				kindRec.RowID,
+				kindRowID,
 				name,
 				createdOn,
 				createdBy,
@@ -475,7 +474,7 @@ INSERT INTO system_qualified_object_names (
 			if err != nil {
 				if pgErr, ok := err.(*pgconn.PgError); ok {
 					if pgErr.Code == pgerrcode.UniqueViolation {
-						return errors.DuplicateName(kind.Name, name)
+						return errors.DuplicateName(kindRec.Name, name)
 					}
 				}
 				return errors.Internal(
@@ -534,14 +533,13 @@ INSERT INTO object_generations (
 // writer of an object and expect to see a supplied generation.
 func (s *Store) dbInsertGeneration(
 	ctx context.Context,
-	kindRec storekind.Record,
+	kindRec *api.Kind,
 	kvRec storekindversion.Record,
 	domRec *storedomain.Record,
 	obj api.Object,
 	expectGeneration api.Generation,
 ) (*api.Object, error) {
-	kind := kindRec.Kind
-	if kind.Scope == api.ScopeDomain && domRec == nil {
+	if kindRec.Scope == api.ScopeDomain && domRec == nil {
 		return nil, errors.ErrObjectDomainRequired
 	}
 	kv := obj.KindVersionName
@@ -676,7 +674,7 @@ func (s *Store) dbReadDomainQualifiedByExpression(
 	ctx context.Context,
 	kv api.KindVersionName,
 	sysRec *api.System,
-	kindRec storekind.Record,
+	kindRec *api.Kind,
 	expr query.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
@@ -684,9 +682,10 @@ func (s *Store) dbReadDomainQualifiedByExpression(
 		return nil, errors.ErrInvalidQueryKindPredicate
 	}
 	sysRowID := sysRec.SystemInternalIDInt64()
+	kindRowID := kindRec.SystemInternalIDInt64()
 	qargs := []any{
 		sysRowID,
-		kindRec.RowID,
+		kindRowID,
 	}
 	wheres := []string{
 		"o.system = $1",
@@ -802,7 +801,7 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 	ctx context.Context,
 	kv api.KindVersionName,
 	sysRec *api.System,
-	kindRec storekind.Record,
+	kindRec *api.Kind,
 	expr query.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
@@ -810,9 +809,10 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 		return nil, errors.ErrInvalidQueryKindPredicate
 	}
 	sysRowID := sysRec.SystemInternalIDInt64()
+	kindRowID := kindRec.SystemInternalIDInt64()
 	qargs := []any{
 		sysRowID,
-		kindRec.RowID,
+		kindRowID,
 	}
 	wheres := []string{
 		"o.system = $1",

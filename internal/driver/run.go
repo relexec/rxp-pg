@@ -177,7 +177,7 @@ func (d *Driver) RunWrite(
 	}
 
 	_, err = d.kindversionStore.ReadByName(
-		ctx, targetSysRec, *targetKindRec, targetKV,
+		ctx, targetSysRec, targetKindRec, targetKV,
 	)
 	if err != nil {
 		if err == errors.ErrNotFound {

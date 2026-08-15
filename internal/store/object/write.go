@@ -6,7 +6,6 @@ import (
 	"github.com/relexec/rxp/api"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
-	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
 )
 
@@ -15,7 +14,7 @@ import (
 func (s *Store) Write(
 	ctx context.Context,
 	sysRec *api.System,
-	kindRec storekind.Record,
+	kindRec *api.Kind,
 	kvRec storekindversion.Record,
 	domRec *storedomain.Record,
 	obj api.Object,
