@@ -28,13 +28,15 @@ func (s *Store) dbReadByRowID(
 	sysRec *api.System,
 	kindRec *api.Kind,
 	rowID int64,
-) (*Record, error) {
+) (*api.KindVersion, error) {
 	var verStr string
 	var schemaBytes sql.NullString
 	var schema schema.Schema
-	out := Record{
-		RowID: rowID,
+	out := &api.KindVersion{
+		System: sysRec,
+		Kind:   *kindRec,
 	}
+	out.SetSystemInternalID(rowID)
 	fn := func(tx pgx.Tx) error {
 		qs := "SELECT version, schema FROM kindversions WHERE id = $1"
 		err := tx.QueryRow(
@@ -67,18 +69,14 @@ func (s *Store) dbReadByRowID(
 				errors.WithWrap(err),
 			)
 		}
-		out.KindVersion = api.KindVersion{
-			System:  sysRec,
-			Kind:    *kindRec,
-			Version: *sv,
-			Schema:  &schema,
-		}
+		out.Version = *sv
+		out.Schema = &schema
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return out, nil
 }
 
 // dbReadByName performs a SELECT query to return the stored kindversion record
@@ -88,14 +86,18 @@ func (s *Store) dbReadByName(
 	sysRec *api.System,
 	kindRec *api.Kind,
 	kv api.KindVersionName,
-) (*Record, error) {
+) (*api.KindVersion, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	kindRowID := kindRec.SystemInternalIDInt64()
 	sv, _ := kv.Version()
 	verStr := kv.VersionString()
+	var rowID int64
 	var schemaBytes sql.NullString
 	var schema schema.Schema
-	out := Record{}
+	out := &api.KindVersion{
+		System: sysRec,
+		Kind:   *kindRec,
+	}
 	fn := func(tx pgx.Tx) error {
 		qs := `
 SELECT
@@ -110,7 +112,7 @@ AND version = $3
 			ctx, qs,
 			sysRowID, kindRowID, verStr,
 		).Scan(
-			&out.RowID, &schemaBytes,
+			&rowID, &schemaBytes,
 		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
@@ -130,18 +132,15 @@ AND version = $3
 				)
 			}
 		}
-		out.KindVersion = api.KindVersion{
-			System:  sysRec,
-			Kind:    *kindRec,
-			Version: *sv,
-			Schema:  &schema,
-		}
+		out.Version = *sv
+		out.Schema = &schema
+		out.SetSystemInternalID(rowID)
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return out, nil
 }
 
 // dbVersionsForKind returns a version.Set representing all the semantic
@@ -290,7 +289,7 @@ func (s *Store) dbReadByExpression(
 	ctx context.Context,
 	expr query.Expression,
 	opts query.Options,
-) ([]*Record, error) {
+) ([]*api.KindVersion, error) {
 	qargs := []any{}
 	wheres := []string{}
 
@@ -431,7 +430,7 @@ FROM kindversions AS kv
 		return nil, err
 	}
 
-	out := make([]*Record, 0, len(recs))
+	out := make([]*api.KindVersion, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
@@ -464,16 +463,14 @@ FROM kindversions AS kv
 				errors.WithWrap(err),
 			)
 		}
-		kv := api.KindVersion{
+		kv := &api.KindVersion{
 			System:  sysRec,
 			Kind:    *kindRec,
 			Version: *sv,
 			Schema:  &schema,
 		}
-		out = append(out, &Record{
-			RowID:       rec.ID,
-			KindVersion: kv,
-		})
+		kv.SetSystemInternalID(rec.ID)
+		out = append(out, kv)
 	}
 
 	return out, nil

@@ -19,12 +19,12 @@ type Store struct {
 	cacheLock sync.RWMutex
 	// byKindVersion is a cache that stores known KindVersions keyed by System
 	// UUID+KindVersionName..
-	byName *cache.Cache[byNameCacheKey, *Record]
+	byName *cache.Cache[byNameCacheKey, *api.KindVersion]
 	// byRowID is a cache that stores a lookup map of System UUID +
 	// KindVersionName to internal DB Row ID.
 	byRowID *cache.Cache[byRowIDCacheKey, byNameCacheKey]
 
-	// hostSystemRecord is the host System managed by the Driver.
+	// hostSystemapi.KindVersion is the host System managed by the Driver.
 	hostSystemRecord api.System
 	// systemStore contains the Store for reading and writing System data.
 	systemStore *storesystem.Store

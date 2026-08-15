@@ -76,11 +76,7 @@ func (d *Driver) KindVersionRead(
 		}
 	}
 
-	rec, err := d.kindversionStore.ReadByName(ctx, sysRec, kindRec, name)
-	if err != nil {
-		return nil, err
-	}
-	return &rec.KindVersion, nil
+	return d.kindversionStore.ReadByName(ctx, sysRec, kindRec, name)
 }
 
 // kindversionReadValidate returns an error if the supplied selector and read
@@ -212,21 +208,17 @@ func (d *Driver) KindVersionQuery(
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*api.KindVersion, 0, len(recs))
-	for _, rec := range recs {
-		out = append(out, &rec.KindVersion)
-	}
 	resOpts := query.NewOptions(
 		query.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == int(boundedOpts.Limit()) {
 		resOpts = query.NewOptions(
-			query.ContinueFrom(string(recs[len(recs)-1].KindVersion.Name())),
+			query.ContinueFrom(string(recs[len(recs)-1].Name())),
 			query.Limit(boundedOpts.Limit()),
 		)
 	}
 	resNewOpts := []query.ResultModifier[*api.KindVersion]{
-		query.ResultWithItems(out),
+		query.ResultWithItems(recs),
 		query.ResultWithOptions[*api.KindVersion](resOpts),
 	}
 	return query.NewResult[*api.KindVersion](resNewOpts...), nil

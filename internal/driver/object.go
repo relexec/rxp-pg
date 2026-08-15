@@ -122,7 +122,7 @@ func (d *Driver) ObjectRead(
 	if dom != nil {
 		rec.Object.Domain = dom
 	}
-	rec.Object.KindVersionName = kvRec.KindVersion.Name()
+	rec.Object.KindVersionName = kvRec.Name()
 	rec.Object.Name = name
 	return rec.Object, nil
 }
@@ -279,7 +279,7 @@ func (d *Driver) ObjectWrite(
 	if err != nil {
 		return nil, err
 	}
-	return d.objectStore.Write(ctx, sysRec, kindRec, *kvRec, domRec, obj)
+	return d.objectStore.Write(ctx, sysRec, kindRec, kvRec, domRec, obj)
 }
 
 // objectWriteValidate returns an error if the supplied object and write

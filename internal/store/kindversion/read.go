@@ -6,22 +6,14 @@ import (
 	"github.com/relexec/rxp/api"
 )
 
-// Record decorates a KindVersion with internal DB information.
-type Record struct {
-	// RowID is the internal database SERIAL for the kindversions record.
-	RowID int64
-	// KindVersion is the publicly-exposed KindVersion object.
-	KindVersion api.KindVersion
-}
-
-// ReadByRowID returns a Record for the KindVersion with the supplied internal DB
+// ReadByRowID returns a api.KindVersion for the KindVersion with the supplied internal DB
 // row ID. This method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
 	sysRec *api.System,
 	kindRec *api.Kind,
 	rowID int64,
-) (*Record, error) {
+) (*api.KindVersion, error) {
 	cacheKey := byRowIDCacheKey(rowID)
 	cached, found := s.cacheReadByRowID(ctx, cacheKey)
 	if found {
@@ -38,14 +30,14 @@ func (s *Store) ReadByRowID(
 	return record, nil
 }
 
-// ReadByName returns a Record for the KindVersion with the supplied
+// ReadByName returns a api.KindVersion for the KindVersion with the supplied
 // KindVersionName. This method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
 	sysRec *api.System,
 	kindRec *api.Kind,
 	name api.KindVersionName,
-) (*Record, error) {
+) (*api.KindVersion, error) {
 	cacheKey := newByNameCacheKey(sysRec, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)
 	if found {

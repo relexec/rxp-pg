@@ -6,7 +6,6 @@ import (
 	"github.com/relexec/rxp/api"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
-	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
 )
 
 // Write atomically writes the supplied Object to persistent storage. On
@@ -15,7 +14,7 @@ func (s *Store) Write(
 	ctx context.Context,
 	sysRec *api.System,
 	kindRec *api.Kind,
-	kvRec storekindversion.Record,
+	kvRec *api.KindVersion,
 	domRec *storedomain.Record,
 	obj api.Object,
 ) (*api.Object, error) {

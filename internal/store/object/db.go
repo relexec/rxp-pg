@@ -18,7 +18,6 @@ import (
 	"github.com/relexec/rxp/query"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
-	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
 )
 
 // dbUUIDFromNameDomainQualified returns the UUID associated with the object
@@ -327,7 +326,7 @@ func (s *Store) dbInsertFirst(
 	ctx context.Context,
 	sysRec *api.System,
 	kindRec *api.Kind,
-	kvRec storekindversion.Record,
+	kvRec *api.KindVersion,
 	domRec *storedomain.Record,
 	obj api.Object,
 ) (*api.Object, error) {
@@ -336,6 +335,7 @@ func (s *Store) dbInsertFirst(
 	}
 	sysRowID := sysRec.SystemInternalIDInt64()
 	kindRowID := kindRec.SystemInternalIDInt64()
+	kvRowID := kvRec.SystemInternalIDInt64()
 	kv := obj.KindVersionName
 	uuid := obj.UUID
 	name := obj.Name
@@ -374,7 +374,7 @@ INSERT INTO objects (
 		err := tx.QueryRow(
 			ctx, qs,
 			sysRowID,
-			kvRec.RowID,
+			kvRowID,
 			uuid,
 			1, /* we expect we are the first generation */
 			domainRowID,
@@ -503,7 +503,7 @@ INSERT INTO object_generations (
 			ctx, qs,
 			objRowID,
 			1,
-			kvRec.RowID,
+			kvRowID,
 			specJSON,
 			createdOn,
 			createdBy,
@@ -534,7 +534,7 @@ INSERT INTO object_generations (
 func (s *Store) dbInsertGeneration(
 	ctx context.Context,
 	kindRec *api.Kind,
-	kvRec storekindversion.Record,
+	kvRec *api.KindVersion,
 	domRec *storedomain.Record,
 	obj api.Object,
 	expectGeneration api.Generation,
@@ -542,6 +542,7 @@ func (s *Store) dbInsertGeneration(
 	if kindRec.Scope == api.ScopeDomain && domRec == nil {
 		return nil, errors.ErrObjectDomainRequired
 	}
+	kvRowID := kvRec.SystemInternalIDInt64()
 	kv := obj.KindVersionName
 	uuid := obj.UUID
 	createdOn := time.Now().UnixNano()
@@ -585,7 +586,7 @@ INSERT INTO object_generations (
 			ctx, qs,
 			objRowID,
 			expectGeneration+1,
-			kvRec.RowID,
+			kvRowID,
 			specJSON,
 			createdOn,
 			createdBy,
@@ -757,7 +758,7 @@ INNER JOIN object_generations AS og
 					errors.WithWrap(err),
 				)
 			}
-			kvName = kvRec.KindVersion.Name()
+			kvName = kvRec.Name()
 		}
 		domRec, err := s.domainStore.ReadByRowID(
 			ctx, sysRec, rec.DomainID,
@@ -978,7 +979,7 @@ INNER JOIN object_generations AS og
 					errors.WithWrap(err),
 				)
 			}
-			kvName = kvRec.KindVersion.Name()
+			kvName = kvRec.Name()
 		}
 		obj := &api.Object{
 			KindVersionName: kvName,

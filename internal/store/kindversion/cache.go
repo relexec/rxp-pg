@@ -30,11 +30,11 @@ func newByNameCacheKey(
 }
 
 // cacheReadByRowID looks up a cached KindVersion by RowID, returning the cached
-// Record and whether or not the entry was found.
+// api.KindVersion and whether or not the entry was found.
 func (s *Store) cacheReadByRowID(
 	ctx context.Context,
 	key byRowIDCacheKey,
-) (*Record, bool) {
+) (*api.KindVersion, bool) {
 	if s.byRowID == nil {
 		return nil, false
 	}
@@ -50,11 +50,11 @@ func (s *Store) cacheReadByRowID(
 }
 
 // cacheReadByName looks up a cached KindVersion by KindVersionName, returning
-// the cached Record and whether or not the entry was found.
+// the cached api.KindVersion and whether or not the entry was found.
 func (s *Store) cacheReadByName(
 	ctx context.Context,
 	key byNameCacheKey,
-) (*Record, bool) {
+) (*api.KindVersion, bool) {
 	if s.byName == nil {
 		return nil, false
 	}
@@ -66,20 +66,20 @@ func (s *Store) cacheReadByName(
 }
 
 // cacheReadByNameNoLock looks up a cached Kind by name, returning the cached
-// Record and whether or not the entry was found. This method assumes the cache
+// api.KindVersion and whether or not the entry was found. This method assumes the cache
 // lock is already held.
 func (s *Store) cacheReadByNameNoLock(
 	ctx context.Context,
 	key byNameCacheKey,
-) (*Record, bool) {
+) (*api.KindVersion, bool) {
 	return s.byName.Get(key)
 }
 
-// cacheWrite ensures the supplied Record is written to the lookup caches if
+// cacheWrite ensures the supplied api.KindVersion is written to the lookup caches if
 // enabled.
 func (s *Store) cacheWrite(
 	ctx context.Context,
-	rec *Record,
+	rec *api.KindVersion,
 ) error {
 	if s.byName == nil {
 		return nil
@@ -89,8 +89,8 @@ func (s *Store) cacheWrite(
 	defer s.cacheLock.Unlock()
 
 	nameKey := newByNameCacheKey(
-		rec.KindVersion.System,
-		rec.KindVersion.Name(),
+		rec.System,
+		rec.Name(),
 	)
 	set := s.byName.Set(nameKey, rec)
 	if !set {
@@ -101,7 +101,8 @@ func (s *Store) cacheWrite(
 		)
 	}
 	// Here we populate our row ID -> kv map
-	rowIDKey := byRowIDCacheKey(rec.RowID)
+	rowID := rec.SystemInternalIDInt64()
+	rowIDKey := byRowIDCacheKey(rowID)
 	set = s.byRowID.Set(rowIDKey, nameKey)
 	if !set {
 		return errors.Internal(
