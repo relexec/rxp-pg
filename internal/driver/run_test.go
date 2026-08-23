@@ -10,7 +10,7 @@ import (
 	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp-testing/fixtures/runnable"
 	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/run"
+	apirun "github.com/relexec/rxp/api/run"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,7 +44,7 @@ func TestRunRead(t *testing.T) {
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, runnable1)
 	require.Nil(t, err, err)
 
-	run1Target := api.RunTarget{
+	run1Target := apirun.Target{
 		KindVersionName: runnable.KindVersion_V1_0_0.Name(),
 		UUID:            runnable1.UUID,
 		Generation:      1,
@@ -54,15 +54,14 @@ func TestRunRead(t *testing.T) {
 	run1Caller := api.Caller{
 		Identity: testutil.UserIdentity,
 	}
-	run1 := run.New(
-		run.WithRequest(
-			api.RunRequest{
-				Target: run1Target,
-				Caller: run1Caller,
-				UUID:   run1UUID,
-				On:     time.Now().UTC(),
-			},
-		),
+	run1 := &apirun.Run{}
+	run1.SetRequest(
+		apirun.Request{
+			Target: run1Target,
+			Caller: run1Caller,
+			UUID:   run1UUID,
+			On:     time.Now().UTC(),
+		},
 	)
 
 	err = testutil.RunCreateIfNotExists(ctx, rxp, run1)
@@ -71,16 +70,16 @@ func TestRunRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		target api.RunTarget
-		sel    run.Selector
-		exp    *api.Run
+		target apirun.Target
+		sel    apirun.Selector
+		exp    *apirun.Run
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
 			run1Target,
-			run.Select(run.ByUUID(run1.UUID())),
+			apirun.Select(apirun.ByUUID(run1.UUID())),
 			nil,
 			"missing identity",
 		},
@@ -88,7 +87,7 @@ func TestRunRead(t *testing.T) {
 			"unknown uuid",
 			ctx,
 			run1Target,
-			run.Select(run.ByUUID(uuid.NewString())),
+			apirun.Select(apirun.ByUUID(uuid.NewString())),
 			nil,
 			"not found",
 		},
@@ -96,7 +95,7 @@ func TestRunRead(t *testing.T) {
 			"uuid required in selector",
 			ctx,
 			run1Target,
-			run.Select(),
+			apirun.Select(),
 			nil,
 			"invalid selector: uuid required",
 		},
@@ -104,7 +103,7 @@ func TestRunRead(t *testing.T) {
 			"happy path by uuid",
 			ctx,
 			run1Target,
-			run.Select(run.ByUUID(run1.Request().UUID)),
+			apirun.Select(apirun.ByUUID(run1.Request().UUID)),
 			run1,
 			"",
 		},

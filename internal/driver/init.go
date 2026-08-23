@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/api/metrics"
+	apimetrics "github.com/relexec/rxp/api/metrics"
 	"github.com/relexec/rxp/errors"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
@@ -108,7 +108,7 @@ func (d *Driver) ensureHostSystem() error {
 func (d *Driver) initMetrics(ctx context.Context) error {
 	d.Logger.Debug("initializing metrics")
 	if d.Metrics == nil {
-		h, err := metrics.New(ctx)
+		h, err := apimetrics.New(ctx)
 		if err != nil {
 			return fmt.Errorf("failed initializing metrics: %w", err)
 		}

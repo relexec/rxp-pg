@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/api/metrics"
+	apimetrics "github.com/relexec/rxp/api/metrics"
 
 	"github.com/relexec/rxp-pg/config"
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
@@ -31,7 +31,7 @@ type Driver struct {
 	Pool *pgxpool.Pool
 
 	// Metrics is the metrics handler for the Driver.
-	Metrics *metrics.Handler
+	Metrics *apimetrics.Handler
 
 	// hostSystemUUID is the UUID of the host System managed by this Driver.
 	hostSystemUUID string

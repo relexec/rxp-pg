@@ -6,10 +6,8 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/relexec/rxp/api"
+	apirun "github.com/relexec/rxp/api/run"
 	"github.com/relexec/rxp/errors"
-
-	storerun "github.com/relexec/rxp-pg/internal/store/run"
 )
 
 var (
@@ -24,9 +22,10 @@ var (
 // dbInsert is called to atomically write run event records.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	runRec storerun.Record,
-	events []api.RunEvent,
+	run apirun.Run,
+	events []apirun.Event,
 ) error {
+	runRowID := run.SystemInternalIDInt64()
 	fn := func(tx pgx.Tx) error {
 		_, err := tx.CopyFrom(
 			ctx,
@@ -34,7 +33,7 @@ func (s *Store) dbInsert(
 			runEventColumns,
 			pgx.CopyFromSlice(len(events), func(x int) ([]any, error) {
 				return []any{
-					runRec.RowID,
+					runRowID,
 					events[x].Sequence,
 					int(events[x].Type),
 					events[x].On.UnixNano(),

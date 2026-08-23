@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/api/metrics"
+	apimetrics "github.com/relexec/rxp/api/metrics"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/query"
@@ -29,17 +29,17 @@ func (d *Driver) KindVersionRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(api.TypeKindVersion),
-			metrics.AttributeKindVersion(name),
+			apimetrics.AttributeType(api.TypeKindVersion),
+			apimetrics.AttributeKindVersion(name),
 		}
 		if err != nil {
-			attrs = append(attrs, metrics.AttributeErrCode(err))
+			attrs = append(attrs, apimetrics.AttributeErrCode(err))
 		}
-		metrics.InstrumentReadRequest.Add(
+		apimetrics.InstrumentReadRequest.Add(
 			ctx, 1,
 			metric.WithAttributes(attrs...),
 		)
-		metrics.InstrumentReadDuration.Record(ctx, elapsed)
+		apimetrics.InstrumentReadDuration.Record(ctx, elapsed)
 	}()
 
 	err = d.kindversionReadValidate(ctx, sel)
@@ -104,17 +104,17 @@ func (d *Driver) KindVersionWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(api.TypeKindVersion),
-			metrics.AttributeKindVersion(name),
+			apimetrics.AttributeType(api.TypeKindVersion),
+			apimetrics.AttributeKindVersion(name),
 		}
 		if err != nil {
-			attrs = append(attrs, metrics.AttributeErrCode(err))
+			attrs = append(attrs, apimetrics.AttributeErrCode(err))
 		}
-		metrics.InstrumentWriteRequest.Add(
+		apimetrics.InstrumentWriteRequest.Add(
 			ctx, 1,
 			metric.WithAttributes(attrs...),
 		)
-		metrics.InstrumentWriteDuration.Record(ctx, elapsed)
+		apimetrics.InstrumentWriteDuration.Record(ctx, elapsed)
 	}()
 
 	err = d.kindversionWriteValidate(ctx, kv)
@@ -182,16 +182,16 @@ func (d *Driver) KindVersionQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(api.TypeKindVersion),
+			apimetrics.AttributeType(api.TypeKindVersion),
 		}
 		if err != nil {
-			attrs = append(attrs, metrics.AttributeErrCode(err))
+			attrs = append(attrs, apimetrics.AttributeErrCode(err))
 		}
-		metrics.InstrumentQueryRequest.Add(
+		apimetrics.InstrumentQueryRequest.Add(
 			ctx, 1,
 			metric.WithAttributes(attrs...),
 		)
-		metrics.InstrumentQueryDuration.Record(ctx, elapsed)
+		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
 	qopts := query.NewOptions(opts...)

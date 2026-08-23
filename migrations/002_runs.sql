@@ -12,14 +12,15 @@ CREATE TABLE runs (
 , paused_on BIGINT NULL
 , resumed_on BIGINT NULL
 , canceled_on BIGINT NULL
+, finalized_on BIGINT NULL
 , UNIQUE (uuid)
 );
 
 CREATE INDEX ix_runs_target
-ON runs (target);
+ON runs (target, finalized_on);
 
-CREATE INDEX ix_runs_root_target
-ON runs (root, target);
+CREATE INDEX ix_runs_root
+ON runs (root, parent);
 
 CREATE TABLE runs_archived (
   run BIGINT NOT NULL PRIMARY KEY
@@ -34,6 +35,7 @@ CREATE TABLE runs_archived (
 , paused_on BIGINT NULL
 , resumed_on BIGINT NULL
 , canceled_on BIGINT NULL
+, finalized_on BIGINT NULL
 , archived_on BIGINT NOT NULL
 , archived_by TEXT NOT NULL
 );

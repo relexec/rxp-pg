@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
+	apirun "github.com/relexec/rxp/api/run"
 
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
 )
@@ -15,13 +16,13 @@ func (s *Store) Write(
 	targetRec storeobject.Record,
 	callerSysRec *api.System,
 	callerDomRec *api.Domain,
-	rootRec *Record,
-	parentRec *Record,
-	run api.Run,
-) (*api.Run, error) {
+	root *apirun.Identifiers,
+	parent *apirun.Identifiers,
+	run apirun.Run,
+) (*apirun.Run, error) {
 	return s.dbInsert(
 		ctx, targetRec,
 		callerSysRec, callerDomRec,
-		rootRec, parentRec, run,
+		root, parent, run,
 	)
 }

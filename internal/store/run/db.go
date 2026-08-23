@@ -11,9 +11,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
+	apirun "github.com/relexec/rxp/api/run"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/run"
 
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
 )
@@ -23,12 +23,11 @@ import (
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*Record, error) {
+) (*apirun.Run, error) {
 	var uuid string
 	var targetUUID string
 	var targetGeneration api.Generation
 	var rootRowID int64
-	var parentRowID sql.NullInt64
 	var requestedOn int64
 	var callerIdentity string
 	var callerSystemID int64
@@ -42,9 +41,10 @@ func (s *Store) dbReadByRowID(
 	var pausedOn sql.NullInt64
 	var resumedOn sql.NullInt64
 	var canceledOn sql.NullInt64
-	out := Record{
-		RowID: rowID,
-	}
+
+	out := &apirun.Run{}
+	out.SetSystemInternalID(rowID)
+
 	qargs := []any{rowID}
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -53,7 +53,6 @@ SELECT
 , t.uuid AS target_uuid
 , t.generation AS target_generation
 , r.root AS root_id
-, r.parent AS parent_id
 , rr.created_on AS requested_on
 , rr.caller_identity AS caller_identity
 , rr.caller_system_id AS caller_system_id
@@ -81,7 +80,6 @@ WHERE r.id = $1
 			&targetUUID,
 			&targetGeneration,
 			&rootRowID,
-			&parentRowID,
 			&requestedOn,
 			&callerIdentity,
 			&callerSystemID,
@@ -108,11 +106,11 @@ WHERE r.id = $1
 		caller := api.Caller{
 			Identity: callerIdentity,
 		}
-		target := api.RunTarget{
+		target := apirun.Target{
 			UUID:       targetUUID,
 			Generation: targetGeneration,
 		}
-		rr := api.RunRequest{
+		rr := apirun.Request{
 			UUID:   uuid,
 			Target: target,
 			Caller: caller,
@@ -124,44 +122,120 @@ WHERE r.id = $1
 		if inVars.Valid {
 			rr.In = inVars.String
 		}
-		out.Run = run.New(
-			run.WithRequest(rr),
-		)
+		out.SetRequest(rr)
 		if startedOn.Valid {
-			out.Run.SetStartedOn(time.Unix(0, startedOn.Int64))
+			out.SetStartedOn(time.Unix(0, startedOn.Int64))
 		}
 		if completedOn.Valid {
-			out.Run.SetCompletedOn(time.Unix(0, completedOn.Int64))
+			out.SetCompletedOn(time.Unix(0, completedOn.Int64))
 		}
 		if failedOn.Valid {
-			out.Run.SetFailedOn(time.Unix(0, failedOn.Int64))
+			out.SetFailedOn(time.Unix(0, failedOn.Int64))
 		}
 		if pausedOn.Valid {
-			out.Run.SetPausedOn(time.Unix(0, pausedOn.Int64))
+			out.SetPausedOn(time.Unix(0, pausedOn.Int64))
 		}
 		if resumedOn.Valid {
-			out.Run.SetResumedOn(time.Unix(0, resumedOn.Int64))
+			out.SetResumedOn(time.Unix(0, resumedOn.Int64))
 		}
 		if canceledOn.Valid {
-			out.Run.SetCanceledOn(time.Unix(0, canceledOn.Int64))
+			out.SetCanceledOn(time.Unix(0, canceledOn.Int64))
 		}
 		return nil
 	}
 	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return out, nil
 }
+
+/*
+
+type runIdentifieRecord struct {
+	ID       int64         `db:"run_id"`
+	UUID     string        `db:"run_uuid"`
+	ParentID sql.NullInt64 `db:"parent_id"`
+}
+
+// dbReadIdentifiersByRoot returns the RunIdentiifers struct containing the
+// tree of Run identifiers for the supplied root row ID.
+func (s *Store) dbReadIdentifiersByRoot(
+	ctx context.Context,
+	rootRowID int64,
+) (*apirun.Identifiers, error) {
+
+	out := &apirun.Identifiers{}
+	out.SetSystemInternalID(rootRowID)
+
+	fn := func(tx pgx.Tx) error {
+		qs := `
+SELECT
+  r.id AS run_id
+, r.uuid AS run_uuid
+, r.parent AS parent_id
+FROM runs AS r
+WHERE r.root_id = $1
+ORDER BY r.id
+`
+		rows, err := tx.Query(ctx, qs, rootRowID)
+		if err != nil {
+			return errors.Internal(
+				"failed reading run identifier records",
+				errors.WithWrap(err),
+			)
+		}
+		defer rows.Close()
+		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[runIdentifierRecord])
+		if err != nil {
+			return errors.Internal(
+				"failed collecting run identifier records",
+				errors.WithWrap(err),
+			)
+		}
+	}
+	if err := s.Exec(ctx, fn); err != nil {
+		return nil, err
+	}
+
+	rowIDToRunIDs := make(map[int64]*apirun.RunIdentifiers, len(recs))
+
+	for _, rec := range recs {
+		runIDs := &apirun.Identifiers{UUID: rec.UUID}
+		runIDs.SetSystemInternalID(rec.ID)
+		runIDs.Root = out
+
+		if rec.ParentID.Valid {
+			parRowID := rec.ParentID.Int64
+			parentIDs, ok := rowIDToRunIDs[parRowID]
+			if !ok {
+				// Because we used ORDER BY r.id in the query, failure to find
+				// a parent by row ID means that a parent Run was created
+				// *after* its child, which isn't logical.
+				msg := fmt.Sprintf(
+					"parent run record with row ID %d created after child "+
+						"run record with row ID %d and UUID %q",
+					parRowID, rec.ID, rec.UUID,
+				)
+				return nil, errors.Internal(msg)
+			}
+			runIDs.Parent = parentIDs
+		}
+
+		rowIDToRunIDs[rec.ID] = runIDs
+	}
+	return out, nil
+}
+*/
 
 // dbReadByUUID returns the run record having the supplied run UUID.
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*Record, error) {
+) (*apirun.Run, error) {
+	var rowID int64
 	var targetUUID string
 	var targetGeneration api.Generation
 	var rootRowID int64
-	var parentRowID sql.NullInt64
 	var requestedOn int64
 	var callerIdentity string
 	var callerSystemID int64
@@ -175,7 +249,7 @@ func (s *Store) dbReadByUUID(
 	var pausedOn sql.NullInt64
 	var resumedOn sql.NullInt64
 	var canceledOn sql.NullInt64
-	out := Record{}
+	out := apirun.Run{}
 	qargs := []any{uuid}
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -184,7 +258,6 @@ SELECT
 , o.uuid AS target_uuid
 , t.generation AS target_generation
 , r.root AS root_id
-, r.parent AS parent_id
 , rr.created_on AS requested_on
 , rr.caller_identity AS caller_identity
 , rr.caller_system AS caller_system_id
@@ -210,11 +283,10 @@ WHERE r.uuid = $1
 		err := tx.QueryRow(
 			ctx, qs, qargs...,
 		).Scan(
-			&out.RowID,
+			&rowID,
 			&targetUUID,
 			&targetGeneration,
 			&rootRowID,
-			&parentRowID,
 			&requestedOn,
 			&callerIdentity,
 			&callerSystemID,
@@ -241,11 +313,11 @@ WHERE r.uuid = $1
 		caller := api.Caller{
 			Identity: callerIdentity,
 		}
-		target := api.RunTarget{
+		target := apirun.Target{
 			UUID:       targetUUID,
 			Generation: targetGeneration,
 		}
-		rr := api.RunRequest{
+		rr := apirun.Request{
 			UUID:   uuid,
 			Target: target,
 			Caller: caller,
@@ -257,26 +329,25 @@ WHERE r.uuid = $1
 		if inVars.Valid {
 			rr.In = inVars.String
 		}
-		out.Run = run.New(
-			run.WithRequest(rr),
-		)
+		out.SetSystemInternalID(rowID)
+		out.SetRequest(rr)
 		if startedOn.Valid {
-			out.Run.SetStartedOn(time.Unix(0, startedOn.Int64))
+			out.SetStartedOn(time.Unix(0, startedOn.Int64))
 		}
 		if completedOn.Valid {
-			out.Run.SetCompletedOn(time.Unix(0, completedOn.Int64))
+			out.SetCompletedOn(time.Unix(0, completedOn.Int64))
 		}
 		if failedOn.Valid {
-			out.Run.SetFailedOn(time.Unix(0, failedOn.Int64))
+			out.SetFailedOn(time.Unix(0, failedOn.Int64))
 		}
 		if pausedOn.Valid {
-			out.Run.SetPausedOn(time.Unix(0, pausedOn.Int64))
+			out.SetPausedOn(time.Unix(0, pausedOn.Int64))
 		}
 		if resumedOn.Valid {
-			out.Run.SetResumedOn(time.Unix(0, resumedOn.Int64))
+			out.SetResumedOn(time.Unix(0, resumedOn.Int64))
 		}
 		if canceledOn.Valid {
-			out.Run.SetCanceledOn(time.Unix(0, canceledOn.Int64))
+			out.SetCanceledOn(time.Unix(0, canceledOn.Int64))
 		}
 		return nil
 	}
@@ -313,10 +384,10 @@ func (s *Store) dbInsert(
 	targetRec storeobject.Record,
 	callerSysRec *api.System,
 	callerDomRec *api.Domain,
-	rootRec *Record,
-	parentRec *Record,
-	run api.Run,
-) (*api.Run, error) {
+	root *apirun.Identifiers,
+	parent *apirun.Identifiers,
+	run apirun.Run,
+) (*apirun.Run, error) {
 	rr := run.Request()
 	uuid := rr.UUID
 	createdOn := rr.On.UnixNano()
@@ -328,13 +399,14 @@ func (s *Store) dbInsert(
 	}
 
 	var rootRowID int64 = -1
-	if rootRec != nil {
-		rootRowID = rootRec.RowID
+	if root != nil {
+		rootRowID = root.SystemInternalIDInt64()
 	}
 
 	var parentRowID *int64
-	if parentRec != nil {
-		parentRowID = &parentRec.RowID
+	if parent != nil {
+		tmp := parent.SystemInternalIDInt64()
+		parentRowID = &tmp
 	}
 	scheduledOn := run.ScheduledOn().UnixNano()
 
@@ -467,6 +539,7 @@ type runRecord struct {
 	PausedOn         sql.NullInt64  `db:"paused_on"`
 	ResumedOn        sql.NullInt64  `db:"resumed_on"`
 	CanceledOn       sql.NullInt64  `db:"canceled_on"`
+	FinalizedOn      sql.NullInt64  `db:"finalized_on"`
 }
 
 // dbReadByExpression queries zero or more Runs from persistent storage given
@@ -475,7 +548,7 @@ func (s *Store) dbReadByExpression(
 	ctx context.Context,
 	expr query.Expression,
 	opts query.Options,
-) ([]*Record, error) {
+) ([]*apirun.Run, error) {
 
 	qargs := []any{}
 	wheres := []string{}
@@ -484,7 +557,7 @@ func (s *Store) dbReadByExpression(
 	case query.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case run.UUIDPredicate:
+		case apirun.UUIDPredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:
@@ -505,7 +578,7 @@ func (s *Store) dbReadByExpression(
 			case query.UnaryExpression:
 				pred := subexpr.Predicate
 				switch pred := pred.(type) {
-				case run.UUIDPredicate:
+				case apirun.UUIDPredicate:
 					op := pred.Op
 					switch op {
 					case query.PredicateOperatorEqual:
@@ -529,7 +602,7 @@ func (s *Store) dbReadByExpression(
 			case query.UnaryExpression:
 				pred := subexpr.Predicate
 				switch pred := pred.(type) {
-				case run.UUIDPredicate:
+				case apirun.UUIDPredicate:
 					op := pred.Op
 					switch op {
 					case query.PredicateOperatorEqual:
@@ -566,6 +639,7 @@ SELECT
 , r.paused_on
 , r.resumed_on
 , r.canceled_on
+, r.finalized_on
 FROM runs AS r
 INNER JOIN run_requests AS rr
  ON r.id = rr.run
@@ -597,16 +671,16 @@ INNER JOIN object_generations AS t
 	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
-	out := make([]*Record, 0, len(recs))
+	out := make([]*apirun.Run, 0, len(recs))
 	for _, rec := range recs {
 		caller := api.Caller{
 			Identity: rec.CallerIdentity,
 		}
-		target := api.RunTarget{
+		target := apirun.Target{
 			UUID:       rec.TargetUUID,
 			Generation: rec.TargetGeneration,
 		}
-		rr := api.RunRequest{
+		rr := apirun.Request{
 			UUID:   rec.UUID,
 			Target: target,
 			Caller: caller,
@@ -618,9 +692,9 @@ INNER JOIN object_generations AS t
 		if rec.InVars.Valid {
 			rr.In = rec.InVars.String
 		}
-		r := run.New(
-			run.WithRequest(rr),
-		)
+		r := &apirun.Run{}
+		r.SetSystemInternalID(rec.ID)
+		r.SetRequest(rr)
 		if rec.StartedOn.Valid {
 			r.SetStartedOn(time.Unix(0, rec.StartedOn.Int64))
 		}
@@ -639,10 +713,7 @@ INNER JOIN object_generations AS t
 		if rec.CanceledOn.Valid {
 			r.SetCanceledOn(time.Unix(0, rec.CanceledOn.Int64))
 		}
-		out = append(out, &Record{
-			RowID: rec.ID,
-			Run:   r,
-		})
+		out = append(out, r)
 	}
 	return out, nil
 }

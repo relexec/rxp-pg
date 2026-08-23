@@ -6,12 +6,12 @@ import (
 
 	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp/api"
+	apirun "github.com/relexec/rxp/api/run"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/object"
-	"github.com/relexec/rxp/run"
 
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/driver"
@@ -142,11 +142,11 @@ func ObjectCreateIfNotExists(
 func RunCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	r *api.Run,
+	r *apirun.Run,
 ) error {
-	selopts := []run.SelectOption{run.ByUUID(r.UUID())}
+	selopts := []apirun.SelectOption{apirun.ByUUID(r.UUID())}
 	_, err := d.RunRead(
-		ctx, r.Request().Target, run.Select(selopts...),
+		ctx, r.Request().Target, apirun.Select(selopts...),
 	)
 	if err != nil {
 		if err != errors.ErrNotFound {

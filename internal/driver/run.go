@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	storerun "github.com/relexec/rxp-pg/internal/store/run"
 	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/api/metrics"
+	apimetrics "github.com/relexec/rxp/api/metrics"
+	apirun "github.com/relexec/rxp/api/run"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/run"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -18,9 +17,9 @@ import (
 // RunRead reads a single Run from persistent storage.
 func (d *Driver) RunRead(
 	ctx context.Context,
-	target api.RunTarget,
-	sel run.Selector,
-) (*api.Run, error) {
+	target apirun.Target,
+	sel apirun.Selector,
+) (*apirun.Run, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -30,16 +29,16 @@ func (d *Driver) RunRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(api.TypeRun),
+			apimetrics.AttributeType(api.TypeRun),
 		}
 		if err != nil {
-			attrs = append(attrs, metrics.AttributeErrCode(err))
+			attrs = append(attrs, apimetrics.AttributeErrCode(err))
 		}
-		metrics.InstrumentReadRequest.Add(
+		apimetrics.InstrumentReadRequest.Add(
 			ctx, 1,
 			metric.WithAttributes(attrs...),
 		)
-		metrics.InstrumentReadDuration.Record(ctx, elapsed)
+		apimetrics.InstrumentReadDuration.Record(ctx, elapsed)
 	}()
 
 	err = d.runReadValidate(ctx, sel)
@@ -53,17 +52,17 @@ func (d *Driver) RunRead(
 	if err != nil {
 		return nil, err
 	}
-	rr := rec.Run.Request()
+	rr := rec.Request()
 	rr.Target = target
-	rec.Run.SetRequest(rr)
-	return rec.Run, nil
+	rec.SetRequest(rr)
+	return rec, nil
 }
 
 // runReadValidate returns an error if the supplied selector and read
 // options are not valid for reading a single Run.
 func (d *Driver) runReadValidate(
 	ctx context.Context,
-	sel run.Selector,
+	sel apirun.Selector,
 ) error {
 	return sel.Validate()
 }
@@ -72,8 +71,8 @@ func (d *Driver) runReadValidate(
 // on successful write, the newly-created or updated Run is returned.
 func (d *Driver) RunWrite(
 	ctx context.Context,
-	run api.Run,
-) (*api.Run, error) {
+	run apirun.Run,
+) (*apirun.Run, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -85,17 +84,17 @@ func (d *Driver) RunWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(api.TypeRun),
-			metrics.AttributeKindVersion(targetKV),
+			apimetrics.AttributeType(api.TypeRun),
+			apimetrics.AttributeKindVersion(targetKV),
 		}
 		if err != nil {
-			attrs = append(attrs, metrics.AttributeErrCode(err))
+			attrs = append(attrs, apimetrics.AttributeErrCode(err))
 		}
-		metrics.InstrumentWriteRequest.Add(
+		apimetrics.InstrumentWriteRequest.Add(
 			ctx, 1,
 			metric.WithAttributes(attrs...),
 		)
-		metrics.InstrumentWriteDuration.Record(ctx, elapsed)
+		apimetrics.InstrumentWriteDuration.Record(ctx, elapsed)
 	}()
 
 	err = d.runWriteValidate(ctx, run)
@@ -196,25 +195,29 @@ func (d *Driver) RunWrite(
 	}
 	targetRec.Object.KindVersionName = targetKV
 
-	var rootRec *storerun.Record
-	var parentRec *storerun.Record
+	rootIDs := run.Root
 
-	rootUUID := run.Root()
-	if rootUUID != "" && rootUUID != req.UUID {
-		rootRec, err = d.runStore.ReadByUUID(ctx, rootUUID)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"failed reading root run by uuid: %w", err,
-			)
+	if rootIDs != nil {
+		rootUUID := rootIDs.UUID
+		if rootUUID != "" && rootUUID != req.UUID {
+			_, err = d.runStore.ReadByUUID(ctx, rootUUID)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed reading root run by uuid: %w", err,
+				)
+			}
 		}
 	}
-	parentUUID := run.Parent()
-	if parentUUID != "" {
+
+	parentIDs := run.Parent
+	if parentIDs != nil {
+		rootUUID := rootIDs.UUID
+		parentUUID := parentIDs.UUID
 		// short-circuit if we've already looked up the root...
 		if parentUUID == rootUUID {
-			parentRec = rootRec
+			parentIDs = rootIDs
 		} else {
-			parentRec, err = d.runStore.ReadByUUID(ctx, parentUUID)
+			_, err = d.runStore.ReadByUUID(ctx, parentUUID)
 			if err != nil {
 				return nil, fmt.Errorf(
 					"failed reading parent run by uuid: %w", err,
@@ -227,7 +230,7 @@ func (d *Driver) RunWrite(
 		ctx,
 		*targetRec,
 		callerSysRec, callerDomRec,
-		rootRec, parentRec, run,
+		rootIDs, parentIDs, run,
 	)
 }
 
@@ -235,7 +238,7 @@ func (d *Driver) RunWrite(
 // options are not valid for writing a single Run.
 func (d *Driver) runWriteValidate(
 	ctx context.Context,
-	run api.Run,
+	run apirun.Run,
 ) error {
 	return run.Validate()
 }
@@ -251,7 +254,7 @@ func (d *Driver) RunQuery(
 	ctx context.Context,
 	expr query.Expression,
 	opts ...query.Option,
-) (*query.Result[*api.Run], error) {
+) (*query.Result[*apirun.Run], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -261,16 +264,16 @@ func (d *Driver) RunQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(api.TypeRun),
+			apimetrics.AttributeType(api.TypeRun),
 		}
 		if err != nil {
-			attrs = append(attrs, metrics.AttributeErrCode(err))
+			attrs = append(attrs, apimetrics.AttributeErrCode(err))
 		}
-		metrics.InstrumentQueryRequest.Add(
+		apimetrics.InstrumentQueryRequest.Add(
 			ctx, 1,
 			metric.WithAttributes(attrs...),
 		)
-		metrics.InstrumentQueryDuration.Record(ctx, elapsed)
+		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
 	qopts := query.NewOptions(opts...)
@@ -287,23 +290,19 @@ func (d *Driver) RunQuery(
 	if err != nil {
 		return nil, err
 	}
-	objs := make([]*api.Run, 0, len(recs))
-	for _, rec := range recs {
-		objs = append(objs, rec.Run)
-	}
-	resNewOpts := []query.ResultModifier[*api.Run]{
-		query.ResultWithItems(objs),
-		query.ResultWithOptions[*api.Run](boundedOpts),
+	resNewOpts := []query.ResultModifier[*apirun.Run]{
+		query.ResultWithItems(recs),
+		query.ResultWithOptions[*apirun.Run](boundedOpts),
 	}
 	if len(recs) == int(boundedOpts.Limit()) {
 		resNewOpts = append(
 			resNewOpts,
-			query.ResultWithMarker[*api.Run](
-				recs[len(recs)-1].Run.UUID(),
+			query.ResultWithMarker[*apirun.Run](
+				recs[len(recs)-1].UUID(),
 			),
 		)
 	}
-	return query.NewResult[*api.Run](resNewOpts...), nil
+	return query.NewResult[*apirun.Run](resNewOpts...), nil
 }
 
 // runQueryValidate returns an error if the supplied expression and query

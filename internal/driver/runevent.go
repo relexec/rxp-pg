@@ -5,7 +5,8 @@ import (
 	"time"
 
 	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/api/metrics"
+	apimetrics "github.com/relexec/rxp/api/metrics"
+	apirun "github.com/relexec/rxp/api/run"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -13,8 +14,8 @@ import (
 // RunEventsWrite persists a set of RunEvents to backend storage.
 func (d *Driver) RunEventsWrite(
 	ctx context.Context,
-	run api.Run,
-	events []api.RunEvent,
+	run apirun.Run,
+	events []apirun.Event,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -25,16 +26,16 @@ func (d *Driver) RunEventsWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(api.TypeRunEvent),
+			apimetrics.AttributeType(api.TypeRunEvent),
 		}
 		if err != nil {
-			attrs = append(attrs, metrics.AttributeErrCode(err))
+			attrs = append(attrs, apimetrics.AttributeErrCode(err))
 		}
-		metrics.InstrumentWriteRequest.Add(
+		apimetrics.InstrumentWriteRequest.Add(
 			ctx, 1,
 			metric.WithAttributes(attrs...),
 		)
-		metrics.InstrumentWriteDuration.Record(ctx, elapsed)
+		apimetrics.InstrumentWriteDuration.Record(ctx, elapsed)
 	}()
 
 	err = d.runEventsWriteValidate(ctx, run, events)
@@ -54,8 +55,8 @@ func (d *Driver) RunEventsWrite(
 // not valid.
 func (d *Driver) runEventsWriteValidate(
 	ctx context.Context,
-	run api.Run,
-	events []api.RunEvent,
+	run apirun.Run,
+	events []apirun.Event,
 ) error {
 	return run.Validate()
 }

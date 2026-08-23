@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/relexec/rxp/api"
-	"github.com/relexec/rxp/api/metrics"
+	apimetrics "github.com/relexec/rxp/api/metrics"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 	"github.com/relexec/rxp/system"
@@ -27,16 +27,16 @@ func (d *Driver) SystemRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(api.TypeSystem),
+			apimetrics.AttributeType(api.TypeSystem),
 		}
 		if err != nil {
-			attrs = append(attrs, metrics.AttributeErrCode(err))
+			attrs = append(attrs, apimetrics.AttributeErrCode(err))
 		}
-		metrics.InstrumentReadRequest.Add(
+		apimetrics.InstrumentReadRequest.Add(
 			ctx, 1,
 			metric.WithAttributes(attrs...),
 		)
-		metrics.InstrumentReadDuration.Record(ctx, elapsed)
+		apimetrics.InstrumentReadDuration.Record(ctx, elapsed)
 	}()
 
 	err = d.systemReadValidate(ctx, sel)
@@ -92,16 +92,16 @@ func (d *Driver) SystemWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(api.TypeSystem),
+			apimetrics.AttributeType(api.TypeSystem),
 		}
 		if err != nil {
-			attrs = append(attrs, metrics.AttributeErrCode(err))
+			attrs = append(attrs, apimetrics.AttributeErrCode(err))
 		}
-		metrics.InstrumentWriteRequest.Add(
+		apimetrics.InstrumentWriteRequest.Add(
 			ctx, 1,
 			metric.WithAttributes(attrs...),
 		)
-		metrics.InstrumentWriteDuration.Record(ctx, elapsed)
+		apimetrics.InstrumentWriteDuration.Record(ctx, elapsed)
 	}()
 
 	err = d.systemWriteValidate(ctx, sys)
@@ -140,16 +140,16 @@ func (d *Driver) SystemQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(api.TypeSystem),
+			apimetrics.AttributeType(api.TypeSystem),
 		}
 		if err != nil {
-			attrs = append(attrs, metrics.AttributeErrCode(err))
+			attrs = append(attrs, apimetrics.AttributeErrCode(err))
 		}
-		metrics.InstrumentQueryRequest.Add(
+		apimetrics.InstrumentQueryRequest.Add(
 			ctx, 1,
 			metric.WithAttributes(attrs...),
 		)
-		metrics.InstrumentQueryDuration.Record(ctx, elapsed)
+		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
 	qopts := query.NewOptions(opts...)
