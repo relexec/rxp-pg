@@ -6,6 +6,7 @@ import (
 
 	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
+	apikind "github.com/relexec/rxp/api/kind"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
@@ -151,7 +152,7 @@ func (d *Driver) objectReadValidate(
 func (d *Driver) objectUUIDFromName(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	name string,
 	domRec *api.Domain,
 ) (string, error) {
@@ -171,7 +172,7 @@ func (d *Driver) objectUUIDFromName(
 func (d *Driver) objectNameFromUUID(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	uuid string,
 	domRec *api.Domain,
 ) (string, error) {
@@ -190,7 +191,7 @@ func (d *Driver) objectNameFromUUID(
 // domain in the selector if the scope of Kind is ScopeDomain.
 func (d *Driver) objectReadValidateScope(
 	ctx context.Context,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	sel object.Selector,
 ) error {
 	scope := kindRec.Scope
@@ -312,7 +313,7 @@ func (d *Driver) objectWriteValidate(
 // required domain qualification if the scope of Kind is ScopeDomain.
 func (d *Driver) objectWriteValidateScope(
 	ctx context.Context,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	obj api.Object,
 ) error {
 	if kindRec.Scope == apicore.ScopeDomain {

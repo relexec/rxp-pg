@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
+	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
 )
 
@@ -12,7 +13,7 @@ import (
 func (s *Store) ReadByRowID(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	rowID int64,
 ) (*api.KindVersion, error) {
 	cacheKey := byRowIDCacheKey(rowID)
@@ -36,7 +37,7 @@ func (s *Store) ReadByRowID(
 func (s *Store) ReadByName(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	name api.KindVersionName,
 ) (*api.KindVersion, error) {
 	cacheKey := newByNameCacheKey(sysRec, name)

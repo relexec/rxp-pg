@@ -6,10 +6,10 @@ import (
 
 	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp/api"
+	apikind "github.com/relexec/rxp/api/kind"
 	apirun "github.com/relexec/rxp/api/run"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/object"
 
@@ -75,11 +75,11 @@ func KindVersionCreateIfNotExists(
 func KindCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	k api.Kind,
+	k apikind.Kind,
 ) error {
 	_, err := d.KindRead(
 		ctx,
-		kind.Select(kind.ByName(k.Name)),
+		apikind.Select(apikind.ByName(k.Name)),
 	)
 	if err != nil {
 		if err != errors.ErrNotFound {

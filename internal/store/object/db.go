@@ -12,9 +12,9 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
+	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
@@ -336,7 +336,7 @@ AND o.kindversion = $2
 func (s *Store) dbInsertFirst(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	kvRec *api.KindVersion,
 	domRec *api.Domain,
 	obj api.Object,
@@ -545,7 +545,7 @@ INSERT INTO object_generations (
 // writer of an object and expect to see a supplied generation.
 func (s *Store) dbInsertGeneration(
 	ctx context.Context,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	kvRec *api.KindVersion,
 	domRec *api.Domain,
 	obj api.Object,
@@ -658,9 +658,9 @@ AND generation = $5`
 func isKindishPredicate(p query.Predicate) bool {
 	switch p.(type) {
 	case
-		kind.NamePredicate,
-		kind.UUIDPredicate,
-		kind.KindPredicate,
+		apikind.NamePredicate,
+		apikind.UUIDPredicate,
+		apikind.KindPredicate,
 		kindversion.KindVersionPredicate,
 		kindversion.NamePredicate:
 		return true
@@ -687,7 +687,7 @@ func (s *Store) dbReadDomainQualifiedByExpression(
 	ctx context.Context,
 	kv api.KindVersionName,
 	sysRec *apisystem.System,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	expr query.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
@@ -814,7 +814,7 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 	ctx context.Context,
 	kv api.KindVersionName,
 	sysRec *apisystem.System,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	expr query.Expression,
 	opts query.Options,
 ) ([]*Record, error) {

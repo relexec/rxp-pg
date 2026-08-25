@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/pkg/version"
 	"github.com/relexec/rxp/api"
+	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind/kindversion"
@@ -26,7 +27,7 @@ import (
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	rowID int64,
 ) (*api.KindVersion, error) {
 	var verStr string
@@ -84,7 +85,7 @@ func (s *Store) dbReadByRowID(
 func (s *Store) dbReadByName(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	kv api.KindVersionName,
 ) (*api.KindVersion, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -148,7 +149,7 @@ AND version = $3
 func (s *Store) dbVersionsForKind(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 ) (version.Set, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	kindRowID := kindRec.SystemInternalIDInt64()
@@ -201,7 +202,7 @@ AND kind = $2
 func (s *Store) dbInsert(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	kv api.KindVersion,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()

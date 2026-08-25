@@ -5,6 +5,7 @@ import (
 
 	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
+	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/query"
 )
@@ -14,7 +15,7 @@ func (s *Store) Query(
 	ctx context.Context,
 	kv api.KindVersionName,
 	sysRec *apisystem.System,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	expr query.Expression,
 	opts query.Options,
 ) ([]*Record, error) {

@@ -8,9 +8,8 @@ import (
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp-testing/fixtures/service"
-	"github.com/relexec/rxp/api"
+	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
 	"github.com/samber/lo"
@@ -30,35 +29,35 @@ func TestKindRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		sel    kind.Selector
-		exp    *api.Kind
+		sel    apikind.Selector
+		exp    *apikind.Kind
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			kind.Select(kind.ByName(fixtures.InvalidKindName)),
+			apikind.Select(apikind.ByName(fixtures.InvalidKindName)),
 			nil,
 			"missing identity",
 		},
 		{
 			"invalid kind",
 			ctx,
-			kind.Select(kind.ByName(fixtures.InvalidKindName)),
+			apikind.Select(apikind.ByName(fixtures.InvalidKindName)),
 			nil,
 			"invalid kind name: invalid characters",
 		},
 		{
 			"unknown kind",
 			ctx,
-			kind.Select(kind.ByName(fixtures.UnknownKindName)),
+			apikind.Select(apikind.ByName(fixtures.UnknownKindName)),
 			nil,
 			"not found",
 		},
 		{
 			"happy path",
 			ctx,
-			kind.Select(kind.ByName(service.KindName)),
+			apikind.Select(apikind.ByName(service.KindName)),
 			&service.Kind,
 			"",
 		},
@@ -71,7 +70,7 @@ func TestKindRead(t *testing.T) {
 				require.ErrorContains(err, c.expErr)
 			} else {
 				require.Nil(err)
-				delta, err := kind.Diff(*c.exp, got)
+				delta, err := apikind.Diff(*c.exp, got)
 				require.Nil(err)
 				require.False(
 					delta.DifferentExcept(
@@ -97,7 +96,7 @@ func TestKindWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject api.Kind
+		subject apikind.Kind
 		expErr  string
 	}{
 		{
@@ -156,7 +155,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			kind.UUIDEqual(service.KindUUID),
+			apikind.UUIDEqual(service.KindUUID),
 			nil,
 			0,
 			nil,
@@ -190,8 +189,8 @@ func TestKindQuery(t *testing.T) {
 			"unsupported expression",
 			ctx,
 			query.Or(
-				kind.NameEqual(service.KindName),
-				kind.NameEqual(fixtures.UnknownKindName),
+				apikind.NameEqual(service.KindName),
+				apikind.NameEqual(fixtures.UnknownKindName),
 			),
 			nil,
 			0,
@@ -203,7 +202,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"no results when looking up non-existing kind UUID",
 			ctx,
-			kind.UUIDEqual(fixtures.UnknownKindUUID),
+			apikind.UUIDEqual(fixtures.UnknownKindUUID),
 			nil,
 			0,
 			[]string{},
@@ -216,7 +215,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"no results when looking up non-existing kind name",
 			ctx,
-			kind.NameEqual(fixtures.UnknownKindName),
+			apikind.NameEqual(fixtures.UnknownKindName),
 			nil,
 			0,
 			[]string{},
@@ -255,7 +254,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"query kinds by name, expect one",
 			ctx,
-			kind.NameEqual(service.KindName),
+			apikind.NameEqual(service.KindName),
 			nil,
 			1,
 			[]string{
@@ -270,7 +269,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"query kinds by UUID, expect one",
 			ctx,
-			kind.UUIDEqual(service.KindUUID),
+			apikind.UUIDEqual(service.KindUUID),
 			nil,
 			1,
 			[]string{
@@ -285,7 +284,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"query kinds by UUID in, expect one",
 			ctx,
-			kind.UUIDIn(service.KindUUID, fixtures.UnknownKindUUID),
+			apikind.UUIDIn(service.KindUUID, fixtures.UnknownKindUUID),
 			nil,
 			1,
 			[]string{
@@ -300,7 +299,7 @@ func TestKindQuery(t *testing.T) {
 		{
 			"query kinds by kind UUID, expect one",
 			ctx,
-			kind.UUIDEqual(service.KindUUID),
+			apikind.UUIDEqual(service.KindUUID),
 			nil,
 			1,
 			[]string{
@@ -329,7 +328,7 @@ func TestKindQuery(t *testing.T) {
 				require.Equal(c.expOptions, gotOptions)
 				require.Equal(c.expMarker, gotMarker)
 				require.Len(gotItems, c.expNumItems)
-				gotUUIDs := lo.Map(gotItems, func(k *api.Kind, _ int) string {
+				gotUUIDs := lo.Map(gotItems, func(k *apikind.Kind, _ int) string {
 					return k.UUID
 				})
 				gotUUIDs = lo.Uniq(gotUUIDs)

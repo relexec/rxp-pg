@@ -4,12 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
+	apikind "github.com/relexec/rxp/api/kind"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -18,8 +17,8 @@ import (
 // KindRead reads a Kind from persistent storage.
 func (d *Driver) KindRead(
 	ctx context.Context,
-	sel kind.Selector,
-) (*api.Kind, error) {
+	sel apikind.Selector,
+) (*apikind.Kind, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -72,7 +71,7 @@ func (d *Driver) KindRead(
 // options are not valid for reading a single Kind.
 func (d *Driver) kindReadValidate(
 	ctx context.Context,
-	sel kind.Selector,
+	sel apikind.Selector,
 ) error {
 	return sel.Validate()
 }
@@ -80,7 +79,7 @@ func (d *Driver) kindReadValidate(
 // KindWrite atomically writes the supplied Kind to persistent storage.
 func (d *Driver) KindWrite(
 	ctx context.Context,
-	k api.Kind,
+	k apikind.Kind,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -132,7 +131,7 @@ func (d *Driver) KindWrite(
 // options are not valid for writing a single Kind.
 func (d *Driver) kindWriteValidate(
 	ctx context.Context,
-	k api.Kind,
+	k apikind.Kind,
 ) error {
 	return k.Validate()
 }
@@ -147,7 +146,7 @@ func (d *Driver) KindQuery(
 	ctx context.Context,
 	expr query.Expression,
 	opts ...query.Option,
-) (*query.Result[*api.Kind], error) {
+) (*query.Result[*apikind.Kind], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -192,11 +191,11 @@ func (d *Driver) KindQuery(
 			query.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []query.ResultModifier[*api.Kind]{
+	resNewOpts := []query.ResultModifier[*apikind.Kind]{
 		query.ResultWithItems(recs),
-		query.ResultWithOptions[*api.Kind](resOpts),
+		query.ResultWithOptions[*apikind.Kind](resOpts),
 	}
-	return query.NewResult[*api.Kind](resNewOpts...), nil
+	return query.NewResult[*apikind.Kind](resNewOpts...), nil
 }
 
 // kindQueryValidate returns an error if the supplied expression and query

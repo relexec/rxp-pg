@@ -12,8 +12,8 @@ import (
 	"github.com/relexec/rxp-testing/fixtures/platform"
 	"github.com/relexec/rxp-testing/fixtures/service"
 	"github.com/relexec/rxp/api"
+	apikind "github.com/relexec/rxp/api/kind"
 	"github.com/relexec/rxp/domain"
-	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
 	"github.com/samber/lo"
@@ -529,7 +529,7 @@ func TestObjectQuery(t *testing.T) {
 		expr             query.Expression
 		opts             []query.Option
 		expNumObjs       int
-		expOnlyKindNames []api.KindName
+		expOnlyKindNames []apikind.Name
 		expOptionLimit   uint
 		expMarkerEmpty   bool
 		expErr           string
@@ -562,7 +562,7 @@ func TestObjectQuery(t *testing.T) {
 			"invalid query expression kind predicate",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			kind.NameEqual(application.KindName),
+			apikind.NameEqual(application.KindName),
 			nil,
 			0,
 			nil,
@@ -579,7 +579,7 @@ func TestObjectQuery(t *testing.T) {
 				query.Limit(1),
 			},
 			1,
-			[]api.KindName{
+			[]apikind.Name{
 				platform.KindName,
 			},
 			1,
@@ -595,7 +595,7 @@ func TestObjectQuery(t *testing.T) {
 				query.Limit(1),
 			},
 			1,
-			[]api.KindName{
+			[]apikind.Name{
 				application.KindName,
 			},
 			1,
@@ -619,7 +619,7 @@ func TestObjectQuery(t *testing.T) {
 				require.Equal(c.expOptionLimit, gotOptions.Limit())
 				require.Equal(c.expMarkerEmpty, gotMarker == "")
 				require.Len(gotObjs, c.expNumObjs)
-				gotKindNames := lo.Map(gotObjs, func(o *api.Object, _ int) api.KindName {
+				gotKindNames := lo.Map(gotObjs, func(o *api.Object, _ int) apikind.Name {
 					return o.KindName()
 				})
 				gotKindNames = lo.Uniq(gotKindNames)

@@ -3,16 +3,16 @@ package store
 import (
 	"context"
 
-	"github.com/relexec/rxp/api"
+	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
 )
 
-// ReadByRowID returns a api.Kind for the Kind with the supplied internal DB
+// ReadByRowID returns a apikind.Kind for the Kind with the supplied internal DB
 // row ID. This method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*api.Kind, error) {
+) (*apikind.Kind, error) {
 	cacheKey := byRowIDCacheKey(rowID)
 	cached, found := s.cacheReadByRowID(ctx, cacheKey)
 	if found {
@@ -29,12 +29,12 @@ func (s *Store) ReadByRowID(
 	return record, nil
 }
 
-// ReadByUUID returns a api.Kind for the Kind with the supplied UUID. This
+// ReadByUUID returns a apikind.Kind for the Kind with the supplied UUID. This
 // method will populate any caches with any read records.
 func (s *Store) ReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*api.Kind, error) {
+) (*apikind.Kind, error) {
 	cacheKey := byUUIDCacheKey(uuid)
 	cached, found := s.cacheReadByUUID(ctx, cacheKey)
 	if found {
@@ -51,13 +51,13 @@ func (s *Store) ReadByUUID(
 	return record, nil
 }
 
-// ReadByName returns a api.Kind for the Kind with the supplied Name. This
+// ReadByName returns a apikind.Kind for the Kind with the supplied Name. This
 // method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	name api.KindName,
-) (*api.Kind, error) {
+	name apikind.Name,
+) (*apikind.Kind, error) {
 	cacheKey := newByNameCacheKey(sysRec, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)
 	if found {

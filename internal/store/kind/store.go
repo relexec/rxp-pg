@@ -3,7 +3,7 @@ package store
 import (
 	"sync"
 
-	"github.com/relexec/rxp/api"
+	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
 
 	"github.com/relexec/rxp-pg/internal/cache"
@@ -18,7 +18,7 @@ type Store struct {
 	// cacheLock protects the set of lookup caches.
 	cacheLock sync.RWMutex
 	// byUUID is a cache that stores known Kinds keyed by kind UUID.
-	byUUID *cache.Cache[byUUIDCacheKey, *api.Kind]
+	byUUID *cache.Cache[byUUIDCacheKey, *apikind.Kind]
 	// byName is a cache that stores a lookup map of System UUID+KindName to
 	// Kind UUID.
 	byName *cache.Cache[byNameCacheKey, byUUIDCacheKey]

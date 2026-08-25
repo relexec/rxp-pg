@@ -11,9 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
+	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/query"
 )
 
@@ -22,13 +22,13 @@ import (
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*api.Kind, error) {
-	out := &api.Kind{}
+) (*apikind.Kind, error) {
+	out := &apikind.Kind{}
 	out.SetSystemInternalID(rowID)
 	fn := func(tx pgx.Tx) error {
 		var systemRowID int64
 		var uuid string
-		var name api.KindName
+		var name apikind.Name
 		var scope apicore.Scope
 		qs := "SELECT system, uuid, name, scope FROM kinds WHERE id = $1"
 		err := tx.QueryRow(
@@ -67,13 +67,13 @@ func (s *Store) dbReadByRowID(
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*api.Kind, error) {
-	out := &api.Kind{
+) (*apikind.Kind, error) {
+	out := &apikind.Kind{
 		UUID: uuid,
 	}
 	fn := func(tx pgx.Tx) error {
 		var rowID int64
-		var name api.KindName
+		var name apikind.Name
 		var scope apicore.Scope
 		qs := "SELECT id, name, scope FROM kinds WHERE uuid = $1"
 		err := tx.QueryRow(ctx, qs, uuid).Scan(&rowID, &name, &scope)
@@ -102,9 +102,9 @@ func (s *Store) dbReadByUUID(
 func (s *Store) dbReadByName(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	name api.KindName,
-) (*api.Kind, error) {
-	out := &api.Kind{
+	name apikind.Name,
+) (*apikind.Kind, error) {
+	out := &apikind.Kind{
 		System: sysRec,
 		Name:   name,
 	}
@@ -146,7 +146,7 @@ AND name = $2
 func (s *Store) dbInsert(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	kind api.Kind,
+	kind apikind.Kind,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	createdOn := time.Now().UnixNano()
@@ -196,7 +196,7 @@ type kindRecord struct {
 	SystemID int64         `db:"system_id"`
 	ID       int64         `db:"kind_id"`
 	UUID     string        `db:"kind_uuid"`
-	Name     api.KindName  `db:"kind_name"`
+	Name     apikind.Name  `db:"kind_name"`
 	Scope    apicore.Scope `db:"kind_scope"`
 }
 
@@ -206,7 +206,7 @@ func (s *Store) dbReadByExpression(
 	ctx context.Context,
 	expr query.Expression,
 	opts query.Options,
-) ([]*api.Kind, error) {
+) ([]*apikind.Kind, error) {
 	qargs := []any{}
 	wheres := []string{}
 
@@ -214,7 +214,7 @@ func (s *Store) dbReadByExpression(
 	case query.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case kind.UUIDPredicate:
+		case apikind.UUIDPredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:
@@ -226,7 +226,7 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case kind.NamePredicate:
+		case apikind.NamePredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:
@@ -324,7 +324,7 @@ FROM kinds AS k
 		return nil, err
 	}
 
-	out := make([]*api.Kind, 0, len(recs))
+	out := make([]*apikind.Kind, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
@@ -333,7 +333,7 @@ FROM kinds AS k
 				errors.WithWrap(err),
 			)
 		}
-		k := &api.Kind{
+		k := &apikind.Kind{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
 			System: sysRec,

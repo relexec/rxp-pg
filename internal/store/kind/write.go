@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 
-	"github.com/relexec/rxp/api"
+	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
 )
 
@@ -11,7 +11,7 @@ import (
 func (s *Store) Write(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	kind api.Kind,
+	kind apikind.Kind,
 ) error {
 	return s.dbInsert(ctx, sysRec, kind)
 }

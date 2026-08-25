@@ -8,8 +8,8 @@ import (
 	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp-testing/fixtures/service"
 	"github.com/relexec/rxp/api"
+	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
@@ -223,8 +223,8 @@ func TestKindVersionQuery(t *testing.T) {
 			"unsupported expression",
 			ctx,
 			query.Or(
-				kind.NameEqual(service.KindName),
-				kind.NameEqual(fixtures.UnknownKindName),
+				apikind.NameEqual(service.KindName),
+				apikind.NameEqual(fixtures.UnknownKindName),
 			),
 			nil,
 			0,

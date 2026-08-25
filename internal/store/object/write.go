@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
+	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
 )
 
@@ -12,7 +13,7 @@ import (
 func (s *Store) Write(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	kindRec *api.Kind,
+	kindRec *apikind.Kind,
 	kvRec *api.KindVersion,
 	domRec *api.Domain,
 	obj api.Object,
