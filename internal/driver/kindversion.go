@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
 	apimetrics "github.com/relexec/rxp/api/metrics"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/query"
@@ -29,7 +31,7 @@ func (d *Driver) KindVersionRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeKindVersion),
+			apimetrics.AttributeType(apicore.TypeKindVersion),
 			apimetrics.AttributeKindVersion(name),
 		}
 		if err != nil {
@@ -47,7 +49,7 @@ func (d *Driver) KindVersionRead(
 		return nil, err
 	}
 
-	var sysRec *api.System
+	var sysRec *apisystem.System
 
 	name = sel.Name()
 	sys := sel.System()
@@ -104,7 +106,7 @@ func (d *Driver) KindVersionWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeKindVersion),
+			apimetrics.AttributeType(apicore.TypeKindVersion),
 			apimetrics.AttributeKindVersion(name),
 		}
 		if err != nil {
@@ -122,7 +124,7 @@ func (d *Driver) KindVersionWrite(
 		return err
 	}
 
-	var sysRec *api.System
+	var sysRec *apisystem.System
 
 	kn := kv.Name()
 	sys := kv.System
@@ -182,7 +184,7 @@ func (d *Driver) KindVersionQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeKindVersion),
+			apimetrics.AttributeType(apicore.TypeKindVersion),
 		}
 		if err != nil {
 			attrs = append(attrs, apimetrics.AttributeErrCode(err))

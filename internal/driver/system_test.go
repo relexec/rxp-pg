@@ -6,10 +6,9 @@ import (
 
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp-testing/fixtures"
-	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/system"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )
@@ -24,35 +23,35 @@ func TestSystemRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		sel    system.Selector
-		exp    *api.System
+		sel    apisystem.Selector
+		exp    *apisystem.System
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			system.Select(system.ByUUID(fixtures.SystemUUID)),
+			apisystem.Select(apisystem.ByUUID(fixtures.SystemUUID)),
 			nil,
 			"missing identity",
 		},
 		{
 			"uuid required",
 			ctx,
-			system.Selector{},
+			apisystem.Selector{},
 			nil,
 			"uuid required",
 		},
 		{
 			"unknown system",
 			ctx,
-			system.Select(system.ByUUID(fixtures.UnknownSystemUUID)),
+			apisystem.Select(apisystem.ByUUID(fixtures.UnknownSystemUUID)),
 			nil,
 			"not found",
 		},
 		{
 			"happy path",
 			ctx,
-			system.Select(system.ByUUID(fixtures.SystemUUID)),
+			apisystem.Select(apisystem.ByUUID(fixtures.SystemUUID)),
 			&fixtures.System,
 			"",
 		},
@@ -65,7 +64,7 @@ func TestSystemRead(t *testing.T) {
 				require.ErrorContains(err, c.expErr)
 			} else {
 				require.Nil(err)
-				delta, err := system.Diff(*c.exp, got)
+				delta, err := apisystem.Diff(*c.exp, got)
 				require.Nil(err)
 				require.False(delta.Different(), delta.Differences())
 			}
@@ -83,7 +82,7 @@ func TestSystemWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject *api.System
+		subject *apisystem.System
 		expErr  string
 	}{
 		{
@@ -133,7 +132,7 @@ func TestSystemQuery(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			system.UUIDEqual(fixtures.SystemUUID),
+			apisystem.UUIDEqual(fixtures.SystemUUID),
 			nil,
 			0,
 			nil,
@@ -180,7 +179,7 @@ func TestSystemQuery(t *testing.T) {
 		{
 			"no results when looking up non-existing system UUID",
 			ctx,
-			system.UUIDEqual(fixtures.UnknownSystemUUID),
+			apisystem.UUIDEqual(fixtures.UnknownSystemUUID),
 			nil,
 			0,
 			[]string{},
@@ -193,7 +192,7 @@ func TestSystemQuery(t *testing.T) {
 		{
 			"query systems by UUID, expect one",
 			ctx,
-			system.UUIDEqual(fixtures.SystemUUID),
+			apisystem.UUIDEqual(fixtures.SystemUUID),
 			nil,
 			1,
 			[]string{
@@ -208,7 +207,7 @@ func TestSystemQuery(t *testing.T) {
 		{
 			"query systems by UUID in, expect one",
 			ctx,
-			system.UUIDIn(fixtures.SystemUUID, fixtures.UnknownSystemUUID),
+			apisystem.UUIDIn(fixtures.SystemUUID, fixtures.UnknownSystemUUID),
 			nil,
 			1,
 			[]string{
@@ -237,7 +236,7 @@ func TestSystemQuery(t *testing.T) {
 				require.Equal(c.expOptions, gotOptions)
 				require.Equal(c.expMarker, gotMarker)
 				require.Len(gotItems, c.expNumItems)
-				gotUUIDs := lo.Map(gotItems, func(s *api.System, _ int) string {
+				gotUUIDs := lo.Map(gotItems, func(s *apisystem.System, _ int) string {
 					return s.UUID
 				})
 				gotUUIDs = lo.Uniq(gotUUIDs)

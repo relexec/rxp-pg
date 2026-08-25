@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
 	apimetrics "github.com/relexec/rxp/api/metrics"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
@@ -30,7 +32,7 @@ func (d *Driver) ObjectRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeObject),
+			apimetrics.AttributeType(apicore.TypeObject),
 			apimetrics.AttributeKindVersion(kv),
 		}
 		if err != nil {
@@ -148,7 +150,7 @@ func (d *Driver) objectReadValidate(
 // record, name and optional domain record.
 func (d *Driver) objectUUIDFromName(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	kindRec *api.Kind,
 	name string,
 	domRec *api.Domain,
@@ -156,7 +158,7 @@ func (d *Driver) objectUUIDFromName(
 	qualifier := storeobject.NameQualifier{
 		System: sysRec,
 	}
-	if kindRec.Scope == api.ScopeDomain {
+	if kindRec.Scope == apicore.ScopeDomain {
 		qualifier.Domain = domRec
 	}
 	return d.objectStore.UUIDFromName(
@@ -168,7 +170,7 @@ func (d *Driver) objectUUIDFromName(
 // record, object UUID and optional domain record.
 func (d *Driver) objectNameFromUUID(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	kindRec *api.Kind,
 	uuid string,
 	domRec *api.Domain,
@@ -176,7 +178,7 @@ func (d *Driver) objectNameFromUUID(
 	qualifier := storeobject.NameQualifier{
 		System: sysRec,
 	}
-	if kindRec.Scope == api.ScopeDomain {
+	if kindRec.Scope == apicore.ScopeDomain {
 		qualifier.Domain = domRec
 	}
 	return d.objectStore.NameFromUUID(
@@ -193,7 +195,7 @@ func (d *Driver) objectReadValidateScope(
 ) error {
 	scope := kindRec.Scope
 	switch scope {
-	case api.ScopeDomain:
+	case apicore.ScopeDomain:
 		domain := sel.Domain()
 		if domain == nil {
 			return errors.ErrSelectorDomainRequired
@@ -219,7 +221,7 @@ func (d *Driver) ObjectWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeObject),
+			apimetrics.AttributeType(apicore.TypeObject),
 			apimetrics.AttributeKindVersion(kv),
 		}
 		if err != nil {
@@ -313,7 +315,7 @@ func (d *Driver) objectWriteValidateScope(
 	kindRec *api.Kind,
 	obj api.Object,
 ) error {
-	if kindRec.Scope == api.ScopeDomain {
+	if kindRec.Scope == apicore.ScopeDomain {
 		dom := obj.Domain
 		if dom == nil {
 			return errors.ErrObjectDomainRequired
@@ -345,7 +347,7 @@ func (d *Driver) ObjectQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeObject),
+			apimetrics.AttributeType(apicore.TypeObject),
 			apimetrics.AttributeKindVersion(kv),
 		}
 		if err != nil {

@@ -1,7 +1,7 @@
 package store
 
 import (
-	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 
 	"github.com/relexec/rxp-pg/internal/store"
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
@@ -15,7 +15,7 @@ type Store struct {
 	store.Store
 
 	// hostSystemRecord is the host System managed by the Driver.
-	hostSystemRecord api.System
+	hostSystemRecord apisystem.System
 	// systemStore contains the Store for reading and writing System data.
 	systemStore *storesystem.Store
 

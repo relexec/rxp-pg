@@ -11,9 +11,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/system"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored system record
@@ -21,8 +21,8 @@ import (
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*api.System, error) {
-	out := &api.System{}
+) (*apisystem.System, error) {
+	out := &apisystem.System{}
 	out.SetSystemInternalID(rowID)
 	fn := func(tx pgx.Tx) error {
 		var uuid string
@@ -53,8 +53,8 @@ func (s *Store) dbReadByRowID(
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*api.System, error) {
-	out := &api.System{UUID: uuid}
+) (*apisystem.System, error) {
+	out := &apisystem.System{UUID: uuid}
 	fn := func(tx pgx.Tx) error {
 		var rowID int64
 		var tag sql.NullString
@@ -84,7 +84,7 @@ func (s *Store) dbReadByUUID(
 // dbInsert atomically writes the supplied System to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sys api.System,
+	sys apisystem.System,
 ) error {
 	createdOn := time.Now().UnixNano()
 	caller := api.CallerFromContext(ctx)
@@ -139,7 +139,7 @@ func (s *Store) dbReadByExpression(
 	ctx context.Context,
 	expr query.Expression,
 	opts query.Options,
-) ([]*api.System, error) {
+) ([]*apisystem.System, error) {
 	qargs := []any{}
 	wheres := []string{}
 
@@ -147,7 +147,7 @@ func (s *Store) dbReadByExpression(
 	case query.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case system.UUIDPredicate:
+		case apisystem.UUIDPredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:
@@ -200,9 +200,9 @@ FROM systems AS s
 		return nil, err
 	}
 
-	out := make([]*api.System, 0, len(recs))
+	out := make([]*apisystem.System, 0, len(recs))
 	for _, rec := range recs {
-		sys := &api.System{
+		sys := &apisystem.System{
 			UUID: rec.UUID,
 			Tag:  rec.Tag,
 		}

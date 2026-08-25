@@ -4,13 +4,14 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 )
 
 // ReadByRowID returns a api.KindVersion for the KindVersion with the supplied internal DB
 // row ID. This method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	kindRec *api.Kind,
 	rowID int64,
 ) (*api.KindVersion, error) {
@@ -34,7 +35,7 @@ func (s *Store) ReadByRowID(
 // KindVersionName. This method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	kindRec *api.Kind,
 	name api.KindVersionName,
 ) (*api.KindVersion, error) {

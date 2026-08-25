@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
 	apimetrics "github.com/relexec/rxp/api/metrics"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/system"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -16,8 +16,8 @@ import (
 // SystemRead reads a System from persistent storage.
 func (d *Driver) SystemRead(
 	ctx context.Context,
-	sel system.Selector,
-) (*api.System, error) {
+	sel apisystem.Selector,
+) (*apisystem.System, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func (d *Driver) SystemRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeSystem),
+			apimetrics.AttributeType(apicore.TypeSystem),
 		}
 		if err != nil {
 			attrs = append(attrs, apimetrics.AttributeErrCode(err))
@@ -53,7 +53,7 @@ func (d *Driver) SystemRead(
 // options are not valid for reading a single System.
 func (d *Driver) systemReadValidate(
 	ctx context.Context,
-	sel system.Selector,
+	sel apisystem.Selector,
 ) error {
 	return sel.Validate()
 }
@@ -63,8 +63,8 @@ func (d *Driver) systemReadValidate(
 // host system record when the supplied System is nil or the UUIDs match.
 func (d *Driver) systemRecordFromSystem(
 	ctx context.Context,
-	sys *api.System,
-) (*api.System, error) {
+	sys *apisystem.System,
+) (*apisystem.System, error) {
 	if sys == nil || sys.UUID == d.hostSystemUUID {
 		return d.hostSystemRecord, nil
 	}
@@ -81,7 +81,7 @@ func (d *Driver) systemRecordFromSystem(
 // SystemWrite atomically writes the supplied System to persistent storage.
 func (d *Driver) SystemWrite(
 	ctx context.Context,
-	sys api.System,
+	sys apisystem.System,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -92,7 +92,7 @@ func (d *Driver) SystemWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeSystem),
+			apimetrics.AttributeType(apicore.TypeSystem),
 		}
 		if err != nil {
 			attrs = append(attrs, apimetrics.AttributeErrCode(err))
@@ -115,7 +115,7 @@ func (d *Driver) SystemWrite(
 // options are not valid for writing a single System.
 func (d *Driver) systemWriteValidate(
 	ctx context.Context,
-	sys api.System,
+	sys apisystem.System,
 ) error {
 	return sys.Validate()
 }
@@ -130,7 +130,7 @@ func (d *Driver) SystemQuery(
 	ctx context.Context,
 	expr query.Expression,
 	opts ...query.Option,
-) (*query.Result[*api.System], error) {
+) (*query.Result[*apisystem.System], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -140,7 +140,7 @@ func (d *Driver) SystemQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeSystem),
+			apimetrics.AttributeType(apicore.TypeSystem),
 		}
 		if err != nil {
 			attrs = append(attrs, apimetrics.AttributeErrCode(err))
@@ -175,11 +175,11 @@ func (d *Driver) SystemQuery(
 			query.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []query.ResultModifier[*api.System]{
+	resNewOpts := []query.ResultModifier[*apisystem.System]{
 		query.ResultWithItems(recs),
-		query.ResultWithOptions[*api.System](resOpts),
+		query.ResultWithOptions[*apisystem.System](resOpts),
 	}
-	return query.NewResult[*api.System](resNewOpts...), nil
+	return query.NewResult[*apisystem.System](resNewOpts...), nil
 }
 
 // systemQueryValidate returns an error if the supplied expression and query

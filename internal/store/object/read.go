@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
+	apisystem "github.com/relexec/rxp/api/system"
 )
 
 // Record decorates an Object with internal DB information.
@@ -17,7 +19,7 @@ type Record struct {
 // NameQualifier contains either a System or Domain store record that qualifies
 // an Object name.
 type NameQualifier struct {
-	System *api.System
+	System *apisystem.System
 	Domain *api.Domain
 }
 
@@ -56,7 +58,7 @@ func (s *Store) NameFromUUID(
 func (s *Store) ReadByRowIDAndGeneration(
 	ctx context.Context,
 	rowID int64,
-	requestedGen api.Generation,
+	requestedGen apicore.Generation,
 ) (*Record, error) {
 	return s.dbReadByRowIDAndGeneration(ctx, rowID, requestedGen)
 }
@@ -67,7 +69,7 @@ func (s *Store) ReadByUUIDAndGeneration(
 	ctx context.Context,
 	kvRec *api.KindVersion,
 	uuid string,
-	requestedGen api.Generation,
+	requestedGen apicore.Generation,
 ) (*Record, error) {
 	return s.dbReadByUUIDAndGeneration(ctx, kvRec, uuid, requestedGen)
 }

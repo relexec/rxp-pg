@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/relexec/rxp/api"
 	apimetrics "github.com/relexec/rxp/api/metrics"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
@@ -201,7 +202,7 @@ func (d *Driver) initHostSystemRecord(ctx context.Context) error {
 			d.Logger.Debug("creating host system record")
 			initCaller := api.Caller{Identity: "rxp.system"}
 			initCtx := api.CallerToContext(ctx, initCaller)
-			sys := api.System{
+			sys := apisystem.System{
 				UUID: d.hostSystemUUID,
 				Tag:  d.hostSystemTag,
 			}

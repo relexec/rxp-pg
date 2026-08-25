@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/query"
 )
 
@@ -11,12 +13,12 @@ import (
 func (s *Store) Query(
 	ctx context.Context,
 	kv api.KindVersionName,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	kindRec *api.Kind,
 	expr query.Expression,
 	opts query.Options,
 ) ([]*Record, error) {
-	if kindRec.Scope == api.ScopeDomain {
+	if kindRec.Scope == apicore.ScopeDomain {
 		return s.dbReadDomainQualifiedByExpression(
 			ctx, kv, sysRec, kindRec, expr, opts,
 		)

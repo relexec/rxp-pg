@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 
-	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 )
 
 // ReadByRowID returns a Record for the System with the supplied RowID. This
@@ -11,7 +11,7 @@ import (
 func (s *Store) ReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*api.System, error) {
+) (*apisystem.System, error) {
 	cacheKey := byRowIDCacheKey(rowID)
 	cached, found := s.cacheReadByRowID(ctx, cacheKey)
 	if found {
@@ -33,7 +33,7 @@ func (s *Store) ReadByRowID(
 func (s *Store) ReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*api.System, error) {
+) (*apisystem.System, error) {
 	cacheKey := byUUIDCacheKey(uuid)
 	cached, found := s.cacheReadByUUID(ctx, cacheKey)
 	if found {

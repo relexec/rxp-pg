@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apirun "github.com/relexec/rxp/api/run"
 	"go.opentelemetry.io/otel/attribute"
@@ -26,7 +26,7 @@ func (d *Driver) RunEventsWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeRunEvent),
+			apimetrics.AttributeType(apicore.TypeRunEvent),
 		}
 		if err != nil {
 			attrs = append(attrs, apimetrics.AttributeErrCode(err))

@@ -14,18 +14,18 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/pkg/version"
 	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/kind/kindversion/schema"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/system"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored kindversion
 // record having the supplied internal DB RowID.
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	kindRec *api.Kind,
 	rowID int64,
 ) (*api.KindVersion, error) {
@@ -83,7 +83,7 @@ func (s *Store) dbReadByRowID(
 // having the supplied KindVersion.
 func (s *Store) dbReadByName(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	kindRec *api.Kind,
 	kv api.KindVersionName,
 ) (*api.KindVersion, error) {
@@ -147,7 +147,7 @@ AND version = $3
 // versions known for the supplied Kind.
 func (s *Store) dbVersionsForKind(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	kindRec *api.Kind,
 ) (version.Set, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -200,7 +200,7 @@ AND kind = $2
 // dbInsert atomically writes the supplied KindVersion to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	kindRec *api.Kind,
 	kv api.KindVersion,
 ) error {
@@ -344,7 +344,7 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case system.UUIDPredicate:
+		case apisystem.UUIDPredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:

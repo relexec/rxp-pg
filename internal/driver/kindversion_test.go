@@ -8,11 +8,11 @@ import (
 	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp-testing/fixtures/service"
 	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/system"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )
@@ -249,7 +249,7 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"no results when looking up kindversions by non-existing system",
 			ctx,
-			system.Equal(&fixtures.UnknownSystem),
+			apisystem.Equal(&fixtures.UnknownSystem),
 			nil,
 			0,
 			[]api.KindVersionName{},
@@ -262,7 +262,7 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"no results when looking up kindversions by non-existing system UUID",
 			ctx,
-			system.UUIDEqual(fixtures.UnknownSystemUUID),
+			apisystem.UUIDEqual(fixtures.UnknownSystemUUID),
 			nil,
 			0,
 			[]api.KindVersionName{},

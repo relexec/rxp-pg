@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 
 	"github.com/relexec/rxp-pg/internal/cache"
 	"github.com/relexec/rxp-pg/internal/store"
@@ -25,7 +26,7 @@ type Store struct {
 	byRowID *cache.Cache[byRowIDCacheKey, byNameCacheKey]
 
 	// hostSystemapi.KindVersion is the host System managed by the Driver.
-	hostSystemRecord api.System
+	hostSystemRecord apisystem.System
 	// systemStore contains the Store for reading and writing System data.
 	systemStore *storesystem.Store
 	// kindStore contains the Store for reading and writing Kind data.

@@ -10,10 +10,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/system"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored kind record
@@ -28,7 +29,7 @@ func (s *Store) dbReadByRowID(
 		var systemRowID int64
 		var uuid string
 		var name api.KindName
-		var scope api.Scope
+		var scope apicore.Scope
 		qs := "SELECT system, uuid, name, scope FROM kinds WHERE id = $1"
 		err := tx.QueryRow(
 			ctx, qs, rowID,
@@ -73,7 +74,7 @@ func (s *Store) dbReadByUUID(
 	fn := func(tx pgx.Tx) error {
 		var rowID int64
 		var name api.KindName
-		var scope api.Scope
+		var scope apicore.Scope
 		qs := "SELECT id, name, scope FROM kinds WHERE uuid = $1"
 		err := tx.QueryRow(ctx, qs, uuid).Scan(&rowID, &name, &scope)
 		if err != nil {
@@ -100,7 +101,7 @@ func (s *Store) dbReadByUUID(
 // having the supplied Name.
 func (s *Store) dbReadByName(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	name api.KindName,
 ) (*api.Kind, error) {
 	out := &api.Kind{
@@ -111,7 +112,7 @@ func (s *Store) dbReadByName(
 	fn := func(tx pgx.Tx) error {
 		var rowID int64
 		var uuid string
-		var scope api.Scope
+		var scope apicore.Scope
 		qs := `
 SELECT id, uuid, scope
 FROM kinds
@@ -144,7 +145,7 @@ AND name = $2
 // dbInsert atomically writes the supplied Kind to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	kind api.Kind,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -192,11 +193,11 @@ INSERT INTO kinds (
 }
 
 type kindRecord struct {
-	SystemID int64        `db:"system_id"`
-	ID       int64        `db:"kind_id"`
-	UUID     string       `db:"kind_uuid"`
-	Name     api.KindName `db:"kind_name"`
-	Scope    api.Scope    `db:"kind_scope"`
+	SystemID int64         `db:"system_id"`
+	ID       int64         `db:"kind_id"`
+	UUID     string        `db:"kind_uuid"`
+	Name     api.KindName  `db:"kind_name"`
+	Scope    apicore.Scope `db:"kind_scope"`
 }
 
 // dbReadByExpression queries zero or more Kinds that match the given
@@ -237,7 +238,7 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case system.UUIDPredicate:
+		case apisystem.UUIDPredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:

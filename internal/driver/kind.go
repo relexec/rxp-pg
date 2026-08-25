@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
 	apimetrics "github.com/relexec/rxp/api/metrics"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/query"
@@ -27,7 +29,7 @@ func (d *Driver) KindRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeKind),
+			apimetrics.AttributeType(apicore.TypeKind),
 		}
 		if err != nil {
 			attrs = append(attrs, apimetrics.AttributeErrCode(err))
@@ -44,7 +46,7 @@ func (d *Driver) KindRead(
 		return nil, err
 	}
 
-	var sysRec *api.System
+	var sysRec *apisystem.System
 
 	name := sel.Name()
 	sys := sel.System()
@@ -89,7 +91,7 @@ func (d *Driver) KindWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeKind),
+			apimetrics.AttributeType(apicore.TypeKind),
 		}
 		if err != nil {
 			attrs = append(attrs, apimetrics.AttributeErrCode(err))
@@ -106,7 +108,7 @@ func (d *Driver) KindWrite(
 		return err
 	}
 
-	var sysRec *api.System
+	var sysRec *apisystem.System
 
 	sys := k.System
 
@@ -155,7 +157,7 @@ func (d *Driver) KindQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeKind),
+			apimetrics.AttributeType(apicore.TypeKind),
 		}
 		if err != nil {
 			attrs = append(attrs, apimetrics.AttributeErrCode(err))

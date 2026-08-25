@@ -4,13 +4,14 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 )
 
 // ReadByRowID returns a api.Domain for the Domain with the supplied internal
 // DB row ID. This method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	rowID int64,
 ) (*api.Domain, error) {
 	cacheKey := byRowIDCacheKey(rowID)
@@ -33,7 +34,7 @@ func (s *Store) ReadByRowID(
 // method will populate any caches with any read records.
 func (s *Store) ReadByUUID(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	uuid string,
 ) (*api.Domain, error) {
 	cacheKey := byUUIDCacheKey(uuid)
@@ -56,7 +57,7 @@ func (s *Store) ReadByUUID(
 // method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	name api.DomainName,
 ) (*api.Domain, error) {
 	cacheKey := newByNameCacheKey(sysRec, name)

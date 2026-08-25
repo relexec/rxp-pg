@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
 	apimetrics "github.com/relexec/rxp/api/metrics"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
@@ -27,7 +29,7 @@ func (d *Driver) DomainRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeDomain),
+			apimetrics.AttributeType(apicore.TypeDomain),
 		}
 		if err != nil {
 			attrs = append(attrs, apimetrics.AttributeErrCode(err))
@@ -44,7 +46,7 @@ func (d *Driver) DomainRead(
 		return nil, err
 	}
 
-	var sysRec *api.System
+	var sysRec *apisystem.System
 
 	sys := sel.System()
 
@@ -88,7 +90,7 @@ func (d *Driver) domainReadValidate(
 // associated Record from the domain store.
 func (d *Driver) domainRecordFromDomain(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	dom *api.Domain,
 ) (*api.Domain, error) {
 	if dom == nil {
@@ -118,7 +120,7 @@ func (d *Driver) DomainWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeDomain),
+			apimetrics.AttributeType(apicore.TypeDomain),
 		}
 		if err != nil {
 			attrs = append(attrs, apimetrics.AttributeErrCode(err))
@@ -135,7 +137,7 @@ func (d *Driver) DomainWrite(
 		return err
 	}
 
-	var sysRec *api.System
+	var sysRec *apisystem.System
 
 	sys := dom.System
 
@@ -213,7 +215,7 @@ func (d *Driver) DomainQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeDomain),
+			apimetrics.AttributeType(apicore.TypeDomain),
 		}
 		if err != nil {
 			attrs = append(attrs, apimetrics.AttributeErrCode(err))

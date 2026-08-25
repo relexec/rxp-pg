@@ -11,7 +11,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
 	apirun "github.com/relexec/rxp/api/run"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 
@@ -26,7 +28,7 @@ func (s *Store) dbReadByRowID(
 ) (*apirun.Run, error) {
 	var uuid string
 	var targetUUID string
-	var targetGeneration api.Generation
+	var targetGeneration apicore.Generation
 	var rootRowID int64
 	var requestedOn int64
 	var callerIdentity string
@@ -234,7 +236,7 @@ func (s *Store) dbReadByUUID(
 ) (*apirun.Run, error) {
 	var rowID int64
 	var targetUUID string
-	var targetGeneration api.Generation
+	var targetGeneration apicore.Generation
 	var rootRowID int64
 	var requestedOn int64
 	var callerIdentity string
@@ -382,7 +384,7 @@ WHERE object = $1 AND generation = $2
 func (s *Store) dbInsert(
 	ctx context.Context,
 	targetRec storeobject.Record,
-	callerSysRec *api.System,
+	callerSysRec *apisystem.System,
 	callerDomRec *api.Domain,
 	root *apirun.Identifiers,
 	parent *apirun.Identifiers,
@@ -521,25 +523,25 @@ INSERT INTO run_requests (
 }
 
 type runRecord struct {
-	ID               int64          `db:"run_id"`
-	UUID             string         `db:"run_uuid"`
-	TargetUUID       string         `db:"target_uuid"`
-	TargetGeneration api.Generation `db:"target_generation"`
-	RootID           int64          `db:"root_id"`
-	ParentID         sql.NullInt64  `db:"parent_id"`
-	CreatedOn        int64          `db:"created_on"`
-	ScheduledOn      int64          `db:"scheduled_on"`
-	CallerIdentity   string         `db:"caller_identity"`
-	CallerSystemID   int64          `db:"caller_system_id"`
-	Options          sql.NullString `db:"options"`
-	InVars           sql.NullString `db:"in_vars"`
-	StartedOn        sql.NullInt64  `db:"started_on"`
-	CompletedOn      sql.NullInt64  `db:"completed_on"`
-	FailedOn         sql.NullInt64  `db:"failed_on"`
-	PausedOn         sql.NullInt64  `db:"paused_on"`
-	ResumedOn        sql.NullInt64  `db:"resumed_on"`
-	CanceledOn       sql.NullInt64  `db:"canceled_on"`
-	FinalizedOn      sql.NullInt64  `db:"finalized_on"`
+	ID               int64              `db:"run_id"`
+	UUID             string             `db:"run_uuid"`
+	TargetUUID       string             `db:"target_uuid"`
+	TargetGeneration apicore.Generation `db:"target_generation"`
+	RootID           int64              `db:"root_id"`
+	ParentID         sql.NullInt64      `db:"parent_id"`
+	CreatedOn        int64              `db:"created_on"`
+	ScheduledOn      int64              `db:"scheduled_on"`
+	CallerIdentity   string             `db:"caller_identity"`
+	CallerSystemID   int64              `db:"caller_system_id"`
+	Options          sql.NullString     `db:"options"`
+	InVars           sql.NullString     `db:"in_vars"`
+	StartedOn        sql.NullInt64      `db:"started_on"`
+	CompletedOn      sql.NullInt64      `db:"completed_on"`
+	FailedOn         sql.NullInt64      `db:"failed_on"`
+	PausedOn         sql.NullInt64      `db:"paused_on"`
+	ResumedOn        sql.NullInt64      `db:"resumed_on"`
+	CanceledOn       sql.NullInt64      `db:"canceled_on"`
+	FinalizedOn      sql.NullInt64      `db:"finalized_on"`
 }
 
 // dbReadByExpression queries zero or more Runs from persistent storage given

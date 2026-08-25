@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apirun "github.com/relexec/rxp/api/run"
 	"github.com/relexec/rxp/errors"
@@ -29,7 +30,7 @@ func (d *Driver) RunRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeRun),
+			apimetrics.AttributeType(apicore.TypeRun),
 		}
 		if err != nil {
 			attrs = append(attrs, apimetrics.AttributeErrCode(err))
@@ -84,7 +85,7 @@ func (d *Driver) RunWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeRun),
+			apimetrics.AttributeType(apicore.TypeRun),
 			apimetrics.AttributeKindVersion(targetKV),
 		}
 		if err != nil {
@@ -264,7 +265,7 @@ func (d *Driver) RunQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(api.TypeRun),
+			apimetrics.AttributeType(apicore.TypeRun),
 		}
 		if err != nil {
 			attrs = append(attrs, apimetrics.AttributeErrCode(err))

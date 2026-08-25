@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 )
 
@@ -23,7 +24,7 @@ func (k byNameCacheKey) KindVersion() api.KindVersionName {
 }
 
 func newByNameCacheKey(
-	system *api.System,
+	system *apisystem.System,
 	kv api.KindVersionName,
 ) byNameCacheKey {
 	return byNameCacheKey(system.UUID + "|" + string(kv))

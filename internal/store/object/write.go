@@ -4,13 +4,14 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 )
 
 // Write atomically writes the supplied Object to persistent storage. On
 // successful write, the newly created or updated Object is returned.
 func (s *Store) Write(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	kindRec *api.Kind,
 	kvRec *api.KindVersion,
 	domRec *api.Domain,

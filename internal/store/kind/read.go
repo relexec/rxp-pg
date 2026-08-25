@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 )
 
 // ReadByRowID returns a api.Kind for the Kind with the supplied internal DB
@@ -54,7 +55,7 @@ func (s *Store) ReadByUUID(
 // method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	name api.KindName,
 ) (*api.Kind, error) {
 	cacheKey := newByNameCacheKey(sysRec, name)

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 )
 
@@ -16,7 +16,7 @@ type byUUIDCacheKey string
 func (s *Store) cacheReadByRowID(
 	ctx context.Context,
 	key byRowIDCacheKey,
-) (*api.System, bool) {
+) (*apisystem.System, bool) {
 	if s.byRowID == nil {
 		return nil, false
 	}
@@ -36,7 +36,7 @@ func (s *Store) cacheReadByRowID(
 func (s *Store) cacheReadByUUID(
 	ctx context.Context,
 	key byUUIDCacheKey,
-) (*api.System, bool) {
+) (*apisystem.System, bool) {
 	if s.byUUID == nil {
 		return nil, false
 	}
@@ -53,7 +53,7 @@ func (s *Store) cacheReadByUUID(
 func (s *Store) cacheReadByUUIDNoLock(
 	ctx context.Context,
 	key byUUIDCacheKey,
-) (*api.System, bool) {
+) (*apisystem.System, bool) {
 	return s.byUUID.Get(key)
 }
 
@@ -61,7 +61,7 @@ func (s *Store) cacheReadByUUIDNoLock(
 // enabled.
 func (s *Store) cacheWrite(
 	ctx context.Context,
-	rec *api.System,
+	rec *apisystem.System,
 ) error {
 	if s.byUUID == nil {
 		return nil

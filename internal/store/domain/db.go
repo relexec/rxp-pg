@@ -11,17 +11,17 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
-	"github.com/relexec/rxp/system"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored domain record
 // having the supplied internal DB RowID.
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	rowID int64,
 ) (*api.Domain, error) {
 	out := &api.Domain{
@@ -95,7 +95,7 @@ WHERE id = $1
 // having the supplied UUID.
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	uuid string,
 ) (*api.Domain, error) {
 	out := &api.Domain{
@@ -169,7 +169,7 @@ WHERE uuid = $1
 // having the supplied Name.
 func (s *Store) dbReadByName(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	name api.DomainName,
 ) (*api.Domain, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -245,7 +245,7 @@ AND name = $2
 // dbInsert atomically writes the supplied Domain to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	dom api.Domain,
 ) error {
 	parent := dom.Parent
@@ -258,7 +258,7 @@ func (s *Store) dbInsert(
 // dbInsertRoot creates a new domain record for a root node in a "domain tree".
 func (s *Store) dbInsertRoot(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	dom api.Domain,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -327,7 +327,7 @@ INSERT INTO domains (
 // set model values for the domain tree.
 func (s *Store) dbInsertNonRoot(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	parent api.Domain,
 	dom api.Domain,
 ) error {
@@ -495,7 +495,7 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case system.UUIDPredicate:
+		case apisystem.UUIDPredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:

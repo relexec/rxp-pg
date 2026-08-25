@@ -4,13 +4,14 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 )
 
 // Write atomically writes the pre-validated Domain to persistent storage.
 func (s *Store) Write(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	dom api.Domain,
 ) error {
 	err := s.dbInsert(ctx, sysRec, dom)

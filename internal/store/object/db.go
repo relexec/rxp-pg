@@ -11,6 +11,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind"
 	"github.com/relexec/rxp/kind/kindversion"
@@ -22,7 +24,7 @@ import (
 // with the supplied name and domain.
 func (s *Store) dbUUIDFromNameDomainQualified(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	domRec api.Domain,
 	name string,
 ) (string, error) {
@@ -68,7 +70,7 @@ AND n.name = $3
 // with the supplied UUID and domain.
 func (s *Store) dbNameFromUUIDDomainQualified(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	domRec api.Domain,
 	uuid string,
 ) (string, error) {
@@ -114,7 +116,7 @@ AND o.uuid = $3
 // with the supplied name and system.
 func (s *Store) dbUUIDFromNameSystemQualified(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	name string,
 ) (string, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -155,7 +157,7 @@ AND n.name = $2
 // with the supplied name and system.
 func (s *Store) dbNameFromUUIDSystemQualified(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	uuid string,
 ) (string, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -193,7 +195,7 @@ AND o.uuid = $2
 }
 
 const (
-	latestSentinel = api.Generation(0)
+	latestSentinel = apicore.Generation(0)
 )
 
 // dbReadByRowIDAndGeneration returns the object record having the supplied
@@ -201,10 +203,10 @@ const (
 func (s *Store) dbReadByRowIDAndGeneration(
 	ctx context.Context,
 	rowID int64,
-	requestedGen api.Generation,
+	requestedGen apicore.Generation,
 ) (*Record, error) {
 	var uuid string
-	var generation api.Generation
+	var generation apicore.Generation
 	var spec sql.NullString
 	out := Record{
 		RowID: rowID,
@@ -269,9 +271,9 @@ func (s *Store) dbReadByUUIDAndGeneration(
 	ctx context.Context,
 	kvRec *api.KindVersion,
 	uuid string,
-	requestedGen api.Generation,
+	requestedGen apicore.Generation,
 ) (*Record, error) {
-	var generation api.Generation
+	var generation apicore.Generation
 	var spec sql.NullString
 	out := Record{}
 	kvRowID := kvRec.SystemInternalIDInt64()
@@ -333,13 +335,13 @@ AND o.kindversion = $2
 // writer of an object.
 func (s *Store) dbInsertFirst(
 	ctx context.Context,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	kindRec *api.Kind,
 	kvRec *api.KindVersion,
 	domRec *api.Domain,
 	obj api.Object,
 ) (*api.Object, error) {
-	if kindRec.Scope == api.ScopeDomain && domRec == nil {
+	if kindRec.Scope == apicore.ScopeDomain && domRec == nil {
 		return nil, errors.ErrObjectDomainRequired
 	}
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -410,7 +412,7 @@ INSERT INTO objects (
 		}
 		scope := kindRec.Scope
 		switch scope {
-		case api.ScopeDomain:
+		case apicore.ScopeDomain:
 			qs = `
 INSERT INTO domain_qualified_object_names (
   object
@@ -547,9 +549,9 @@ func (s *Store) dbInsertGeneration(
 	kvRec *api.KindVersion,
 	domRec *api.Domain,
 	obj api.Object,
-	expectGeneration api.Generation,
+	expectGeneration apicore.Generation,
 ) (*api.Object, error) {
-	if kindRec.Scope == api.ScopeDomain && domRec == nil {
+	if kindRec.Scope == apicore.ScopeDomain && domRec == nil {
 		return nil, errors.ErrObjectDomainRequired
 	}
 	kvRowID := kvRec.SystemInternalIDInt64()
@@ -668,14 +670,14 @@ func isKindishPredicate(p query.Predicate) bool {
 }
 
 type dqObjectRecord struct {
-	ID            int64          `db:"object_id"`
-	UUID          string         `db:"object_uuid"`
-	Generation    api.Generation `db:"object_generation"`
-	Name          string         `db:"object_name"`
-	Spec          sql.NullString `db:"object_spec"`
-	SystemID      int64          `db:"system_id"`
-	KindVersionID int64          `db:"kindversion_id"`
-	DomainID      int64          `db:"domain_id"`
+	ID            int64              `db:"object_id"`
+	UUID          string             `db:"object_uuid"`
+	Generation    apicore.Generation `db:"object_generation"`
+	Name          string             `db:"object_name"`
+	Spec          sql.NullString     `db:"object_spec"`
+	SystemID      int64              `db:"system_id"`
+	KindVersionID int64              `db:"kindversion_id"`
+	DomainID      int64              `db:"domain_id"`
 }
 
 // dbReadDomainQualifiedByExpression queries zero or more Objects that have
@@ -684,7 +686,7 @@ type dqObjectRecord struct {
 func (s *Store) dbReadDomainQualifiedByExpression(
 	ctx context.Context,
 	kv api.KindVersionName,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	kindRec *api.Kind,
 	expr query.Expression,
 	opts query.Options,
@@ -796,13 +798,13 @@ INNER JOIN object_generations AS og
 }
 
 type sqObjectRecord struct {
-	ID            int64          `db:"object_id"`
-	UUID          string         `db:"object_uuid"`
-	Generation    api.Generation `db:"object_generation"`
-	Name          string         `db:"object_name"`
-	Spec          sql.NullString `db:"object_spec"`
-	SystemID      int64          `db:"system_id"`
-	KindVersionID int64          `db:"kindversion_id"`
+	ID            int64              `db:"object_id"`
+	UUID          string             `db:"object_uuid"`
+	Generation    apicore.Generation `db:"object_generation"`
+	Name          string             `db:"object_name"`
+	Spec          sql.NullString     `db:"object_spec"`
+	SystemID      int64              `db:"system_id"`
+	KindVersionID int64              `db:"kindversion_id"`
 }
 
 // dbReadSystemQualifiedByExpression queries zero or more Objects that have
@@ -811,7 +813,7 @@ type sqObjectRecord struct {
 func (s *Store) dbReadSystemQualifiedByExpression(
 	ctx context.Context,
 	kv api.KindVersionName,
-	sysRec *api.System,
+	sysRec *apisystem.System,
 	kindRec *api.Kind,
 	expr query.Expression,
 	opts query.Options,
