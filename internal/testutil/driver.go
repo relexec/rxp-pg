@@ -8,10 +8,10 @@ import (
 	"github.com/relexec/rxp/api"
 	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
+	apiobject "github.com/relexec/rxp/api/object"
 	apirun "github.com/relexec/rxp/api/run"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind/kindversion"
-	"github.com/relexec/rxp/object"
 
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/driver"
@@ -115,18 +115,18 @@ func DomainCreateIfNotExists(
 func ObjectCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	o *api.Object,
+	o *apiobject.Object,
 ) error {
-	selopts := []object.SelectOption{}
+	selopts := []apiobject.SelectOption{}
 	if o.UUID != "" {
-		selopts = append(selopts, object.ByUUID(o.UUID))
+		selopts = append(selopts, apiobject.ByUUID(o.UUID))
 	} else if o.Name != "" {
-		selopts = append(selopts, object.ByName(o.Name))
+		selopts = append(selopts, apiobject.ByName(o.Name))
 	}
 	if o.Domain != nil {
-		selopts = append(selopts, object.ByDomain(o.Domain))
+		selopts = append(selopts, apiobject.ByDomain(o.Domain))
 	}
-	_, err := d.ObjectRead(ctx, o.KindVersionName, object.Select(selopts...))
+	_, err := d.ObjectRead(ctx, o.KindVersionName, apiobject.Select(selopts...))
 	if err != nil {
 		if err != errors.ErrNotFound {
 			return err

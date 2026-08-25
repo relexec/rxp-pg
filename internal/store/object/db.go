@@ -14,10 +14,10 @@ import (
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
+	apiobject "github.com/relexec/rxp/api/object"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind/kindversion"
-	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
 )
 
@@ -247,7 +247,7 @@ WHERE o.id = $1
 				errors.WithWrap(err),
 			)
 		}
-		out.Object = &api.Object{
+		out.Object = &apiobject.Object{
 			UUID:       uuid,
 			Generation: generation,
 		}
@@ -315,7 +315,7 @@ AND o.kindversion = $2
 				errors.WithWrap(err),
 			)
 		}
-		out.Object = &api.Object{
+		out.Object = &apiobject.Object{
 			KindVersionName: kvRec.Name(),
 			UUID:            uuid,
 			Generation:      generation,
@@ -340,8 +340,8 @@ func (s *Store) dbInsertFirst(
 	kindRec *apikind.Kind,
 	kvRec *api.KindVersion,
 	domRec *apidomain.Domain,
-	obj api.Object,
-) (*api.Object, error) {
+	obj apiobject.Object,
+) (*apiobject.Object, error) {
 	if kindRec.Scope == apicore.ScopeDomain && domRec == nil {
 		return nil, errors.ErrObjectDomainRequired
 	}
@@ -549,9 +549,9 @@ func (s *Store) dbInsertGeneration(
 	kindRec *apikind.Kind,
 	kvRec *api.KindVersion,
 	domRec *apidomain.Domain,
-	obj api.Object,
+	obj apiobject.Object,
 	expectGeneration apicore.Generation,
-) (*api.Object, error) {
+) (*apiobject.Object, error) {
 	if kindRec.Scope == apicore.ScopeDomain && domRec == nil {
 		return nil, errors.ErrObjectDomainRequired
 	}
@@ -779,7 +779,7 @@ INNER JOIN object_generations AS og
 		if err != nil {
 			return nil, err
 		}
-		obj := &api.Object{
+		obj := &apiobject.Object{
 			KindVersionName: kvName,
 			UUID:            rec.UUID,
 			Name:            rec.Name,
@@ -843,7 +843,7 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 	case query.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case object.UUIDPredicate:
+		case apiobject.UUIDPredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:
@@ -855,7 +855,7 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 				wheres = append(wheres, fmt.Sprintf("o.uuid = ANY($%d)", len(qargs)+1))
 				qargs = append(qargs, us)
 			}
-		case object.NamePredicate:
+		case apiobject.NamePredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:
@@ -876,7 +876,7 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 			case query.UnaryExpression:
 				pred := subexpr.Predicate
 				switch pred := pred.(type) {
-				case object.UUIDPredicate:
+				case apiobject.UUIDPredicate:
 					op := pred.Op
 					switch op {
 					case query.PredicateOperatorEqual:
@@ -888,7 +888,7 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 						ors = append(ors, fmt.Sprintf("o.uuid = ANY($%d)", len(qargs)+1))
 						qargs = append(qargs, us)
 					}
-				case object.NamePredicate:
+				case apiobject.NamePredicate:
 					op := pred.Op
 					switch op {
 					case query.PredicateOperatorEqual:
@@ -912,7 +912,7 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 			case query.UnaryExpression:
 				pred := subexpr.Predicate
 				switch pred := pred.(type) {
-				case object.UUIDPredicate:
+				case apiobject.UUIDPredicate:
 					op := pred.Op
 					switch op {
 					case query.PredicateOperatorEqual:
@@ -920,7 +920,7 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 						ands = append(ands, fmt.Sprintf("o.uuid = $%d", len(qargs)+1))
 						qargs = append(qargs, u)
 					}
-				case object.NamePredicate:
+				case apiobject.NamePredicate:
 					op := pred.Op
 					switch op {
 					case query.PredicateOperatorEqual:
@@ -994,7 +994,7 @@ INNER JOIN object_generations AS og
 			}
 			kvName = kvRec.Name()
 		}
-		obj := &api.Object{
+		obj := &apiobject.Object{
 			KindVersionName: kvName,
 			UUID:            rec.UUID,
 			Name:            rec.Name,

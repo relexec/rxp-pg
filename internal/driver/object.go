@@ -9,9 +9,9 @@ import (
 	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
 	apimetrics "github.com/relexec/rxp/api/metrics"
+	apiobject "github.com/relexec/rxp/api/object"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -23,8 +23,8 @@ import (
 func (d *Driver) ObjectRead(
 	ctx context.Context,
 	kv api.KindVersionName,
-	sel object.Selector,
-) (*api.Object, error) {
+	sel apiobject.Selector,
+) (*apiobject.Object, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ func (d *Driver) ObjectRead(
 func (d *Driver) objectReadValidate(
 	ctx context.Context,
 	kv api.KindVersionName,
-	sel object.Selector,
+	sel apiobject.Selector,
 ) error {
 	err := kv.Validate()
 	if err != nil {
@@ -193,7 +193,7 @@ func (d *Driver) objectNameFromUUID(
 func (d *Driver) objectReadValidateScope(
 	ctx context.Context,
 	kindRec *apikind.Kind,
-	sel object.Selector,
+	sel apiobject.Selector,
 ) error {
 	scope := kindRec.Scope
 	switch scope {
@@ -210,8 +210,8 @@ func (d *Driver) objectReadValidateScope(
 // on successful write, the newly-created or updated Object is returned.
 func (d *Driver) ObjectWrite(
 	ctx context.Context,
-	obj api.Object,
-) (*api.Object, error) {
+	obj apiobject.Object,
+) (*apiobject.Object, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -293,7 +293,7 @@ func (d *Driver) ObjectWrite(
 // options are not valid for writing a single Object.
 func (d *Driver) objectWriteValidate(
 	ctx context.Context,
-	obj api.Object,
+	obj apiobject.Object,
 ) error {
 	kv := obj.KindVersionName
 	if kv == "" {
@@ -315,7 +315,7 @@ func (d *Driver) objectWriteValidate(
 func (d *Driver) objectWriteValidateScope(
 	ctx context.Context,
 	kindRec *apikind.Kind,
-	obj api.Object,
+	obj apiobject.Object,
 ) error {
 	if kindRec.Scope == apicore.ScopeDomain {
 		dom := obj.Domain
@@ -339,7 +339,7 @@ func (d *Driver) ObjectQuery(
 	kv api.KindVersionName,
 	expr query.Expression,
 	opts ...query.Option,
-) (*query.Result[*api.Object], error) {
+) (*query.Result[*apiobject.Object], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -386,23 +386,23 @@ func (d *Driver) ObjectQuery(
 	if err != nil {
 		return nil, err
 	}
-	objs := make([]*api.Object, 0, len(recs))
+	objs := make([]*apiobject.Object, 0, len(recs))
 	for _, rec := range recs {
 		objs = append(objs, rec.Object)
 	}
-	resNewOpts := []query.ResultModifier[*api.Object]{
+	resNewOpts := []query.ResultModifier[*apiobject.Object]{
 		query.ResultWithItems(objs),
-		query.ResultWithOptions[*api.Object](boundedOpts),
+		query.ResultWithOptions[*apiobject.Object](boundedOpts),
 	}
 	if len(recs) == int(boundedOpts.Limit()) {
 		resNewOpts = append(
 			resNewOpts,
-			query.ResultWithMarker[*api.Object](
+			query.ResultWithMarker[*apiobject.Object](
 				recs[len(recs)-1].Object.UUID,
 			),
 		)
 	}
-	return query.NewResult[*api.Object](resNewOpts...), nil
+	return query.NewResult[*apiobject.Object](resNewOpts...), nil
 }
 
 // objectQueryValidate returns an error if the supplied expression and query

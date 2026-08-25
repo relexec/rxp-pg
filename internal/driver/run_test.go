@@ -10,6 +10,7 @@ import (
 	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp-testing/fixtures/runnable"
 	"github.com/relexec/rxp/api"
+	apiobject "github.com/relexec/rxp/api/object"
 	apirun "github.com/relexec/rxp/api/run"
 	"github.com/stretchr/testify/require"
 )
@@ -34,7 +35,7 @@ func TestRunRead(t *testing.T) {
 
 	ctxMissingIdent := context.TODO()
 
-	runnable1 := &api.Object{
+	runnable1 := &apiobject.Object{
 		KindVersionName: runnable.KindVersion_V1_0_0.Name(),
 		UUID:            uuid.NewString(),
 		Domain:          &dom,

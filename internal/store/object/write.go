@@ -6,6 +6,7 @@ import (
 	"github.com/relexec/rxp/api"
 	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
+	apiobject "github.com/relexec/rxp/api/object"
 	apisystem "github.com/relexec/rxp/api/system"
 )
 
@@ -17,8 +18,8 @@ func (s *Store) Write(
 	kindRec *apikind.Kind,
 	kvRec *api.KindVersion,
 	domRec *apidomain.Domain,
-	obj api.Object,
-) (*api.Object, error) {
+	obj apiobject.Object,
+) (*apiobject.Object, error) {
 	expectGeneration := obj.Generation
 	if expectGeneration == 0 {
 		// caller expects that they are the first writer of this object. This

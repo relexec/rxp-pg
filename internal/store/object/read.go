@@ -6,6 +6,7 @@ import (
 	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
+	apiobject "github.com/relexec/rxp/api/object"
 	apisystem "github.com/relexec/rxp/api/system"
 )
 
@@ -14,7 +15,7 @@ type Record struct {
 	// RowID is the internal database SERIAL for the objects record.
 	RowID int64
 	// Object is the publicly-exposed Object object.
-	Object *api.Object
+	Object *apiobject.Object
 }
 
 // NameQualifier contains either a System or Domain store record that qualifies

@@ -10,8 +10,8 @@ import (
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp-testing/fixtures"
 	apidomain "github.com/relexec/rxp/api/domain"
+	apiobject "github.com/relexec/rxp/api/object"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -345,13 +345,13 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"unsupported predicate",
 			ctx,
-			object.GenerationEqual(0),
+			apiobject.GenerationEqual(0),
 			nil,
 			0,
 			nil,
 			query.Options{},
 			"",
-			"unsupported predicate object.GenerationPredicate",
+			"unsupported predicate apiobject.GenerationPredicate",
 		},
 		{
 			"expression required",

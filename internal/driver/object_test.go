@@ -14,7 +14,7 @@ import (
 	"github.com/relexec/rxp/api"
 	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
-	"github.com/relexec/rxp/object"
+	apiobject "github.com/relexec/rxp/api/object"
 	"github.com/relexec/rxp/query"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -49,7 +49,7 @@ func TestObjectRead(t *testing.T) {
 
 	ctxMissingIdent := context.TODO()
 
-	app1 := &api.Object{
+	app1 := &apiobject.Object{
 		KindVersionName: application.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 		Domain:          &dom,
@@ -80,7 +80,7 @@ func TestObjectRead(t *testing.T) {
 	err = testutil.DomainCreateIfNotExists(ctx, rxp, fixtures.DomainTree_Group2Leaf2)
 	require.Nil(t, err, err)
 
-	svc1 := &api.Object{
+	svc1 := &apiobject.Object{
 		KindVersionName: service.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 		Domain:          &fixtures.DomainTree_Group1,
@@ -94,15 +94,15 @@ func TestObjectRead(t *testing.T) {
 		name   string
 		ctx    context.Context
 		kv     api.KindVersionName
-		sel    object.Selector
-		exp    *api.Object
+		sel    apiobject.Selector
+		exp    *apiobject.Object
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
 			service.FirstKindVersionName(),
-			object.Select(object.ByUUID(svc1.UUID)),
+			apiobject.Select(apiobject.ByUUID(svc1.UUID)),
 			nil,
 			"missing identity",
 		},
@@ -110,7 +110,7 @@ func TestObjectRead(t *testing.T) {
 			"unknown kind",
 			ctx,
 			fixtures.UnknownKindVersionName,
-			object.Select(object.ByUUID(svc1.UUID)),
+			apiobject.Select(apiobject.ByUUID(svc1.UUID)),
 			nil,
 			"unknown kind",
 		},
@@ -118,7 +118,7 @@ func TestObjectRead(t *testing.T) {
 			"invalid kind version",
 			ctx,
 			fixtures.InvalidKindVersionName,
-			object.Select(object.ByUUID(svc1.UUID)),
+			apiobject.Select(apiobject.ByUUID(svc1.UUID)),
 			nil,
 			"invalid kind name: invalid characters",
 		},
@@ -126,7 +126,7 @@ func TestObjectRead(t *testing.T) {
 			"either uuid or name required in selector",
 			ctx,
 			service.FirstKindVersionName(),
-			object.Select(),
+			apiobject.Select(),
 			nil,
 			"invalid selector: uuid or name required",
 		},
@@ -134,7 +134,7 @@ func TestObjectRead(t *testing.T) {
 			"missing domain with name",
 			ctx,
 			application.FirstKindVersionName(),
-			object.Select(object.ByName(testutil.RandomName())),
+			apiobject.Select(apiobject.ByName(testutil.RandomName())),
 			nil,
 			"invalid selector: domain required",
 		},
@@ -142,9 +142,9 @@ func TestObjectRead(t *testing.T) {
 			"mismatched kind",
 			ctx,
 			application.FirstKindVersionName(),
-			object.Select(
-				object.ByDomain(&dom),
-				object.ByUUID(svc1.UUID),
+			apiobject.Select(
+				apiobject.ByDomain(&dom),
+				apiobject.ByUUID(svc1.UUID),
 			),
 			nil,
 			"not found",
@@ -153,10 +153,10 @@ func TestObjectRead(t *testing.T) {
 			"unknown generation",
 			ctx,
 			application.FirstKindVersionName(),
-			object.Select(
-				object.ByDomain(&dom),
-				object.ByUUID(app1.UUID),
-				object.ByGeneration(42),
+			apiobject.Select(
+				apiobject.ByDomain(&dom),
+				apiobject.ByUUID(app1.UUID),
+				apiobject.ByGeneration(42),
 			),
 			nil,
 			"not found",
@@ -165,8 +165,8 @@ func TestObjectRead(t *testing.T) {
 			"missing domain when domain-scoped",
 			ctx,
 			application.FirstKindVersionName(),
-			object.Select(
-				object.ByUUID(app1.UUID),
+			apiobject.Select(
+				apiobject.ByUUID(app1.UUID),
 			),
 			nil,
 			"invalid selector: domain required",
@@ -175,9 +175,9 @@ func TestObjectRead(t *testing.T) {
 			"happy path domain-scoped with uuid and root domain",
 			ctx,
 			application.FirstKindVersionName(),
-			object.Select(
-				object.ByDomain(&dom),
-				object.ByUUID(app1.UUID),
+			apiobject.Select(
+				apiobject.ByDomain(&dom),
+				apiobject.ByUUID(app1.UUID),
 			),
 			app1,
 			"",
@@ -186,9 +186,9 @@ func TestObjectRead(t *testing.T) {
 			"happy path domain-scoped by name with root domain",
 			ctx,
 			application.FirstKindVersionName(),
-			object.Select(
-				object.ByDomain(&dom),
-				object.ByName(app1.Name),
+			apiobject.Select(
+				apiobject.ByDomain(&dom),
+				apiobject.ByName(app1.Name),
 			),
 			app1,
 			"",
@@ -197,9 +197,9 @@ func TestObjectRead(t *testing.T) {
 			"happy path domain-scoped with uuid and parent domain",
 			ctx,
 			service.FirstKindVersionName(),
-			object.Select(
-				object.ByDomain(&fixtures.DomainTree_Group1),
-				object.ByUUID(svc1.UUID),
+			apiobject.Select(
+				apiobject.ByDomain(&fixtures.DomainTree_Group1),
+				apiobject.ByUUID(svc1.UUID),
 			),
 			svc1,
 			"",
@@ -208,9 +208,9 @@ func TestObjectRead(t *testing.T) {
 			"happy path domain-scoped by name with parent domain",
 			ctx,
 			service.FirstKindVersionName(),
-			object.Select(
-				object.ByDomain(&fixtures.DomainTree_Group1),
-				object.ByName(svc1.Name),
+			apiobject.Select(
+				apiobject.ByDomain(&fixtures.DomainTree_Group1),
+				apiobject.ByName(svc1.Name),
 			),
 			svc1,
 			"",
@@ -268,13 +268,13 @@ func TestObjectWrite(t *testing.T) {
 
 	// NOTE: Platform is ScopeSystem which allows us to test the
 	// system-qualified name constraints.
-	plat1 := &api.Object{
+	plat1 := &apiobject.Object{
 		KindVersionName: platform.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 		Name:            testutil.RandomName(),
 	}
 	plat1Name := plat1.Name
-	platDuplicateName := &api.Object{
+	platDuplicateName := &apiobject.Object{
 		KindVersionName: platform.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 		Name:            plat1Name,
@@ -284,19 +284,19 @@ func TestObjectWrite(t *testing.T) {
 
 	// NOTE: Application is ScopeDomain which allows us to test the
 	// domain-qualified name constraints.
-	appMissingDomain := &api.Object{
+	appMissingDomain := &apiobject.Object{
 		KindVersionName: application.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 		Name:            testutil.RandomName(),
 	}
-	app1 := &api.Object{
+	app1 := &apiobject.Object{
 		KindVersionName: application.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 		Domain:          &dom,
 		Name:            testutil.RandomName(),
 	}
 	app1Name := app1.Name
-	appDuplicateName := &api.Object{
+	appDuplicateName := &apiobject.Object{
 		KindVersionName: application.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 		Domain:          &dom,
@@ -307,14 +307,14 @@ func TestObjectWrite(t *testing.T) {
 
 	// We test domain hierarchy management with the Service object by using a
 	// Domain with a parent Domain.
-	svc1 := &api.Object{
+	svc1 := &apiobject.Object{
 		KindVersionName: service.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 		Domain:          &fixtures.DomainTree_Group1,
 		Name:            testutil.RandomName(),
 	}
 	svc1Name := svc1.Name
-	svcDuplicateName := &api.Object{
+	svcDuplicateName := &apiobject.Object{
 		KindVersionName: service.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 		Domain:          &fixtures.DomainTree_Group1,
@@ -323,11 +323,11 @@ func TestObjectWrite(t *testing.T) {
 
 	ctxMissingIdent := context.TODO()
 
-	svcMissingUUID := &api.Object{
+	svcMissingUUID := &apiobject.Object{
 		KindVersionName: service.FirstKindVersionName(),
 		Name:            testutil.RandomName(),
 	}
-	svcMissingName := &api.Object{
+	svcMissingName := &apiobject.Object{
 		KindVersionName: service.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 	}
@@ -340,8 +340,8 @@ func TestObjectWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject *api.Object
-		exp     *api.Object
+		subject *apiobject.Object
+		exp     *apiobject.Object
 		expErr  string
 	}{
 		{
@@ -476,7 +476,7 @@ func TestObjectQuery(t *testing.T) {
 
 	// NOTE: Platform is NamescopeSystem which allows us to test the
 	// system-qualified name constraints.
-	plat1 := &api.Object{
+	plat1 := &apiobject.Object{
 		KindVersionName: platform.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 		Name:            testutil.RandomName(),
@@ -496,7 +496,7 @@ func TestObjectQuery(t *testing.T) {
 
 	// NOTE: Application is NamescopeDomain which allows us to test the
 	// domain-qualified name constraints.
-	app1 := &api.Object{
+	app1 := &apiobject.Object{
 		KindVersionName: application.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 		Domain:          &dom,
@@ -511,7 +511,7 @@ func TestObjectQuery(t *testing.T) {
 	err = testutil.KindVersionCreateIfNotExists(ctx, rxp, service.FirstKindVersion())
 	require.Nil(t, err)
 
-	svc1 := &api.Object{
+	svc1 := &apiobject.Object{
 		KindVersionName: service.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 		Domain:          &dom,
@@ -619,7 +619,7 @@ func TestObjectQuery(t *testing.T) {
 				require.Equal(c.expOptionLimit, gotOptions.Limit())
 				require.Equal(c.expMarkerEmpty, gotMarker == "")
 				require.Len(gotObjs, c.expNumObjs)
-				gotKindNames := lo.Map(gotObjs, func(o *api.Object, _ int) apikind.Name {
+				gotKindNames := lo.Map(gotObjs, func(o *apiobject.Object, _ int) apikind.Name {
 					return o.KindName()
 				})
 				gotKindNames = lo.Uniq(gotKindNames)
@@ -642,7 +642,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 
 	// NOTE: Platform is NamescopeSystem which allows us to test the
 	// system-qualified name constraints.
-	plat1 := &api.Object{
+	plat1 := &apiobject.Object{
 		KindVersionName: platform.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 		Name:            testutil.RandomName(),
@@ -650,7 +650,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, plat1)
 	require.Nil(t, err)
 
-	plat2 := &api.Object{
+	plat2 := &apiobject.Object{
 		KindVersionName: platform.FirstKindVersionName(),
 		UUID:            uuid.NewString(),
 		Name:            testutil.RandomName(),
@@ -671,7 +671,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"by UUID",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			object.UUIDEqual(plat1.UUID),
+			apiobject.UUIDEqual(plat1.UUID),
 			[]query.Option{
 				query.Limit(1),
 			},
@@ -682,7 +682,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"in set of UUIDs",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			object.UUIDIn(plat1.UUID, plat2.UUID),
+			apiobject.UUIDIn(plat1.UUID, plat2.UUID),
 			[]query.Option{
 				query.Limit(2),
 			},
@@ -693,7 +693,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"by name",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			object.NameEqual(plat1.Name),
+			apiobject.NameEqual(plat1.Name),
 			[]query.Option{
 				query.Limit(1),
 			},
@@ -704,7 +704,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"in set of names",
 			ctx,
 			api.KindVersionName(platform.KindName),
-			object.NameIn(plat1.Name, plat2.Name),
+			apiobject.NameIn(plat1.Name, plat2.Name),
 			[]query.Option{
 				query.Limit(2),
 			},
@@ -716,8 +716,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			query.Or(
-				object.UUIDEqual(plat1.UUID),
-				object.UUIDEqual(plat2.UUID),
+				apiobject.UUIDEqual(plat1.UUID),
+				apiobject.UUIDEqual(plat2.UUID),
 			),
 			[]query.Option{
 				query.Limit(2),
@@ -730,8 +730,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			query.Or(
-				object.NameEqual(plat1.Name),
-				object.NameEqual(plat2.Name),
+				apiobject.NameEqual(plat1.Name),
+				apiobject.NameEqual(plat2.Name),
 			),
 			[]query.Option{
 				query.Limit(2),
@@ -744,8 +744,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			query.Or(
-				object.UUIDEqual(plat1.UUID),
-				object.NameEqual(plat2.Name),
+				apiobject.UUIDEqual(plat1.UUID),
+				apiobject.NameEqual(plat2.Name),
 			),
 			[]query.Option{
 				query.Limit(2),
@@ -758,9 +758,9 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			query.Or(
-				object.UUIDEqual(plat1.UUID),
-				object.NameEqual(plat2.Name),
-				object.UUIDEqual(uuid.NewString()),
+				apiobject.UUIDEqual(plat1.UUID),
+				apiobject.NameEqual(plat2.Name),
+				apiobject.UUIDEqual(uuid.NewString()),
 			),
 			[]query.Option{
 				query.Limit(2),
@@ -773,8 +773,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			query.And(
-				object.UUIDEqual(plat1.UUID),
-				object.UUIDEqual(plat2.UUID),
+				apiobject.UUIDEqual(plat1.UUID),
+				apiobject.UUIDEqual(plat2.UUID),
 			),
 			[]query.Option{
 				query.Limit(2),
@@ -787,8 +787,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			api.KindVersionName(platform.KindName),
 			query.And(
-				object.UUIDEqual(plat1.UUID),
-				object.NameEqual(plat1.Name),
+				apiobject.UUIDEqual(plat1.UUID),
+				apiobject.NameEqual(plat1.Name),
 			),
 			[]query.Option{
 				query.Limit(2),
@@ -811,7 +811,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 				expUUIDs := c.expUUIDs
 				expNumObjs := len(c.expUUIDs)
 				require.Len(gotObjs, expNumObjs)
-				gotUUIDs := lo.Map(gotObjs, func(o *api.Object, _ int) string {
+				gotUUIDs := lo.Map(gotObjs, func(o *apiobject.Object, _ int) string {
 					return o.UUID
 				})
 				sort.Strings(expUUIDs)
