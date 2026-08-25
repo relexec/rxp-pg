@@ -6,9 +6,9 @@ import (
 
 	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp/api"
+	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
 	apirun "github.com/relexec/rxp/api/run"
-	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/object"
@@ -95,11 +95,11 @@ func KindCreateIfNotExists(
 func DomainCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	dom api.Domain,
+	dom apidomain.Domain,
 ) error {
 	_, err := d.DomainRead(
 		ctx,
-		domain.Select(domain.ByName(dom.Name)),
+		apidomain.Select(apidomain.ByName(dom.Name)),
 	)
 	if err != nil {
 		if err != errors.ErrNotFound {

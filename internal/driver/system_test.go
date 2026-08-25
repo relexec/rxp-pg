@@ -6,8 +6,8 @@ import (
 
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp-testing/fixtures"
+	apidomain "github.com/relexec/rxp/api/domain"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/query"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -143,13 +143,13 @@ func TestSystemQuery(t *testing.T) {
 		{
 			"unsupported predicate",
 			ctx,
-			domain.NameEqual(fixtures.DomainName),
+			apidomain.NameEqual(fixtures.DomainName),
 			nil,
 			0,
 			nil,
 			query.Options{},
 			"",
-			"unsupported predicate domain.NamePredicate",
+			"unsupported predicate apidomain.NamePredicate",
 		},
 		{
 			"expression required",
@@ -166,8 +166,8 @@ func TestSystemQuery(t *testing.T) {
 			"unsupported expression",
 			ctx,
 			query.Or(
-				domain.NameEqual(fixtures.DomainName),
-				domain.NameEqual(fixtures.UnknownDomainName),
+				apidomain.NameEqual(fixtures.DomainName),
+				apidomain.NameEqual(fixtures.UnknownDomainName),
 			),
 			nil,
 			0,

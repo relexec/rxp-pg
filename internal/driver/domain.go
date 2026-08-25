@@ -4,11 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
+	apidomain "github.com/relexec/rxp/api/domain"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
@@ -18,8 +17,8 @@ import (
 // DomainRead reads a Domain from persistent storage.
 func (d *Driver) DomainRead(
 	ctx context.Context,
-	sel domain.Selector,
-) (*api.Domain, error) {
+	sel apidomain.Selector,
+) (*apidomain.Domain, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -81,7 +80,7 @@ func (d *Driver) DomainRead(
 // options are not valid for reading a single Domain.
 func (d *Driver) domainReadValidate(
 	ctx context.Context,
-	sel domain.Selector,
+	sel apidomain.Selector,
 ) error {
 	return sel.Validate()
 }
@@ -91,8 +90,8 @@ func (d *Driver) domainReadValidate(
 func (d *Driver) domainRecordFromDomain(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	dom *api.Domain,
-) (*api.Domain, error) {
+	dom *apidomain.Domain,
+) (*apidomain.Domain, error) {
 	if dom == nil {
 		return nil, nil
 	}
@@ -109,7 +108,7 @@ func (d *Driver) domainRecordFromDomain(
 // DomainWrite atomically writes the supplied Domain to persistent storage.
 func (d *Driver) DomainWrite(
 	ctx context.Context,
-	dom api.Domain,
+	dom apidomain.Domain,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -190,7 +189,7 @@ func (d *Driver) DomainWrite(
 // options are not valid for writing a single Domain.
 func (d *Driver) domainWriteValidate(
 	ctx context.Context,
-	dom api.Domain,
+	dom apidomain.Domain,
 ) error {
 	return dom.Validate()
 }
@@ -205,7 +204,7 @@ func (d *Driver) DomainQuery(
 	ctx context.Context,
 	expr query.Expression,
 	opts ...query.Option,
-) (*query.Result[*api.Domain], error) {
+) (*query.Result[*apidomain.Domain], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -250,11 +249,11 @@ func (d *Driver) DomainQuery(
 			query.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []query.ResultModifier[*api.Domain]{
+	resNewOpts := []query.ResultModifier[*apidomain.Domain]{
 		query.ResultWithItems(recs),
-		query.ResultWithOptions[*api.Domain](resOpts),
+		query.ResultWithOptions[*apidomain.Domain](resOpts),
 	}
-	return query.NewResult[*api.Domain](resNewOpts...), nil
+	return query.NewResult[*apidomain.Domain](resNewOpts...), nil
 }
 
 // domainQueryValidate returns an error if the supplied expression and query

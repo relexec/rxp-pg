@@ -12,8 +12,8 @@ import (
 	"github.com/relexec/rxp-testing/fixtures/platform"
 	"github.com/relexec/rxp-testing/fixtures/service"
 	"github.com/relexec/rxp/api"
+	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
-	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/object"
 	"github.com/relexec/rxp/query"
 	"github.com/samber/lo"
@@ -550,7 +550,7 @@ func TestObjectQuery(t *testing.T) {
 			"invalid kindversion",
 			ctx,
 			api.KindVersionName(fixtures.InvalidKindName),
-			domain.NameEqual(dom.Name),
+			apidomain.NameEqual(dom.Name),
 			nil,
 			0,
 			nil,

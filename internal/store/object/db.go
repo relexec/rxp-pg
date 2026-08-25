@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
+	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
@@ -25,7 +26,7 @@ import (
 func (s *Store) dbUUIDFromNameDomainQualified(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	domRec api.Domain,
+	domRec apidomain.Domain,
 	name string,
 ) (string, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -71,7 +72,7 @@ AND n.name = $3
 func (s *Store) dbNameFromUUIDDomainQualified(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	domRec api.Domain,
+	domRec apidomain.Domain,
 	uuid string,
 ) (string, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -338,7 +339,7 @@ func (s *Store) dbInsertFirst(
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
 	kvRec *api.KindVersion,
-	domRec *api.Domain,
+	domRec *apidomain.Domain,
 	obj api.Object,
 ) (*api.Object, error) {
 	if kindRec.Scope == apicore.ScopeDomain && domRec == nil {
@@ -547,7 +548,7 @@ func (s *Store) dbInsertGeneration(
 	ctx context.Context,
 	kindRec *apikind.Kind,
 	kvRec *api.KindVersion,
-	domRec *api.Domain,
+	domRec *apidomain.Domain,
 	obj api.Object,
 	expectGeneration apicore.Generation,
 ) (*api.Object, error) {

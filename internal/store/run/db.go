@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
+	apidomain "github.com/relexec/rxp/api/domain"
 	apirun "github.com/relexec/rxp/api/run"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
@@ -385,7 +386,7 @@ func (s *Store) dbInsert(
 	ctx context.Context,
 	targetRec storeobject.Record,
 	callerSysRec *apisystem.System,
-	callerDomRec *api.Domain,
+	callerDomRec *apidomain.Domain,
 	root *apirun.Identifiers,
 	parent *apirun.Identifiers,
 	run apirun.Run,

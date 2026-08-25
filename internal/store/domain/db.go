@@ -11,8 +11,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/rxp/api"
+	apidomain "github.com/relexec/rxp/api/domain"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/domain"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 )
@@ -23,13 +23,13 @@ func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	sysRec *apisystem.System,
 	rowID int64,
-) (*api.Domain, error) {
-	out := &api.Domain{
+) (*apidomain.Domain, error) {
+	out := &apidomain.Domain{
 		System: sysRec,
 	}
 	out.SetSystemInternalID(rowID)
 	fn := func(tx pgx.Tx) error {
-		var name api.DomainName
+		var name apidomain.Name
 		var uuid string
 		var rootRowID int64
 		var parentRowID sql.NullInt64
@@ -97,14 +97,14 @@ func (s *Store) dbReadByUUID(
 	ctx context.Context,
 	sysRec *apisystem.System,
 	uuid string,
-) (*api.Domain, error) {
-	out := &api.Domain{
+) (*apidomain.Domain, error) {
+	out := &apidomain.Domain{
 		UUID:   uuid,
 		System: sysRec,
 	}
 	fn := func(tx pgx.Tx) error {
 		var rowID int64
-		var name api.DomainName
+		var name apidomain.Name
 		var rootRowID int64
 		var parentRowID sql.NullInt64
 		var left int64
@@ -170,10 +170,10 @@ WHERE uuid = $1
 func (s *Store) dbReadByName(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	name api.DomainName,
-) (*api.Domain, error) {
+	name apidomain.Name,
+) (*apidomain.Domain, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
-	out := &api.Domain{
+	out := &apidomain.Domain{
 		System: sysRec,
 		Name:   name,
 	}
@@ -246,7 +246,7 @@ AND name = $2
 func (s *Store) dbInsert(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	dom api.Domain,
+	dom apidomain.Domain,
 ) error {
 	parent := dom.Parent
 	if parent == nil {
@@ -259,7 +259,7 @@ func (s *Store) dbInsert(
 func (s *Store) dbInsertRoot(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	dom api.Domain,
+	dom apidomain.Domain,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	left := 1
@@ -328,8 +328,8 @@ INSERT INTO domains (
 func (s *Store) dbInsertNonRoot(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	parent api.Domain,
-	dom api.Domain,
+	parent apidomain.Domain,
+	dom apidomain.Domain,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	if !parent.HasSystemInternalID() {
@@ -449,7 +449,7 @@ type domainRecord struct {
 	SystemID  int64          `db:"system_id"`
 	ID        int64          `db:"domain_id"`
 	UUID      string         `db:"domain_uuid"`
-	Name      api.DomainName `db:"domain_name"`
+	Name      apidomain.Name `db:"domain_name"`
 	RootID    int64          `db:"root_id"`
 	ParentID  sql.NullInt64  `db:"parent_id"`
 	LeftSide  int64          `db:"left_side"`
@@ -462,7 +462,7 @@ func (s *Store) dbReadByExpression(
 	ctx context.Context,
 	expr query.Expression,
 	opts query.Options,
-) ([]*api.Domain, error) {
+) ([]*apidomain.Domain, error) {
 	qargs := []any{}
 	wheres := []string{}
 	treeOp := false
@@ -471,7 +471,7 @@ func (s *Store) dbReadByExpression(
 	case query.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case domain.UUIDPredicate:
+		case apidomain.UUIDPredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:
@@ -483,7 +483,7 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case domain.NamePredicate:
+		case apidomain.NamePredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:
@@ -538,7 +538,7 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case domain.RootUUIDPredicate:
+		case apidomain.RootUUIDPredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:
@@ -547,7 +547,7 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case domain.RootNamePredicate:
+		case apidomain.RootNamePredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:
@@ -556,7 +556,7 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, errors.UnsupportedPredicateOperator(op)
 			}
-		case domain.ParentUUIDPredicate:
+		case apidomain.ParentUUIDPredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:
@@ -623,7 +623,7 @@ FROM domains AS d`
 		return nil, err
 	}
 
-	out := make([]*api.Domain, 0, len(recs))
+	out := make([]*apidomain.Domain, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
@@ -632,7 +632,7 @@ FROM domains AS d`
 				errors.WithWrap(err),
 			)
 		}
-		dom := &api.Domain{
+		dom := &apidomain.Domain{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
 			System: sysRec,
@@ -663,12 +663,12 @@ FROM domains AS d`
 	return out, nil
 }
 
-// dbReadDomainsInTreeByRootRowID returns the set of api.Domains comprising the
+// dbReadDomainsInTreeByRootRowID returns the set of apidomain.Domains comprising the
 // "domain tree" rooted at the supplied root domain row ID.
 func (s *Store) dbReadDomainsInTreeByRootRowID(
 	ctx context.Context,
 	rootRowID int64,
-) ([]*api.Domain, error) {
+) ([]*apidomain.Domain, error) {
 	var recs []domainRecord
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -705,7 +705,7 @@ WHERE d.root = $1
 		return nil, err
 	}
 
-	out := make([]*api.Domain, 0, len(recs))
+	out := make([]*apidomain.Domain, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
@@ -714,7 +714,7 @@ WHERE d.root = $1
 				errors.WithWrap(err),
 			)
 		}
-		dom := &api.Domain{
+		dom := &apidomain.Domain{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
 			System: sysRec,

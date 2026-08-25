@@ -5,6 +5,7 @@ import (
 
 	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
+	apidomain "github.com/relexec/rxp/api/domain"
 	apisystem "github.com/relexec/rxp/api/system"
 )
 
@@ -20,7 +21,7 @@ type Record struct {
 // an Object name.
 type NameQualifier struct {
 	System *apisystem.System
-	Domain *api.Domain
+	Domain *apidomain.Domain
 }
 
 // UUIDFromName returns the UUID associated with the supplied object name with

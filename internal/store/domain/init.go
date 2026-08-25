@@ -4,9 +4,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/relexec/rxp/api"
-
 	"github.com/relexec/rxp-pg/internal/cache"
+	apidomain "github.com/relexec/rxp/api/domain"
 )
 
 func (s *Store) init(ctx context.Context) error {
@@ -34,9 +33,9 @@ func (s *Store) initCache(ctx context.Context) error {
 		defer s.cacheLock.Unlock()
 
 		cacheCfg := cfg.Cache.Domain
-		byUUID, err := cache.New[byUUIDCacheKey, *api.Domain](
+		byUUID, err := cache.New[byUUIDCacheKey, *apidomain.Domain](
 			ctx,
-			cache.WithConfig[byUUIDCacheKey, *api.Domain](cacheCfg),
+			cache.WithConfig[byUUIDCacheKey, *apidomain.Domain](cacheCfg),
 		)
 		if err != nil {
 			return err

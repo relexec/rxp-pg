@@ -7,6 +7,7 @@ import (
 
 	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
+	apidomain "github.com/relexec/rxp/api/domain"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apirun "github.com/relexec/rxp/api/run"
 	"github.com/relexec/rxp/errors"
@@ -146,7 +147,7 @@ func (d *Driver) RunWrite(
 		return nil, err
 	}
 
-	var callerDomRec *api.Domain
+	var callerDomRec *apidomain.Domain
 
 	if callerDom != nil {
 		callerDomRec, err = d.domainRecordFromDomain(

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/relexec/rxp/api"
+	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
 )
@@ -15,7 +16,7 @@ func (s *Store) Write(
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
 	kvRec *api.KindVersion,
-	domRec *api.Domain,
+	domRec *apidomain.Domain,
 	obj api.Object,
 ) (*api.Object, error) {
 	expectGeneration := obj.Generation

@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 
-	"github.com/relexec/rxp/api"
+	apidomain "github.com/relexec/rxp/api/domain"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 )
@@ -12,7 +12,7 @@ import (
 func (s *Store) Write(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	dom api.Domain,
+	dom apidomain.Domain,
 ) error {
 	err := s.dbInsert(ctx, sysRec, dom)
 	if err != nil {

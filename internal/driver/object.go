@@ -6,6 +6,7 @@ import (
 
 	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
+	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apisystem "github.com/relexec/rxp/api/system"
@@ -154,7 +155,7 @@ func (d *Driver) objectUUIDFromName(
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
 	name string,
-	domRec *api.Domain,
+	domRec *apidomain.Domain,
 ) (string, error) {
 	qualifier := storeobject.NameQualifier{
 		System: sysRec,
@@ -174,7 +175,7 @@ func (d *Driver) objectNameFromUUID(
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
 	uuid string,
-	domRec *api.Domain,
+	domRec *apidomain.Domain,
 ) (string, error) {
 	qualifier := storeobject.NameQualifier{
 		System: sysRec,

@@ -3,17 +3,17 @@ package store
 import (
 	"context"
 
-	"github.com/relexec/rxp/api"
+	apidomain "github.com/relexec/rxp/api/domain"
 	apisystem "github.com/relexec/rxp/api/system"
 )
 
-// ReadByRowID returns a api.Domain for the Domain with the supplied internal
+// ReadByRowID returns a apidomain.Domain for the Domain with the supplied internal
 // DB row ID. This method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
 	sysRec *apisystem.System,
 	rowID int64,
-) (*api.Domain, error) {
+) (*apidomain.Domain, error) {
 	cacheKey := byRowIDCacheKey(rowID)
 	cached, found := s.cacheReadByRowID(ctx, cacheKey)
 	if found {
@@ -30,13 +30,13 @@ func (s *Store) ReadByRowID(
 	return record, nil
 }
 
-// ReadByUUID returns a api.Domain for the Domain with the supplied UUID. This
+// ReadByUUID returns a apidomain.Domain for the Domain with the supplied UUID. This
 // method will populate any caches with any read records.
 func (s *Store) ReadByUUID(
 	ctx context.Context,
 	sysRec *apisystem.System,
 	uuid string,
-) (*api.Domain, error) {
+) (*apidomain.Domain, error) {
 	cacheKey := byUUIDCacheKey(uuid)
 	cached, found := s.cacheReadByUUID(ctx, cacheKey)
 	if found {
@@ -53,13 +53,13 @@ func (s *Store) ReadByUUID(
 	return record, nil
 }
 
-// ReadByName returns a api.Domain for the Domain with the supplied Name. This
+// ReadByName returns a apidomain.Domain for the Domain with the supplied Name. This
 // method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
 	sysRec *apisystem.System,
-	name api.DomainName,
-) (*api.Domain, error) {
+	name apidomain.Name,
+) (*apidomain.Domain, error) {
 	cacheKey := newByNameCacheKey(sysRec, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)
 	if found {
