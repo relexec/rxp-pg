@@ -11,9 +11,9 @@ import (
 	"github.com/relexec/rxp-testing/fixtures/application"
 	"github.com/relexec/rxp-testing/fixtures/platform"
 	"github.com/relexec/rxp-testing/fixtures/service"
-	"github.com/relexec/rxp/api"
 	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
+	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apiobject "github.com/relexec/rxp/api/object"
 	"github.com/relexec/rxp/query"
 	"github.com/samber/lo"
@@ -93,7 +93,7 @@ func TestObjectRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		kv     api.KindVersionName
+		kv     apikindversion.Name
 		sel    apiobject.Selector
 		exp    *apiobject.Object
 		expErr string
@@ -525,7 +525,7 @@ func TestObjectQuery(t *testing.T) {
 	cases := []struct {
 		name             string
 		ctx              context.Context
-		kv               api.KindVersionName
+		kv               apikindversion.Name
 		expr             query.Expression
 		opts             []query.Option
 		expNumObjs       int
@@ -537,7 +537,7 @@ func TestObjectQuery(t *testing.T) {
 		{
 			"missing identity",
 			ctxMissingIdent,
-			api.KindVersionName(platform.KindName),
+			apikindversion.Name(platform.KindName),
 			nil,
 			nil,
 			0,
@@ -549,7 +549,7 @@ func TestObjectQuery(t *testing.T) {
 		{
 			"invalid kindversion",
 			ctx,
-			api.KindVersionName(fixtures.InvalidKindName),
+			apikindversion.Name(fixtures.InvalidKindName),
 			apidomain.NameEqual(dom.Name),
 			nil,
 			0,
@@ -561,7 +561,7 @@ func TestObjectQuery(t *testing.T) {
 		{
 			"invalid query expression kind predicate",
 			ctx,
-			api.KindVersionName(platform.KindName),
+			apikindversion.Name(platform.KindName),
 			apikind.NameEqual(application.KindName),
 			nil,
 			0,
@@ -573,7 +573,7 @@ func TestObjectQuery(t *testing.T) {
 		{
 			"query system-qualified objects limit of 1",
 			ctx,
-			api.KindVersionName(platform.KindName),
+			apikindversion.Name(platform.KindName),
 			nil,
 			[]query.Option{
 				query.Limit(1),
@@ -589,7 +589,7 @@ func TestObjectQuery(t *testing.T) {
 		{
 			"query domain-qualified objects limit of 1",
 			ctx,
-			api.KindVersionName(application.KindName),
+			apikindversion.Name(application.KindName),
 			nil,
 			[]query.Option{
 				query.Limit(1),
@@ -661,7 +661,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 	cases := []struct {
 		name     string
 		ctx      context.Context
-		kv       api.KindVersionName
+		kv       apikindversion.Name
 		expr     query.Expression
 		opts     []query.Option
 		expUUIDs []string
@@ -670,7 +670,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 		{
 			"by UUID",
 			ctx,
-			api.KindVersionName(platform.KindName),
+			apikindversion.Name(platform.KindName),
 			apiobject.UUIDEqual(plat1.UUID),
 			[]query.Option{
 				query.Limit(1),
@@ -681,7 +681,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 		{
 			"in set of UUIDs",
 			ctx,
-			api.KindVersionName(platform.KindName),
+			apikindversion.Name(platform.KindName),
 			apiobject.UUIDIn(plat1.UUID, plat2.UUID),
 			[]query.Option{
 				query.Limit(2),
@@ -692,7 +692,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 		{
 			"by name",
 			ctx,
-			api.KindVersionName(platform.KindName),
+			apikindversion.Name(platform.KindName),
 			apiobject.NameEqual(plat1.Name),
 			[]query.Option{
 				query.Limit(1),
@@ -703,7 +703,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 		{
 			"in set of names",
 			ctx,
-			api.KindVersionName(platform.KindName),
+			apikindversion.Name(platform.KindName),
 			apiobject.NameIn(plat1.Name, plat2.Name),
 			[]query.Option{
 				query.Limit(2),
@@ -714,7 +714,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 		{
 			"OR expression UUIDs",
 			ctx,
-			api.KindVersionName(platform.KindName),
+			apikindversion.Name(platform.KindName),
 			query.Or(
 				apiobject.UUIDEqual(plat1.UUID),
 				apiobject.UUIDEqual(plat2.UUID),
@@ -728,7 +728,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 		{
 			"OR expression names",
 			ctx,
-			api.KindVersionName(platform.KindName),
+			apikindversion.Name(platform.KindName),
 			query.Or(
 				apiobject.NameEqual(plat1.Name),
 				apiobject.NameEqual(plat2.Name),
@@ -742,7 +742,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 		{
 			"OR expression uuid and name",
 			ctx,
-			api.KindVersionName(platform.KindName),
+			apikindversion.Name(platform.KindName),
 			query.Or(
 				apiobject.UUIDEqual(plat1.UUID),
 				apiobject.NameEqual(plat2.Name),
@@ -756,7 +756,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 		{
 			"OR expression uuid and name and unknown",
 			ctx,
-			api.KindVersionName(platform.KindName),
+			apikindversion.Name(platform.KindName),
 			query.Or(
 				apiobject.UUIDEqual(plat1.UUID),
 				apiobject.NameEqual(plat2.Name),
@@ -771,7 +771,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 		{
 			"AND expression UUIDs",
 			ctx,
-			api.KindVersionName(platform.KindName),
+			apikindversion.Name(platform.KindName),
 			query.And(
 				apiobject.UUIDEqual(plat1.UUID),
 				apiobject.UUIDEqual(plat2.UUID),
@@ -785,7 +785,7 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 		{
 			"AND expression uuid and name",
 			ctx,
-			api.KindVersionName(platform.KindName),
+			apikindversion.Name(platform.KindName),
 			query.And(
 				apiobject.UUIDEqual(plat1.UUID),
 				apiobject.NameEqual(plat1.Name),

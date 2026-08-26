@@ -5,13 +5,12 @@ import (
 	"sync"
 
 	"github.com/relexec/rxp-testing/fixtures"
-	"github.com/relexec/rxp/api"
 	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
+	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apiobject "github.com/relexec/rxp/api/object"
 	apirun "github.com/relexec/rxp/api/run"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/kind/kindversion"
 
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/driver"
@@ -53,12 +52,12 @@ func Driver(ctx context.Context) (*driver.Driver, error) {
 func KindVersionCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	kv *api.KindVersion,
+	kv *apikindversion.KindVersion,
 ) error {
 	_, err := d.KindVersionRead(
 		ctx,
-		kindversion.Select(
-			kindversion.ByName(kv.Name()),
+		apikindversion.Select(
+			apikindversion.ByName(kv.Name()),
 		),
 	)
 	if err != nil {

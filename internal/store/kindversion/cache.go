@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/relexec/rxp/api"
+	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 )
@@ -18,24 +18,24 @@ func (k byNameCacheKey) SystemUUID() string {
 	return parts[0]
 }
 
-func (k byNameCacheKey) KindVersion() api.KindVersionName {
+func (k byNameCacheKey) KindVersion() apikindversion.Name {
 	parts := strings.Split(string(k), "|")
-	return api.KindVersionName(parts[1])
+	return apikindversion.Name(parts[1])
 }
 
 func newByNameCacheKey(
 	system *apisystem.System,
-	kv api.KindVersionName,
+	kv apikindversion.Name,
 ) byNameCacheKey {
 	return byNameCacheKey(system.UUID + "|" + string(kv))
 }
 
 // cacheReadByRowID looks up a cached KindVersion by RowID, returning the cached
-// api.KindVersion and whether or not the entry was found.
+// apikindversion.KindVersion and whether or not the entry was found.
 func (s *Store) cacheReadByRowID(
 	ctx context.Context,
 	key byRowIDCacheKey,
-) (*api.KindVersion, bool) {
+) (*apikindversion.KindVersion, bool) {
 	if s.byRowID == nil {
 		return nil, false
 	}
@@ -50,12 +50,12 @@ func (s *Store) cacheReadByRowID(
 	return s.cacheReadByNameNoLock(ctx, kv)
 }
 
-// cacheReadByName looks up a cached KindVersion by KindVersionName, returning
-// the cached api.KindVersion and whether or not the entry was found.
+// cacheReadByName looks up a cached KindVersion by Name, returning
+// the cached apikindversion.KindVersion and whether or not the entry was found.
 func (s *Store) cacheReadByName(
 	ctx context.Context,
 	key byNameCacheKey,
-) (*api.KindVersion, bool) {
+) (*apikindversion.KindVersion, bool) {
 	if s.byName == nil {
 		return nil, false
 	}
@@ -67,20 +67,20 @@ func (s *Store) cacheReadByName(
 }
 
 // cacheReadByNameNoLock looks up a cached Kind by name, returning the cached
-// api.KindVersion and whether or not the entry was found. This method assumes the cache
+// apikindversion.KindVersion and whether or not the entry was found. This method assumes the cache
 // lock is already held.
 func (s *Store) cacheReadByNameNoLock(
 	ctx context.Context,
 	key byNameCacheKey,
-) (*api.KindVersion, bool) {
+) (*apikindversion.KindVersion, bool) {
 	return s.byName.Get(key)
 }
 
-// cacheWrite ensures the supplied api.KindVersion is written to the lookup caches if
+// cacheWrite ensures the supplied apikindversion.KindVersion is written to the lookup caches if
 // enabled.
 func (s *Store) cacheWrite(
 	ctx context.Context,
-	rec *api.KindVersion,
+	rec *apikindversion.KindVersion,
 ) error {
 	if s.byName == nil {
 		return nil

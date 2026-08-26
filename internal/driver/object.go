@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
+	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apiobject "github.com/relexec/rxp/api/object"
 	apisystem "github.com/relexec/rxp/api/system"
@@ -22,7 +22,7 @@ import (
 // ObjectRead reads a single Object from persistent storage.
 func (d *Driver) ObjectRead(
 	ctx context.Context,
-	kv api.KindVersionName,
+	kv apikindversion.Name,
 	sel apiobject.Selector,
 ) (*apiobject.Object, error) {
 	err := d.requestValidate(ctx)
@@ -138,7 +138,7 @@ func (d *Driver) ObjectRead(
 // options are not valid for reading a single Object.
 func (d *Driver) objectReadValidate(
 	ctx context.Context,
-	kv api.KindVersionName,
+	kv apikindversion.Name,
 	sel apiobject.Selector,
 ) error {
 	err := kv.Validate()
@@ -336,7 +336,7 @@ const (
 // from persistent storage.
 func (d *Driver) ObjectQuery(
 	ctx context.Context,
-	kv api.KindVersionName,
+	kv apikindversion.Name,
 	expr query.Expression,
 	opts ...query.Option,
 ) (*query.Result[*apiobject.Object], error) {
@@ -409,7 +409,7 @@ func (d *Driver) ObjectQuery(
 // options are not valid.
 func (d *Driver) objectQueryValidate(
 	ctx context.Context,
-	kv api.KindVersionName,
+	kv apikindversion.Name,
 	expr query.Expression,
 	opts query.Options,
 ) error {

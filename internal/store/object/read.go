@@ -3,9 +3,9 @@ package store
 import (
 	"context"
 
-	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
+	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apiobject "github.com/relexec/rxp/api/object"
 	apisystem "github.com/relexec/rxp/api/system"
 )
@@ -69,7 +69,7 @@ func (s *Store) ReadByRowIDAndGeneration(
 // UUID amd generation.
 func (s *Store) ReadByUUIDAndGeneration(
 	ctx context.Context,
-	kvRec *api.KindVersion,
+	kvRec *apikindversion.KindVersion,
 	uuid string,
 	requestedGen apicore.Generation,
 ) (*Record, error) {

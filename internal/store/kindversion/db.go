@@ -15,10 +15,10 @@ import (
 	"github.com/relexec/pkg/version"
 	"github.com/relexec/rxp/api"
 	apikind "github.com/relexec/rxp/api/kind"
+	apikindversion "github.com/relexec/rxp/api/kindversion"
+	"github.com/relexec/rxp/api/kindversion/schema"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/kind/kindversion"
-	"github.com/relexec/rxp/kind/kindversion/schema"
 	"github.com/relexec/rxp/query"
 )
 
@@ -29,11 +29,11 @@ func (s *Store) dbReadByRowID(
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
 	rowID int64,
-) (*api.KindVersion, error) {
+) (*apikindversion.KindVersion, error) {
 	var verStr string
 	var schemaBytes sql.NullString
 	var schema schema.Schema
-	out := &api.KindVersion{
+	out := &apikindversion.KindVersion{
 		System: sysRec,
 		Kind:   *kindRec,
 	}
@@ -86,8 +86,8 @@ func (s *Store) dbReadByName(
 	ctx context.Context,
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
-	kv api.KindVersionName,
-) (*api.KindVersion, error) {
+	kv apikindversion.Name,
+) (*apikindversion.KindVersion, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	kindRowID := kindRec.SystemInternalIDInt64()
 	sv, _ := kv.Version()
@@ -95,7 +95,7 @@ func (s *Store) dbReadByName(
 	var rowID int64
 	var schemaBytes sql.NullString
 	var schema schema.Schema
-	out := &api.KindVersion{
+	out := &apikindversion.KindVersion{
 		System: sysRec,
 		Kind:   *kindRec,
 	}
@@ -203,7 +203,7 @@ func (s *Store) dbInsert(
 	ctx context.Context,
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
-	kv api.KindVersion,
+	kv apikindversion.KindVersion,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	kindRowID := kindRec.SystemInternalIDInt64()
@@ -290,7 +290,7 @@ func (s *Store) dbReadByExpression(
 	ctx context.Context,
 	expr query.Expression,
 	opts query.Options,
-) ([]*api.KindVersion, error) {
+) ([]*apikindversion.KindVersion, error) {
 	qargs := []any{}
 	wheres := []string{}
 
@@ -298,11 +298,11 @@ func (s *Store) dbReadByExpression(
 	case query.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case kindversion.NamePredicate:
+		case apikindversion.NamePredicate:
 			op := pred.Op
 			switch op {
 			case query.PredicateOperatorEqual:
-				kvName := pred.Value.(api.KindVersionName)
+				kvName := pred.Value.(apikindversion.Name)
 				kindName := kvName.Kind()
 				kindRec, err := s.kindStore.ReadByName(
 					ctx, &s.hostSystemRecord, kindName,
@@ -323,7 +323,7 @@ func (s *Store) dbReadByExpression(
 				qargs = append(qargs, verStr)
 			case query.PredicateOperatorIn:
 				ors := []string{}
-				kvNames := pred.Value.([]api.KindVersionName)
+				kvNames := pred.Value.([]apikindversion.Name)
 				for _, kvName := range kvNames {
 					kindName := kvName.Kind()
 					kindRec, err := s.kindStore.ReadByName(
@@ -431,7 +431,7 @@ FROM kindversions AS kv
 		return nil, err
 	}
 
-	out := make([]*api.KindVersion, 0, len(recs))
+	out := make([]*apikindversion.KindVersion, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
@@ -464,7 +464,7 @@ FROM kindversions AS kv
 				errors.WithWrap(err),
 			)
 		}
-		kv := &api.KindVersion{
+		kv := &apikindversion.KindVersion{
 			System:  sysRec,
 			Kind:    *kindRec,
 			Version: *sv,

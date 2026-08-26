@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
+	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apirun "github.com/relexec/rxp/api/run"
 	"github.com/relexec/rxp/errors"
@@ -81,7 +81,7 @@ func (d *Driver) RunWrite(
 	}
 	start := time.Now()
 
-	var targetKV api.KindVersionName
+	var targetKV apikindversion.Name
 
 	defer func() {
 		elapsed := time.Since(start).Seconds()

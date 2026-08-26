@@ -14,10 +14,10 @@ import (
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
+	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apiobject "github.com/relexec/rxp/api/object"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
-	"github.com/relexec/rxp/kind/kindversion"
 	"github.com/relexec/rxp/query"
 )
 
@@ -270,7 +270,7 @@ WHERE o.id = $1
 // doesn't match that object's KindVersion.
 func (s *Store) dbReadByUUIDAndGeneration(
 	ctx context.Context,
-	kvRec *api.KindVersion,
+	kvRec *apikindversion.KindVersion,
 	uuid string,
 	requestedGen apicore.Generation,
 ) (*Record, error) {
@@ -338,7 +338,7 @@ func (s *Store) dbInsertFirst(
 	ctx context.Context,
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
-	kvRec *api.KindVersion,
+	kvRec *apikindversion.KindVersion,
 	domRec *apidomain.Domain,
 	obj apiobject.Object,
 ) (*apiobject.Object, error) {
@@ -547,7 +547,7 @@ INSERT INTO object_generations (
 func (s *Store) dbInsertGeneration(
 	ctx context.Context,
 	kindRec *apikind.Kind,
-	kvRec *api.KindVersion,
+	kvRec *apikindversion.KindVersion,
 	domRec *apidomain.Domain,
 	obj apiobject.Object,
 	expectGeneration apicore.Generation,
@@ -662,8 +662,8 @@ func isKindishPredicate(p query.Predicate) bool {
 		apikind.NamePredicate,
 		apikind.UUIDPredicate,
 		apikind.KindPredicate,
-		kindversion.KindVersionPredicate,
-		kindversion.NamePredicate:
+		apikindversion.KindVersionPredicate,
+		apikindversion.NamePredicate:
 		return true
 	default:
 		return false
@@ -686,7 +686,7 @@ type dqObjectRecord struct {
 // expression and options.
 func (s *Store) dbReadDomainQualifiedByExpression(
 	ctx context.Context,
-	kv api.KindVersionName,
+	kv apikindversion.Name,
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
 	expr query.Expression,
@@ -813,7 +813,7 @@ type sqObjectRecord struct {
 // expression and options.
 func (s *Store) dbReadSystemQualifiedByExpression(
 	ctx context.Context,
-	kv api.KindVersionName,
+	kv apikindversion.Name,
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
 	expr query.Expression,

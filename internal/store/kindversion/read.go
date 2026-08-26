@@ -3,19 +3,19 @@ package store
 import (
 	"context"
 
-	"github.com/relexec/rxp/api"
 	apikind "github.com/relexec/rxp/api/kind"
+	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apisystem "github.com/relexec/rxp/api/system"
 )
 
-// ReadByRowID returns a api.KindVersion for the KindVersion with the supplied internal DB
+// ReadByRowID returns a apikindversion.KindVersion for the KindVersion with the supplied internal DB
 // row ID. This method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
 	rowID int64,
-) (*api.KindVersion, error) {
+) (*apikindversion.KindVersion, error) {
 	cacheKey := byRowIDCacheKey(rowID)
 	cached, found := s.cacheReadByRowID(ctx, cacheKey)
 	if found {
@@ -32,14 +32,14 @@ func (s *Store) ReadByRowID(
 	return record, nil
 }
 
-// ReadByName returns a api.KindVersion for the KindVersion with the supplied
-// KindVersionName. This method will populate any caches with any read records.
+// ReadByName returns a apikindversion.KindVersion for the KindVersion with the supplied
+// Name. This method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
-	name api.KindVersionName,
-) (*api.KindVersion, error) {
+	name apikindversion.Name,
+) (*apikindversion.KindVersion, error) {
 	cacheKey := newByNameCacheKey(sysRec, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)
 	if found {

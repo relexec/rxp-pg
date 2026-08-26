@@ -3,9 +3,9 @@ package store
 import (
 	"context"
 
-	"github.com/relexec/rxp/api"
 	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
+	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apiobject "github.com/relexec/rxp/api/object"
 	apisystem "github.com/relexec/rxp/api/system"
 )
@@ -16,7 +16,7 @@ func (s *Store) Write(
 	ctx context.Context,
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
-	kvRec *api.KindVersion,
+	kvRec *apikindversion.KindVersion,
 	domRec *apidomain.Domain,
 	obj apiobject.Object,
 ) (*apiobject.Object, error) {

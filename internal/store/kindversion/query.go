@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 
-	"github.com/relexec/rxp/api"
+	apikindversion "github.com/relexec/rxp/api/kindversion"
 	"github.com/relexec/rxp/query"
 )
 
@@ -12,7 +12,7 @@ func (s *Store) Query(
 	ctx context.Context,
 	expr query.Expression,
 	opts query.Options,
-) ([]*api.KindVersion, error) {
+) ([]*apikindversion.KindVersion, error) {
 	return s.dbReadByExpression(
 		ctx, expr, opts,
 	)

@@ -3,9 +3,9 @@ package store
 import (
 	"context"
 
-	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
 	apikind "github.com/relexec/rxp/api/kind"
+	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/query"
 )
@@ -13,7 +13,7 @@ import (
 // Query queries zero or more Objects from persistent storage.
 func (s *Store) Query(
 	ctx context.Context,
-	kv api.KindVersionName,
+	kv apikindversion.Name,
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
 	expr query.Expression,
