@@ -10,8 +10,8 @@ import (
 	"github.com/relexec/rxp-testing/fixtures/service"
 	apikind "github.com/relexec/rxp/api/kind"
 	apiobject "github.com/relexec/rxp/api/object"
+	apiquery "github.com/relexec/rxp/api/query"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/query"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )
@@ -144,11 +144,11 @@ func TestKindQuery(t *testing.T) {
 	cases := []struct {
 		name         string
 		ctx          context.Context
-		expr         query.Expression
-		opts         []query.Option
+		expr         apiquery.Expression
+		opts         []apiquery.Option
 		expNumItems  int
 		expOnlyUUIDs []string
-		expOptions   query.Options
+		expOptions   apiquery.Options
 		expMarker    string
 		expErr       string
 	}{
@@ -159,7 +159,7 @@ func TestKindQuery(t *testing.T) {
 			nil,
 			0,
 			nil,
-			query.Options{},
+			apiquery.Options{},
 			"",
 			"missing identity",
 		},
@@ -170,7 +170,7 @@ func TestKindQuery(t *testing.T) {
 			nil,
 			0,
 			nil,
-			query.Options{},
+			apiquery.Options{},
 			"",
 			"unsupported predicate apiobject.GenerationPredicate",
 		},
@@ -181,21 +181,21 @@ func TestKindQuery(t *testing.T) {
 			nil,
 			0,
 			nil,
-			query.Options{},
+			apiquery.Options{},
 			"",
 			"expression required",
 		},
 		{
 			"unsupported expression",
 			ctx,
-			query.Or(
+			apiquery.Or(
 				apikind.NameEqual(service.KindName),
 				apikind.NameEqual(fixtures.UnknownKindName),
 			),
 			nil,
 			0,
 			nil,
-			query.Options{},
+			apiquery.Options{},
 			"",
 			"unsupported expression query.OrExpression",
 		},
@@ -206,8 +206,8 @@ func TestKindQuery(t *testing.T) {
 			nil,
 			0,
 			[]string{},
-			query.NewOptions(
-				query.Limit(10), // 10 is default when not specified
+			apiquery.NewOptions(
+				apiquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -219,8 +219,8 @@ func TestKindQuery(t *testing.T) {
 			nil,
 			0,
 			[]string{},
-			query.NewOptions(
-				query.Limit(10), // 10 is default when not specified
+			apiquery.NewOptions(
+				apiquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -232,8 +232,8 @@ func TestKindQuery(t *testing.T) {
 			nil,
 			0,
 			[]string{},
-			query.NewOptions(
-				query.Limit(10), // 10 is default when not specified
+			apiquery.NewOptions(
+				apiquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -245,8 +245,8 @@ func TestKindQuery(t *testing.T) {
 			nil,
 			0,
 			[]string{},
-			query.NewOptions(
-				query.Limit(10), // 10 is default when not specified
+			apiquery.NewOptions(
+				apiquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -260,8 +260,8 @@ func TestKindQuery(t *testing.T) {
 			[]string{
 				service.KindUUID,
 			},
-			query.NewOptions(
-				query.Limit(10), // 10 is default when not specified
+			apiquery.NewOptions(
+				apiquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -275,8 +275,8 @@ func TestKindQuery(t *testing.T) {
 			[]string{
 				service.KindUUID,
 			},
-			query.NewOptions(
-				query.Limit(10), // 10 is default when not specified
+			apiquery.NewOptions(
+				apiquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -290,8 +290,8 @@ func TestKindQuery(t *testing.T) {
 			[]string{
 				service.KindUUID,
 			},
-			query.NewOptions(
-				query.Limit(10), // 10 is default when not specified
+			apiquery.NewOptions(
+				apiquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -305,8 +305,8 @@ func TestKindQuery(t *testing.T) {
 			[]string{
 				service.KindUUID,
 			},
-			query.NewOptions(
-				query.Limit(10), // 10 is default when not specified
+			apiquery.NewOptions(
+				apiquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",

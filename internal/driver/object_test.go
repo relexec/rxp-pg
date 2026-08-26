@@ -15,7 +15,7 @@ import (
 	apikind "github.com/relexec/rxp/api/kind"
 	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apiobject "github.com/relexec/rxp/api/object"
-	"github.com/relexec/rxp/query"
+	apiquery "github.com/relexec/rxp/api/query"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )
@@ -526,8 +526,8 @@ func TestObjectQuery(t *testing.T) {
 		name             string
 		ctx              context.Context
 		kv               apikindversion.Name
-		expr             query.Expression
-		opts             []query.Option
+		expr             apiquery.Expression
+		opts             []apiquery.Option
 		expNumObjs       int
 		expOnlyKindNames []apikind.Name
 		expOptionLimit   uint
@@ -575,8 +575,8 @@ func TestObjectQuery(t *testing.T) {
 			ctx,
 			apikindversion.Name(platform.KindName),
 			nil,
-			[]query.Option{
-				query.Limit(1),
+			[]apiquery.Option{
+				apiquery.Limit(1),
 			},
 			1,
 			[]apikind.Name{
@@ -591,8 +591,8 @@ func TestObjectQuery(t *testing.T) {
 			ctx,
 			apikindversion.Name(application.KindName),
 			nil,
-			[]query.Option{
-				query.Limit(1),
+			[]apiquery.Option{
+				apiquery.Limit(1),
 			},
 			1,
 			[]apikind.Name{
@@ -662,8 +662,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 		name     string
 		ctx      context.Context
 		kv       apikindversion.Name
-		expr     query.Expression
-		opts     []query.Option
+		expr     apiquery.Expression
+		opts     []apiquery.Option
 		expUUIDs []string
 		expErr   string
 	}{
@@ -672,8 +672,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			apikindversion.Name(platform.KindName),
 			apiobject.UUIDEqual(plat1.UUID),
-			[]query.Option{
-				query.Limit(1),
+			[]apiquery.Option{
+				apiquery.Limit(1),
 			},
 			[]string{plat1.UUID},
 			"",
@@ -683,8 +683,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			apikindversion.Name(platform.KindName),
 			apiobject.UUIDIn(plat1.UUID, plat2.UUID),
-			[]query.Option{
-				query.Limit(2),
+			[]apiquery.Option{
+				apiquery.Limit(2),
 			},
 			[]string{plat1.UUID, plat2.UUID},
 			"",
@@ -694,8 +694,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			apikindversion.Name(platform.KindName),
 			apiobject.NameEqual(plat1.Name),
-			[]query.Option{
-				query.Limit(1),
+			[]apiquery.Option{
+				apiquery.Limit(1),
 			},
 			[]string{plat1.UUID},
 			"",
@@ -705,8 +705,8 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			ctx,
 			apikindversion.Name(platform.KindName),
 			apiobject.NameIn(plat1.Name, plat2.Name),
-			[]query.Option{
-				query.Limit(2),
+			[]apiquery.Option{
+				apiquery.Limit(2),
 			},
 			[]string{plat1.UUID, plat2.UUID},
 			"",
@@ -715,12 +715,12 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"OR expression UUIDs",
 			ctx,
 			apikindversion.Name(platform.KindName),
-			query.Or(
+			apiquery.Or(
 				apiobject.UUIDEqual(plat1.UUID),
 				apiobject.UUIDEqual(plat2.UUID),
 			),
-			[]query.Option{
-				query.Limit(2),
+			[]apiquery.Option{
+				apiquery.Limit(2),
 			},
 			[]string{plat1.UUID, plat2.UUID},
 			"",
@@ -729,12 +729,12 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"OR expression names",
 			ctx,
 			apikindversion.Name(platform.KindName),
-			query.Or(
+			apiquery.Or(
 				apiobject.NameEqual(plat1.Name),
 				apiobject.NameEqual(plat2.Name),
 			),
-			[]query.Option{
-				query.Limit(2),
+			[]apiquery.Option{
+				apiquery.Limit(2),
 			},
 			[]string{plat1.UUID, plat2.UUID},
 			"",
@@ -743,12 +743,12 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"OR expression uuid and name",
 			ctx,
 			apikindversion.Name(platform.KindName),
-			query.Or(
+			apiquery.Or(
 				apiobject.UUIDEqual(plat1.UUID),
 				apiobject.NameEqual(plat2.Name),
 			),
-			[]query.Option{
-				query.Limit(2),
+			[]apiquery.Option{
+				apiquery.Limit(2),
 			},
 			[]string{plat1.UUID, plat2.UUID},
 			"",
@@ -757,13 +757,13 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"OR expression uuid and name and unknown",
 			ctx,
 			apikindversion.Name(platform.KindName),
-			query.Or(
+			apiquery.Or(
 				apiobject.UUIDEqual(plat1.UUID),
 				apiobject.NameEqual(plat2.Name),
 				apiobject.UUIDEqual(uuid.NewString()),
 			),
-			[]query.Option{
-				query.Limit(2),
+			[]apiquery.Option{
+				apiquery.Limit(2),
 			},
 			[]string{plat1.UUID, plat2.UUID},
 			"",
@@ -772,12 +772,12 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"AND expression UUIDs",
 			ctx,
 			apikindversion.Name(platform.KindName),
-			query.And(
+			apiquery.And(
 				apiobject.UUIDEqual(plat1.UUID),
 				apiobject.UUIDEqual(plat2.UUID),
 			),
-			[]query.Option{
-				query.Limit(2),
+			[]apiquery.Option{
+				apiquery.Limit(2),
 			},
 			[]string{},
 			"",
@@ -786,12 +786,12 @@ func TestObjectQuery_SystemQualified(t *testing.T) {
 			"AND expression uuid and name",
 			ctx,
 			apikindversion.Name(platform.KindName),
-			query.And(
+			apiquery.And(
 				apiobject.UUIDEqual(plat1.UUID),
 				apiobject.NameEqual(plat1.Name),
 			),
-			[]query.Option{
-				query.Limit(2),
+			[]apiquery.Option{
+				apiquery.Limit(2),
 			},
 			[]string{plat1.UUID},
 			"",

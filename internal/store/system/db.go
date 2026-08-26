@@ -12,8 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	apicore "github.com/relexec/rxp/api/core"
 	apierrors "github.com/relexec/rxp/api/errors"
+	apiquery "github.com/relexec/rxp/api/query"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/query"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored system record
@@ -137,23 +137,23 @@ type systemRecord struct {
 // pre-validated expression and options.
 func (s *Store) dbReadByExpression(
 	ctx context.Context,
-	expr query.Expression,
-	opts query.Options,
+	expr apiquery.Expression,
+	opts apiquery.Options,
 ) ([]*apisystem.System, error) {
 	qargs := []any{}
 	wheres := []string{}
 
 	switch expr := expr.(type) {
-	case query.UnaryExpression:
+	case apiquery.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
 		case apisystem.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case query.PredicateOperatorEqual:
+			case apiquery.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("s.uuid = $%d", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
-			case query.PredicateOperatorIn:
+			case apiquery.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("s.uuid = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:

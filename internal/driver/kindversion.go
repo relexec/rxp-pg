@@ -8,8 +8,8 @@ import (
 	apierrors "github.com/relexec/rxp/api/errors"
 	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apimetrics "github.com/relexec/rxp/api/metrics"
+	apiquery "github.com/relexec/rxp/api/query"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -171,9 +171,9 @@ const (
 // KindVersionQuery queries zero or more KindVersions from persistent storage.
 func (d *Driver) KindVersionQuery(
 	ctx context.Context,
-	expr query.Expression,
-	opts ...query.Option,
-) (*query.Result[*apikindversion.KindVersion], error) {
+	expr apiquery.Expression,
+	opts ...apiquery.Option,
+) (*apiquery.Result[*apikindversion.KindVersion], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -195,7 +195,7 @@ func (d *Driver) KindVersionQuery(
 		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
-	qopts := query.NewOptions(opts...)
+	qopts := apiquery.NewOptions(opts...)
 	err = d.kindversionQueryValidate(ctx, expr, qopts)
 	if err != nil {
 		return nil, err
@@ -209,28 +209,28 @@ func (d *Driver) KindVersionQuery(
 	if err != nil {
 		return nil, err
 	}
-	resOpts := query.NewOptions(
-		query.Limit(boundedOpts.Limit()),
+	resOpts := apiquery.NewOptions(
+		apiquery.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == int(boundedOpts.Limit()) {
-		resOpts = query.NewOptions(
-			query.ContinueFrom(string(recs[len(recs)-1].Name())),
-			query.Limit(boundedOpts.Limit()),
+		resOpts = apiquery.NewOptions(
+			apiquery.ContinueFrom(string(recs[len(recs)-1].Name())),
+			apiquery.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []query.ResultModifier[*apikindversion.KindVersion]{
-		query.ResultWithItems(recs),
-		query.ResultWithOptions[*apikindversion.KindVersion](resOpts),
+	resNewOpts := []apiquery.ResultModifier[*apikindversion.KindVersion]{
+		apiquery.ResultWithItems(recs),
+		apiquery.ResultWithOptions[*apikindversion.KindVersion](resOpts),
 	}
-	return query.NewResult[*apikindversion.KindVersion](resNewOpts...), nil
+	return apiquery.NewResult[*apikindversion.KindVersion](resNewOpts...), nil
 }
 
 // kindversionQueryValidate returns an error if the supplied expression and query
 // options are not valid.
 func (d *Driver) kindversionQueryValidate(
 	ctx context.Context,
-	expr query.Expression,
-	opts query.Options,
+	expr apiquery.Expression,
+	opts apiquery.Options,
 ) error {
 	if expr == nil {
 		return apierrors.ErrQueryExpressionRequired
@@ -243,12 +243,12 @@ func (d *Driver) kindversionQueryValidate(
 // than the max page result.
 func (d *Driver) kindversionQueryBoundedOptions(
 	ctx context.Context,
-	opts query.Options,
-) query.Options {
+	opts apiquery.Options,
+) apiquery.Options {
 	limit := opts.Limit()
 	if limit <= 0 {
 		limit = DefaultKindVersionQueryLimit
 	}
 	limit = min(limit, MaxKindVersionQueryLimit)
-	return query.NewOptions(query.Limit(limit))
+	return apiquery.NewOptions(apiquery.Limit(limit))
 }

@@ -6,8 +6,8 @@ import (
 	apicore "github.com/relexec/rxp/api/core"
 	apikind "github.com/relexec/rxp/api/kind"
 	apikindversion "github.com/relexec/rxp/api/kindversion"
+	apiquery "github.com/relexec/rxp/api/query"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/query"
 )
 
 // Query queries zero or more Objects from persistent storage.
@@ -16,8 +16,8 @@ func (s *Store) Query(
 	kv apikindversion.Name,
 	sysRec *apisystem.System,
 	kindRec *apikind.Kind,
-	expr query.Expression,
-	opts query.Options,
+	expr apiquery.Expression,
+	opts apiquery.Options,
 ) ([]*Record, error) {
 	if kindRec.Scope == apicore.ScopeDomain {
 		return s.dbReadDomainQualifiedByExpression(

@@ -8,8 +8,8 @@ import (
 	apidomain "github.com/relexec/rxp/api/domain"
 	apierrors "github.com/relexec/rxp/api/errors"
 	apimetrics "github.com/relexec/rxp/api/metrics"
+	apiquery "github.com/relexec/rxp/api/query"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -202,9 +202,9 @@ const (
 // DomainQuery queries zero or more Domains from persistent storage.
 func (d *Driver) DomainQuery(
 	ctx context.Context,
-	expr query.Expression,
-	opts ...query.Option,
-) (*query.Result[*apidomain.Domain], error) {
+	expr apiquery.Expression,
+	opts ...apiquery.Option,
+) (*apiquery.Result[*apidomain.Domain], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -226,7 +226,7 @@ func (d *Driver) DomainQuery(
 		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
-	qopts := query.NewOptions(opts...)
+	qopts := apiquery.NewOptions(opts...)
 	err = d.domainQueryValidate(ctx, expr, qopts)
 	if err != nil {
 		return nil, err
@@ -240,28 +240,28 @@ func (d *Driver) DomainQuery(
 	if err != nil {
 		return nil, err
 	}
-	resOpts := query.NewOptions(
-		query.Limit(boundedOpts.Limit()),
+	resOpts := apiquery.NewOptions(
+		apiquery.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == int(boundedOpts.Limit()) {
-		resOpts = query.NewOptions(
-			query.ContinueFrom(recs[len(recs)-1].UUID),
-			query.Limit(boundedOpts.Limit()),
+		resOpts = apiquery.NewOptions(
+			apiquery.ContinueFrom(recs[len(recs)-1].UUID),
+			apiquery.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []query.ResultModifier[*apidomain.Domain]{
-		query.ResultWithItems(recs),
-		query.ResultWithOptions[*apidomain.Domain](resOpts),
+	resNewOpts := []apiquery.ResultModifier[*apidomain.Domain]{
+		apiquery.ResultWithItems(recs),
+		apiquery.ResultWithOptions[*apidomain.Domain](resOpts),
 	}
-	return query.NewResult[*apidomain.Domain](resNewOpts...), nil
+	return apiquery.NewResult[*apidomain.Domain](resNewOpts...), nil
 }
 
 // domainQueryValidate returns an error if the supplied expression and query
 // options are not valid.
 func (d *Driver) domainQueryValidate(
 	ctx context.Context,
-	expr query.Expression,
-	opts query.Options,
+	expr apiquery.Expression,
+	opts apiquery.Options,
 ) error {
 	if expr == nil {
 		return apierrors.ErrQueryExpressionRequired
@@ -274,12 +274,12 @@ func (d *Driver) domainQueryValidate(
 // less than the max page result.
 func (d *Driver) domainQueryBoundedOptions(
 	ctx context.Context,
-	opts query.Options,
-) query.Options {
+	opts apiquery.Options,
+) apiquery.Options {
 	limit := opts.Limit()
 	if limit <= 0 {
 		limit = DefaultDomainQueryLimit
 	}
 	limit = min(limit, MaxDomainQueryLimit)
-	return query.NewOptions(query.Limit(limit))
+	return apiquery.NewOptions(apiquery.Limit(limit))
 }

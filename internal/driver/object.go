@@ -11,8 +11,8 @@ import (
 	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apiobject "github.com/relexec/rxp/api/object"
+	apiquery "github.com/relexec/rxp/api/query"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
@@ -337,9 +337,9 @@ const (
 func (d *Driver) ObjectQuery(
 	ctx context.Context,
 	kv apikindversion.Name,
-	expr query.Expression,
-	opts ...query.Option,
-) (*query.Result[*apiobject.Object], error) {
+	expr apiquery.Expression,
+	opts ...apiquery.Option,
+) (*apiquery.Result[*apiobject.Object], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -362,7 +362,7 @@ func (d *Driver) ObjectQuery(
 		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
-	qopts := query.NewOptions(opts...)
+	qopts := apiquery.NewOptions(opts...)
 	err = d.objectQueryValidate(ctx, kv, expr, qopts)
 	if err != nil {
 		return nil, err
@@ -390,19 +390,19 @@ func (d *Driver) ObjectQuery(
 	for _, rec := range recs {
 		objs = append(objs, rec.Object)
 	}
-	resNewOpts := []query.ResultModifier[*apiobject.Object]{
-		query.ResultWithItems(objs),
-		query.ResultWithOptions[*apiobject.Object](boundedOpts),
+	resNewOpts := []apiquery.ResultModifier[*apiobject.Object]{
+		apiquery.ResultWithItems(objs),
+		apiquery.ResultWithOptions[*apiobject.Object](boundedOpts),
 	}
 	if len(recs) == int(boundedOpts.Limit()) {
 		resNewOpts = append(
 			resNewOpts,
-			query.ResultWithMarker[*apiobject.Object](
+			apiquery.ResultWithMarker[*apiobject.Object](
 				recs[len(recs)-1].Object.UUID,
 			),
 		)
 	}
-	return query.NewResult[*apiobject.Object](resNewOpts...), nil
+	return apiquery.NewResult[*apiobject.Object](resNewOpts...), nil
 }
 
 // objectQueryValidate returns an error if the supplied expression and query
@@ -410,8 +410,8 @@ func (d *Driver) ObjectQuery(
 func (d *Driver) objectQueryValidate(
 	ctx context.Context,
 	kv apikindversion.Name,
-	expr query.Expression,
-	opts query.Options,
+	expr apiquery.Expression,
+	opts apiquery.Options,
 ) error {
 	return kv.Validate()
 }
@@ -421,12 +421,12 @@ func (d *Driver) objectQueryValidate(
 // than the max page result.
 func (d *Driver) objectQueryBoundedOptions(
 	ctx context.Context,
-	opts query.Options,
-) query.Options {
+	opts apiquery.Options,
+) apiquery.Options {
 	limit := opts.Limit()
 	if limit <= 0 {
 		limit = DefaultObjectQueryLimit
 	}
 	limit = min(limit, MaxObjectQueryLimit)
-	return query.NewOptions(query.Limit(limit))
+	return apiquery.NewOptions(apiquery.Limit(limit))
 }

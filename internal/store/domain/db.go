@@ -13,8 +13,8 @@ import (
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
 	apierrors "github.com/relexec/rxp/api/errors"
+	apiquery "github.com/relexec/rxp/api/query"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/query"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored domain record
@@ -460,24 +460,24 @@ type domainRecord struct {
 // pre-validated expression and options.
 func (s *Store) dbReadByExpression(
 	ctx context.Context,
-	expr query.Expression,
-	opts query.Options,
+	expr apiquery.Expression,
+	opts apiquery.Options,
 ) ([]*apidomain.Domain, error) {
 	qargs := []any{}
 	wheres := []string{}
 	treeOp := false
 
 	switch expr := expr.(type) {
-	case query.UnaryExpression:
+	case apiquery.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
 		case apidomain.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case query.PredicateOperatorEqual:
+			case apiquery.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("d.uuid = $%d", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
-			case query.PredicateOperatorIn:
+			case apiquery.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("d.uuid = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
@@ -486,10 +486,10 @@ func (s *Store) dbReadByExpression(
 		case apidomain.NamePredicate:
 			op := pred.Op
 			switch op {
-			case query.PredicateOperatorEqual:
+			case apiquery.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("d.name = $%d", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
-			case query.PredicateOperatorIn:
+			case apiquery.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("d.name = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
@@ -498,7 +498,7 @@ func (s *Store) dbReadByExpression(
 		case apisystem.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case query.PredicateOperatorEqual:
+			case apiquery.PredicateOperatorEqual:
 				sysUUID := pred.Value.(string)
 				sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 				if err != nil {
@@ -513,7 +513,7 @@ func (s *Store) dbReadByExpression(
 				sysRowID := sysRec.SystemInternalIDInt64()
 				wheres = append(wheres, fmt.Sprintf("d.system = $%d", len(qargs)+1))
 				qargs = append(qargs, sysRowID)
-			case query.PredicateOperatorIn:
+			case apiquery.PredicateOperatorIn:
 				sysRowIDs := []int64{}
 				sysUUIDs := pred.Value.([]string)
 				for _, sysUUID := range sysUUIDs {
@@ -541,7 +541,7 @@ func (s *Store) dbReadByExpression(
 		case apidomain.RootUUIDPredicate:
 			op := pred.Op
 			switch op {
-			case query.PredicateOperatorEqual:
+			case apiquery.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("d.root = (SELECT id FROM domains WHERE uuid = $%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
@@ -550,7 +550,7 @@ func (s *Store) dbReadByExpression(
 		case apidomain.RootNamePredicate:
 			op := pred.Op
 			switch op {
-			case query.PredicateOperatorEqual:
+			case apiquery.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("d.root = (SELECT id FROM domains WHERE name = $%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
@@ -559,7 +559,7 @@ func (s *Store) dbReadByExpression(
 		case apidomain.ParentUUIDPredicate:
 			op := pred.Op
 			switch op {
-			case query.PredicateOperatorEqual:
+			case apiquery.PredicateOperatorEqual:
 				treeOp = true
 				wheres = append(
 					wheres,

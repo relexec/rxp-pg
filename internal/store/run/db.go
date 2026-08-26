@@ -13,9 +13,9 @@ import (
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
 	apierrors "github.com/relexec/rxp/api/errors"
+	apiquery "github.com/relexec/rxp/api/query"
 	apirun "github.com/relexec/rxp/api/run"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/query"
 
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
 )
@@ -548,46 +548,46 @@ type runRecord struct {
 // the pre-validated expression and options.
 func (s *Store) dbReadByExpression(
 	ctx context.Context,
-	expr query.Expression,
-	opts query.Options,
+	expr apiquery.Expression,
+	opts apiquery.Options,
 ) ([]*apirun.Run, error) {
 
 	qargs := []any{}
 	wheres := []string{}
 
 	switch expr := expr.(type) {
-	case query.UnaryExpression:
+	case apiquery.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
 		case apirun.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case query.PredicateOperatorEqual:
+			case apiquery.PredicateOperatorEqual:
 				u := pred.Value.(string)
 				wheres = append(wheres, fmt.Sprintf("r.uuid = $%d", len(qargs)+1))
 				qargs = append(qargs, u)
-			case query.PredicateOperatorIn:
+			case apiquery.PredicateOperatorIn:
 				us := pred.Value.([]string)
 				wheres = append(wheres, fmt.Sprintf("r.uuid = ANY($%d)", len(qargs)+1))
 				qargs = append(qargs, us)
 			}
 		}
-	case query.OrExpression:
+	case apiquery.OrExpression:
 		subexprs := expr.Expressions()
 		ors := make([]string, 0, len(subexprs))
 		for _, subexpr := range subexprs {
 			switch subexpr := subexpr.(type) {
-			case query.UnaryExpression:
+			case apiquery.UnaryExpression:
 				pred := subexpr.Predicate
 				switch pred := pred.(type) {
 				case apirun.UUIDPredicate:
 					op := pred.Op
 					switch op {
-					case query.PredicateOperatorEqual:
+					case apiquery.PredicateOperatorEqual:
 						u := pred.Value.(string)
 						ors = append(ors, fmt.Sprintf("r.uuid = $%d", len(qargs)+1))
 						qargs = append(qargs, u)
-					case query.PredicateOperatorIn:
+					case apiquery.PredicateOperatorIn:
 						us := pred.Value.([]string)
 						ors = append(ors, fmt.Sprintf("r.uuid = ANY($%d)", len(qargs)+1))
 						qargs = append(qargs, us)
@@ -596,18 +596,18 @@ func (s *Store) dbReadByExpression(
 			}
 		}
 		wheres = append(wheres, "("+strings.Join(ors, ") OR (")+")")
-	case query.AndExpression:
+	case apiquery.AndExpression:
 		subexprs := expr.Expressions()
 		ands := make([]string, 0, len(subexprs))
 		for _, subexpr := range subexprs {
 			switch subexpr := subexpr.(type) {
-			case query.UnaryExpression:
+			case apiquery.UnaryExpression:
 				pred := subexpr.Predicate
 				switch pred := pred.(type) {
 				case apirun.UUIDPredicate:
 					op := pred.Op
 					switch op {
-					case query.PredicateOperatorEqual:
+					case apiquery.PredicateOperatorEqual:
 						u := pred.Value.(string)
 						ands = append(ands, fmt.Sprintf("r.uuid = $%d", len(qargs)+1))
 						qargs = append(qargs, u)

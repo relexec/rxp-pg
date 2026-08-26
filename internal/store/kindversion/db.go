@@ -18,8 +18,8 @@ import (
 	apikind "github.com/relexec/rxp/api/kind"
 	apikindversion "github.com/relexec/rxp/api/kindversion"
 	"github.com/relexec/rxp/api/kindversion/schema"
+	apiquery "github.com/relexec/rxp/api/query"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/query"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored kindversion
@@ -288,20 +288,20 @@ type kindversionRecord struct {
 // pre-validated expression and options.
 func (s *Store) dbReadByExpression(
 	ctx context.Context,
-	expr query.Expression,
-	opts query.Options,
+	expr apiquery.Expression,
+	opts apiquery.Options,
 ) ([]*apikindversion.KindVersion, error) {
 	qargs := []any{}
 	wheres := []string{}
 
 	switch expr := expr.(type) {
-	case query.UnaryExpression:
+	case apiquery.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
 		case apikindversion.NamePredicate:
 			op := pred.Op
 			switch op {
-			case query.PredicateOperatorEqual:
+			case apiquery.PredicateOperatorEqual:
 				kvName := pred.Value.(apikindversion.Name)
 				kindName := kvName.Kind()
 				kindRec, err := s.kindStore.ReadByName(
@@ -321,7 +321,7 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("(kv.kind = $%d AND kv.version = $%d)", len(qargs)+1, len(qargs)+2))
 				qargs = append(qargs, kindRowID)
 				qargs = append(qargs, verStr)
-			case query.PredicateOperatorIn:
+			case apiquery.PredicateOperatorIn:
 				ors := []string{}
 				kvNames := pred.Value.([]apikindversion.Name)
 				for _, kvName := range kvNames {
@@ -348,7 +348,7 @@ func (s *Store) dbReadByExpression(
 		case apisystem.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case query.PredicateOperatorEqual:
+			case apiquery.PredicateOperatorEqual:
 				sysUUID := pred.Value.(string)
 				sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 				if err != nil {
@@ -363,7 +363,7 @@ func (s *Store) dbReadByExpression(
 				sysRowID := sysRec.SystemInternalIDInt64()
 				wheres = append(wheres, fmt.Sprintf("kv.system = $%d", len(qargs)+1))
 				qargs = append(qargs, sysRowID)
-			case query.PredicateOperatorIn:
+			case apiquery.PredicateOperatorIn:
 				sysRowIDs := []int64{}
 				sysUUIDs := pred.Value.([]string)
 				for _, sysUUID := range sysUUIDs {

@@ -8,8 +8,8 @@ import (
 	apierrors "github.com/relexec/rxp/api/errors"
 	apikind "github.com/relexec/rxp/api/kind"
 	apimetrics "github.com/relexec/rxp/api/metrics"
+	apiquery "github.com/relexec/rxp/api/query"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -144,9 +144,9 @@ const (
 // KindQuery queries zero or more Kinds from persistent storage.
 func (d *Driver) KindQuery(
 	ctx context.Context,
-	expr query.Expression,
-	opts ...query.Option,
-) (*query.Result[*apikind.Kind], error) {
+	expr apiquery.Expression,
+	opts ...apiquery.Option,
+) (*apiquery.Result[*apikind.Kind], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -168,7 +168,7 @@ func (d *Driver) KindQuery(
 		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
-	qopts := query.NewOptions(opts...)
+	qopts := apiquery.NewOptions(opts...)
 	err = d.kindQueryValidate(ctx, expr, qopts)
 	if err != nil {
 		return nil, err
@@ -182,28 +182,28 @@ func (d *Driver) KindQuery(
 	if err != nil {
 		return nil, err
 	}
-	resOpts := query.NewOptions(
-		query.Limit(boundedOpts.Limit()),
+	resOpts := apiquery.NewOptions(
+		apiquery.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == int(boundedOpts.Limit()) {
-		resOpts = query.NewOptions(
-			query.ContinueFrom(recs[len(recs)-1].UUID),
-			query.Limit(boundedOpts.Limit()),
+		resOpts = apiquery.NewOptions(
+			apiquery.ContinueFrom(recs[len(recs)-1].UUID),
+			apiquery.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []query.ResultModifier[*apikind.Kind]{
-		query.ResultWithItems(recs),
-		query.ResultWithOptions[*apikind.Kind](resOpts),
+	resNewOpts := []apiquery.ResultModifier[*apikind.Kind]{
+		apiquery.ResultWithItems(recs),
+		apiquery.ResultWithOptions[*apikind.Kind](resOpts),
 	}
-	return query.NewResult[*apikind.Kind](resNewOpts...), nil
+	return apiquery.NewResult[*apikind.Kind](resNewOpts...), nil
 }
 
 // kindQueryValidate returns an error if the supplied expression and query
 // options are not valid.
 func (d *Driver) kindQueryValidate(
 	ctx context.Context,
-	expr query.Expression,
-	opts query.Options,
+	expr apiquery.Expression,
+	opts apiquery.Options,
 ) error {
 	if expr == nil {
 		return apierrors.ErrQueryExpressionRequired
@@ -216,12 +216,12 @@ func (d *Driver) kindQueryValidate(
 // than the max page result.
 func (d *Driver) kindQueryBoundedOptions(
 	ctx context.Context,
-	opts query.Options,
-) query.Options {
+	opts apiquery.Options,
+) apiquery.Options {
 	limit := opts.Limit()
 	if limit <= 0 {
 		limit = DefaultKindQueryLimit
 	}
 	limit = min(limit, MaxKindQueryLimit)
-	return query.NewOptions(query.Limit(limit))
+	return apiquery.NewOptions(apiquery.Limit(limit))
 }

@@ -7,8 +7,8 @@ import (
 	apicore "github.com/relexec/rxp/api/core"
 	apierrors "github.com/relexec/rxp/api/errors"
 	apimetrics "github.com/relexec/rxp/api/metrics"
+	apiquery "github.com/relexec/rxp/api/query"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -128,9 +128,9 @@ const (
 // SystemQuery queries zero or more Systems from persistent storage.
 func (d *Driver) SystemQuery(
 	ctx context.Context,
-	expr query.Expression,
-	opts ...query.Option,
-) (*query.Result[*apisystem.System], error) {
+	expr apiquery.Expression,
+	opts ...apiquery.Option,
+) (*apiquery.Result[*apisystem.System], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ func (d *Driver) SystemQuery(
 		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
-	qopts := query.NewOptions(opts...)
+	qopts := apiquery.NewOptions(opts...)
 	err = d.systemQueryValidate(ctx, expr, qopts)
 	if err != nil {
 		return nil, err
@@ -166,28 +166,28 @@ func (d *Driver) SystemQuery(
 	if err != nil {
 		return nil, err
 	}
-	resOpts := query.NewOptions(
-		query.Limit(boundedOpts.Limit()),
+	resOpts := apiquery.NewOptions(
+		apiquery.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == int(boundedOpts.Limit()) {
-		resOpts = query.NewOptions(
-			query.ContinueFrom(recs[len(recs)-1].UUID),
-			query.Limit(boundedOpts.Limit()),
+		resOpts = apiquery.NewOptions(
+			apiquery.ContinueFrom(recs[len(recs)-1].UUID),
+			apiquery.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []query.ResultModifier[*apisystem.System]{
-		query.ResultWithItems(recs),
-		query.ResultWithOptions[*apisystem.System](resOpts),
+	resNewOpts := []apiquery.ResultModifier[*apisystem.System]{
+		apiquery.ResultWithItems(recs),
+		apiquery.ResultWithOptions[*apisystem.System](resOpts),
 	}
-	return query.NewResult[*apisystem.System](resNewOpts...), nil
+	return apiquery.NewResult[*apisystem.System](resNewOpts...), nil
 }
 
 // systemQueryValidate returns an error if the supplied expression and query
 // options are not valid.
 func (d *Driver) systemQueryValidate(
 	ctx context.Context,
-	expr query.Expression,
-	opts query.Options,
+	expr apiquery.Expression,
+	opts apiquery.Options,
 ) error {
 	if expr == nil {
 		return apierrors.ErrQueryExpressionRequired
@@ -200,12 +200,12 @@ func (d *Driver) systemQueryValidate(
 // than the max page result.
 func (d *Driver) systemQueryBoundedOptions(
 	ctx context.Context,
-	opts query.Options,
-) query.Options {
+	opts apiquery.Options,
+) apiquery.Options {
 	limit := opts.Limit()
 	if limit <= 0 {
 		limit = DefaultSystemQueryLimit
 	}
 	limit = min(limit, MaxSystemQueryLimit)
-	return query.NewOptions(query.Limit(limit))
+	return apiquery.NewOptions(apiquery.Limit(limit))
 }

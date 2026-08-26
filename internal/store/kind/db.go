@@ -12,8 +12,8 @@ import (
 	apicore "github.com/relexec/rxp/api/core"
 	apierrors "github.com/relexec/rxp/api/errors"
 	apikind "github.com/relexec/rxp/api/kind"
+	apiquery "github.com/relexec/rxp/api/query"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/query"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored kind record
@@ -203,23 +203,23 @@ type kindRecord struct {
 // pre-validated expression and options.
 func (s *Store) dbReadByExpression(
 	ctx context.Context,
-	expr query.Expression,
-	opts query.Options,
+	expr apiquery.Expression,
+	opts apiquery.Options,
 ) ([]*apikind.Kind, error) {
 	qargs := []any{}
 	wheres := []string{}
 
 	switch expr := expr.(type) {
-	case query.UnaryExpression:
+	case apiquery.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
 		case apikind.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case query.PredicateOperatorEqual:
+			case apiquery.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("k.uuid = $%d", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
-			case query.PredicateOperatorIn:
+			case apiquery.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("k.uuid = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
@@ -228,10 +228,10 @@ func (s *Store) dbReadByExpression(
 		case apikind.NamePredicate:
 			op := pred.Op
 			switch op {
-			case query.PredicateOperatorEqual:
+			case apiquery.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("k.name = $%d", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
-			case query.PredicateOperatorIn:
+			case apiquery.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("k.name = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
@@ -240,7 +240,7 @@ func (s *Store) dbReadByExpression(
 		case apisystem.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case query.PredicateOperatorEqual:
+			case apiquery.PredicateOperatorEqual:
 				sysUUID := pred.Value.(string)
 				sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 				if err != nil {
@@ -255,7 +255,7 @@ func (s *Store) dbReadByExpression(
 				sysRowID := sysRec.SystemInternalIDInt64()
 				wheres = append(wheres, fmt.Sprintf("k.system = $%d", len(qargs)+1))
 				qargs = append(qargs, sysRowID)
-			case query.PredicateOperatorIn:
+			case apiquery.PredicateOperatorIn:
 				sysRowIDs := []int64{}
 				sysUUIDs := pred.Value.([]string)
 				for _, sysUUID := range sysUUIDs {
