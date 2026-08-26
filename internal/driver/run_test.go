@@ -9,7 +9,7 @@ import (
 	testutil "github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp-testing/fixtures/runnable"
-	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
 	apiobject "github.com/relexec/rxp/api/object"
 	apirun "github.com/relexec/rxp/api/run"
 	"github.com/stretchr/testify/require"
@@ -52,7 +52,7 @@ func TestRunRead(t *testing.T) {
 	}
 
 	run1UUID := uuid.NewString()
-	run1Caller := api.Caller{
+	run1Caller := apicore.Caller{
 		Identity: testutil.UserIdentity,
 	}
 	run1 := &apirun.Run{}

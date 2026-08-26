@@ -3,7 +3,7 @@ package testutil
 import (
 	"context"
 
-	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
 )
 
 const (
@@ -14,7 +14,7 @@ const (
 // Context returns a properly constructed context for use in testing.
 func Context(identity string) context.Context {
 	ctx := context.TODO()
-	caller := api.Caller{Identity: identity}
-	ctx = api.CallerToContext(ctx, caller)
+	caller := apicore.Caller{Identity: identity}
+	ctx = apicore.CallerToContext(ctx, caller)
 	return ctx
 }

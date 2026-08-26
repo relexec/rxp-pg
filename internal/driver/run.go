@@ -10,6 +10,7 @@ import (
 	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apirun "github.com/relexec/rxp/api/run"
+	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
@@ -105,69 +106,63 @@ func (d *Driver) RunWrite(
 	}
 
 	req := run.Request()
+	caller := req.Caller
+
+	var callerSys *apisystem.System
+	var callerDom *apidomain.Domain
+
+	// Resolve the caller's System if it's been specified or default it to the
+	// host system.
+	if caller.System == "" || caller.System == d.hostSystemRecord.UUID {
+		callerSys = d.hostSystemRecord
+	} else {
+		callerSys, err = d.systemStore.ReadByUUID(ctx, caller.System)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Resolve the caller's Domain if it's been specified.
+	if caller.Domain != "" {
+		callerDom, err = d.domainStore.ReadByUUID(ctx, callerSys, caller.Domain)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	target := req.Target
 	targetKV = target.KindVersionName
 	targetSys := target.System
 	targetDom := target.Domain
-	caller := req.Caller
 
 	if targetDom != nil {
 		targetSys = targetDom.System
 	}
 
-	callerSys := caller.System
-	callerDom := caller.Domain
-
-	if callerDom != nil {
-		callerSys = callerDom.System
-	}
-
 	// Default the target and caller system to the host system if it hasn't
 	// been specified.
-	if callerSys == nil {
-		callerSys = d.hostSystemRecord
-		if callerDom != nil {
-			callerDom.System = callerSys
-		}
-	}
 	if targetSys == nil {
 		targetSys = d.hostSystemRecord
 		if targetDom != nil {
 			targetDom.System = targetSys
 		}
-	}
-
-	callerSysRec, err := d.systemRecordFromSystem(ctx, callerSys)
-	if err != nil {
-		return nil, err
-	}
-
-	targetSysRec, err := d.systemRecordFromSystem(ctx, targetSys)
-	if err != nil {
-		return nil, err
-	}
-
-	var callerDomRec *apidomain.Domain
-
-	if callerDom != nil {
-		callerDomRec, err = d.domainRecordFromDomain(
-			ctx, callerSysRec, callerDom,
-		)
+	} else if !targetSys.HasSystemInternalID() {
+		targetSys, err = d.systemStore.ReadByUUID(ctx, targetSys.UUID)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if targetDom != nil {
-		_, err := d.domainRecordFromDomain(
-			ctx, targetSysRec, targetDom,
-		)
+
+	// Resolve the target domain if it's been specified.
+	if targetDom != nil && !targetDom.HasSystemInternalID() {
+		targetDom, err = d.domainStore.ReadByUUID(ctx, targetSys, targetDom.UUID)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	targetKindRec, err := d.kindStore.ReadByName(
-		ctx, targetSysRec, targetKV.Kind(),
+		ctx, targetSys, targetKV.Kind(),
 	)
 	if err != nil {
 		if err == errors.ErrNotFound {
@@ -177,7 +172,7 @@ func (d *Driver) RunWrite(
 	}
 
 	targetKVRec, err := d.kindversionStore.ReadByName(
-		ctx, targetSysRec, targetKindRec, targetKV,
+		ctx, targetSys, targetKindRec, targetKV,
 	)
 	if err != nil {
 		if err == errors.ErrNotFound {
@@ -191,7 +186,7 @@ func (d *Driver) RunWrite(
 	if err != nil {
 		return nil, err
 	}
-	targetRec.Object.System = targetSysRec
+	targetRec.Object.System = targetSys
 	if targetDom != nil {
 		targetRec.Object.Domain = targetDom
 	}
@@ -231,7 +226,7 @@ func (d *Driver) RunWrite(
 	return d.runStore.Write(
 		ctx,
 		*targetRec,
-		callerSysRec, callerDomRec,
+		callerSys, callerDom,
 		rootIDs, parentIDs, run,
 	)
 }

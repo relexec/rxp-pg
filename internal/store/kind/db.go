@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
 	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
@@ -150,7 +149,7 @@ func (s *Store) dbInsert(
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	createdOn := time.Now().UnixNano()
-	caller := api.CallerFromContext(ctx)
+	caller := apicore.CallerFromContext(ctx)
 	createdBy := caller.Identity
 	fn := func(tx pgx.Tx) error {
 		qs := `

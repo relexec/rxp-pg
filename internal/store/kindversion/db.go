@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/pkg/version"
-	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
 	apikind "github.com/relexec/rxp/api/kind"
 	apikindversion "github.com/relexec/rxp/api/kindversion"
 	"github.com/relexec/rxp/api/kindversion/schema"
@@ -210,7 +210,7 @@ func (s *Store) dbInsert(
 	name := kv.Name()
 	ver, _ := name.Version()
 	createdOn := time.Now().UnixNano()
-	caller := api.CallerFromContext(ctx)
+	caller := apicore.CallerFromContext(ctx)
 	createdBy := caller.Identity
 	schemaJSON, err := kv.SchemaJSON()
 	if err != nil {

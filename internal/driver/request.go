@@ -3,7 +3,7 @@ package driver
 import (
 	"context"
 
-	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
 	"github.com/relexec/rxp/errors"
 )
 
@@ -11,7 +11,7 @@ import (
 func (d *Driver) requestValidate(
 	ctx context.Context,
 ) error {
-	caller := api.CallerFromContext(ctx)
+	caller := apicore.CallerFromContext(ctx)
 	if caller == nil || caller.Identity == "" {
 		return errors.ErrMissingIdentity
 	}

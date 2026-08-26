@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/relexec/rxp/api"
+	apicore "github.com/relexec/rxp/api/core"
 	apisystem "github.com/relexec/rxp/api/system"
 	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
@@ -87,7 +87,7 @@ func (s *Store) dbInsert(
 	sys apisystem.System,
 ) error {
 	createdOn := time.Now().UnixNano()
-	caller := api.CallerFromContext(ctx)
+	caller := apicore.CallerFromContext(ctx)
 	createdBy := caller.Identity
 	var tag *string
 	uuid := sys.UUID

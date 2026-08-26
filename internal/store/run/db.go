@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
 	apirun "github.com/relexec/rxp/api/run"
@@ -106,7 +105,7 @@ WHERE r.id = $1
 				errors.WithWrap(err),
 			)
 		}
-		caller := api.Caller{
+		caller := apicore.Caller{
 			Identity: callerIdentity,
 		}
 		target := apirun.Target{
@@ -313,7 +312,7 @@ WHERE r.uuid = $1
 				errors.WithWrap(err),
 			)
 		}
-		caller := api.Caller{
+		caller := apicore.Caller{
 			Identity: callerIdentity,
 		}
 		target := apirun.Target{
@@ -676,7 +675,7 @@ INNER JOIN object_generations AS t
 	}
 	out := make([]*apirun.Run, 0, len(recs))
 	for _, rec := range recs {
-		caller := api.Caller{
+		caller := apicore.Caller{
 			Identity: rec.CallerIdentity,
 		}
 		target := apirun.Target{

@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/relexec/rxp/api"
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
 	apikind "github.com/relexec/rxp/api/kind"
@@ -352,7 +351,7 @@ func (s *Store) dbInsertFirst(
 	uuid := obj.UUID
 	name := obj.Name
 	createdOn := time.Now().UnixNano()
-	caller := api.CallerFromContext(ctx)
+	caller := apicore.CallerFromContext(ctx)
 	createdBy := caller.Identity
 
 	specJSON := obj.Spec
@@ -559,7 +558,7 @@ func (s *Store) dbInsertGeneration(
 	kv := obj.KindVersionName
 	uuid := obj.UUID
 	createdOn := time.Now().UnixNano()
-	caller := api.CallerFromContext(ctx)
+	caller := apicore.CallerFromContext(ctx)
 	createdBy := caller.Identity
 
 	specJSON := obj.Spec
