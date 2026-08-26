@@ -12,11 +12,11 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
+	apierrors "github.com/relexec/rxp/api/errors"
 	apikind "github.com/relexec/rxp/api/kind"
 	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apiobject "github.com/relexec/rxp/api/object"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 )
 
@@ -51,11 +51,11 @@ AND n.name = $3
 		).Scan(&uuid)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
+				return apierrors.ErrNotFound
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading object uuid for domain qualified name",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		return nil
@@ -97,11 +97,11 @@ AND o.uuid = $3
 		).Scan(&name)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
+				return apierrors.ErrNotFound
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading object name for domain qualified uuid",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		return nil
@@ -138,11 +138,11 @@ AND n.name = $2
 		).Scan(&uuid)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
+				return apierrors.ErrNotFound
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading object uuid for system qualified name",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		return nil
@@ -179,11 +179,11 @@ AND o.uuid = $2
 		).Scan(&name)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
+				return apierrors.ErrNotFound
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading object name for system qualified uuid",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		return nil
@@ -239,11 +239,11 @@ WHERE o.id = $1
 		).Scan(&uuid, &generation, &spec)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
+				return apierrors.ErrNotFound
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading domain-qualified objects record by row ID",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		out.Object = &apiobject.Object{
@@ -307,11 +307,11 @@ AND o.kindversion = $2
 		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
+				return apierrors.ErrNotFound
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading domain-qualified objects record by UUID",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		out.Object = &apiobject.Object{
@@ -342,7 +342,7 @@ func (s *Store) dbInsertFirst(
 	obj apiobject.Object,
 ) (*apiobject.Object, error) {
 	if kindRec.Scope == apicore.ScopeDomain && domRec == nil {
-		return nil, errors.ErrObjectDomainRequired
+		return nil, apierrors.ErrObjectDomainRequired
 	}
 	sysRowID := sysRec.SystemInternalIDInt64()
 	kindRowID := kindRec.SystemInternalIDInt64()
@@ -402,12 +402,12 @@ INSERT INTO objects (
 					// depending on scope, we check for name-based collisions
 					// before attempting to INSERT a record in the objects
 					// table.
-					return errors.ExpectedNotToExist(fmt.Sprintf("%s (%s)", kv, uuid))
+					return apierrors.ExpectedNotToExist(fmt.Sprintf("%s (%s)", kv, uuid))
 				}
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed inserting objects record",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		scope := kindRec.Scope
@@ -449,12 +449,12 @@ INSERT INTO domain_qualified_object_names (
 							domRec.Name,
 							name,
 						)
-						return errors.DuplicateName(kindRec.Name, qn)
+						return apierrors.DuplicateName(kindRec.Name, qn)
 					}
 				}
-				return errors.Internal(
+				return apierrors.Internal(
 					"failed inserting domain_qualified_object_names record",
-					errors.WithWrap(err),
+					apierrors.WithWrap(err),
 				)
 			}
 		default:
@@ -486,12 +486,12 @@ INSERT INTO system_qualified_object_names (
 			if err != nil {
 				if pgErr, ok := err.(*pgconn.PgError); ok {
 					if pgErr.Code == pgerrcode.UniqueViolation {
-						return errors.DuplicateName(kindRec.Name, name)
+						return apierrors.DuplicateName(kindRec.Name, name)
 					}
 				}
-				return errors.Internal(
+				return apierrors.Internal(
 					"failed inserting system_qualified_object_names record",
-					errors.WithWrap(err),
+					apierrors.WithWrap(err),
 				)
 			}
 		}
@@ -523,12 +523,12 @@ INSERT INTO object_generations (
 		if err != nil {
 			if pgErr, ok := err.(*pgconn.PgError); ok {
 				if pgErr.Code == pgerrcode.UniqueViolation {
-					return errors.ErrConflict
+					return apierrors.ErrConflict
 				}
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed inserting object_generations record",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		return nil
@@ -552,7 +552,7 @@ func (s *Store) dbInsertGeneration(
 	expectGeneration apicore.Generation,
 ) (*apiobject.Object, error) {
 	if kindRec.Scope == apicore.ScopeDomain && domRec == nil {
-		return nil, errors.ErrObjectDomainRequired
+		return nil, apierrors.ErrObjectDomainRequired
 	}
 	kvRowID := kvRec.SystemInternalIDInt64()
 	kv := obj.KindVersionName
@@ -569,12 +569,12 @@ func (s *Store) dbInsertGeneration(
 		err := tx.QueryRow(ctx, qs, uuid).Scan(&objRowID)
 		if err != nil {
 			if err != pgx.ErrNoRows {
-				return errors.Internal(
+				return apierrors.Internal(
 					"failed reading objects record",
-					errors.WithWrap(err),
+					apierrors.WithWrap(err),
 				)
 			}
-			return errors.ExpectedToExist(
+			return apierrors.ExpectedToExist(
 				fmt.Sprintf("%s (%s)", kv, uuid),
 			)
 		}
@@ -610,12 +610,12 @@ INSERT INTO object_generations (
 			// to either fail or retry.
 			if pgErr, ok := err.(*pgconn.PgError); ok {
 				if pgErr.Code == pgerrcode.UniqueViolation {
-					return errors.ErrConflict
+					return apierrors.ErrConflict
 				}
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed inserting object_generations record",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		qs = `
@@ -634,16 +634,16 @@ AND generation = $5`
 			expectGeneration,
 		)
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed updating objects record",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		// If we get had no rows affected from the above attempted update, it
 		// means that another thread beat us to update the desired state of
 		// this object, so we need to either fail or retry.
 		if res.RowsAffected() == 0 {
-			return errors.ErrConflict
+			return apierrors.ErrConflict
 		}
 		return nil
 	}
@@ -692,7 +692,7 @@ func (s *Store) dbReadDomainQualifiedByExpression(
 	opts query.Options,
 ) ([]*Record, error) {
 	if query.ContainsPredicate(expr, isKindishPredicate) {
-		return nil, errors.ErrInvalidQueryKindPredicate
+		return nil, apierrors.ErrInvalidQueryKindPredicate
 	}
 	sysRowID := sysRec.SystemInternalIDInt64()
 	kindRowID := kindRec.SystemInternalIDInt64()
@@ -738,17 +738,17 @@ INNER JOIN object_generations AS og
 		qs += fmt.Sprintf("\nORDER BY o.uuid ASC LIMIT %d", opts.Limit())
 		rows, err := tx.Query(ctx, qs, qargs...)
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading domain-qualified object records",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		defer rows.Close()
 		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[dqObjectRecord])
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed collecting domain-qualified object records",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 
@@ -765,9 +765,9 @@ INNER JOIN object_generations AS og
 				ctx, sysRec, kindRec, rec.KindVersionID,
 			)
 			if err != nil {
-				return nil, errors.Internal(
+				return nil, apierrors.Internal(
 					"failed reading kindversion record",
-					errors.WithWrap(err),
+					apierrors.WithWrap(err),
 				)
 			}
 			kvName = kvRec.Name()
@@ -819,7 +819,7 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 	opts query.Options,
 ) ([]*Record, error) {
 	if query.ContainsPredicate(expr, isKindishPredicate) {
-		return nil, errors.ErrInvalidQueryKindPredicate
+		return nil, apierrors.ErrInvalidQueryKindPredicate
 	}
 	sysRowID := sysRec.SystemInternalIDInt64()
 	kindRowID := kindRec.SystemInternalIDInt64()
@@ -959,17 +959,17 @@ INNER JOIN object_generations AS og
 		qs += fmt.Sprintf("\nORDER BY o.uuid ASC LIMIT %d", opts.Limit())
 		rows, err := tx.Query(ctx, qs, qargs...)
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading system-qualified object records",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		defer rows.Close()
 		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[sqObjectRecord])
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed collecting system-qualified object records",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 
@@ -986,9 +986,9 @@ INNER JOIN object_generations AS og
 				ctx, sysRec, kindRec, rec.KindVersionID,
 			)
 			if err != nil {
-				return nil, errors.Internal(
+				return nil, apierrors.Internal(
 					"failed reading kindversion record",
-					errors.WithWrap(err),
+					apierrors.WithWrap(err),
 				)
 			}
 			kvName = kvRec.Name()

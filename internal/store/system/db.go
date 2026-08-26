@@ -11,8 +11,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	apicore "github.com/relexec/rxp/api/core"
+	apierrors "github.com/relexec/rxp/api/errors"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 )
 
@@ -31,11 +31,11 @@ func (s *Store) dbReadByRowID(
 		err := tx.QueryRow(ctx, qs, rowID).Scan(&uuid, &tag)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
+				return apierrors.ErrNotFound
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading systems record by rowid",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		out.UUID = uuid
@@ -62,11 +62,11 @@ func (s *Store) dbReadByUUID(
 		err := tx.QueryRow(ctx, qs, uuid).Scan(&rowID, &tag)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
+				return apierrors.ErrNotFound
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading systems record by uuid",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		out.SetSystemInternalID(rowID)
@@ -112,16 +112,16 @@ INSERT INTO systems (
 		if err != nil {
 			if pgErr, ok := err.(*pgconn.PgError); ok {
 				if pgErr.Code == pgerrcode.UniqueViolation {
-					return errors.DuplicateKey("system", "uuid", uuid)
+					return apierrors.DuplicateKey("system", "uuid", uuid)
 				}
 			}
 		}
 		return err
 	}
 	if err := s.Exec(ctx, fn); err != nil {
-		return errors.Internal(
+		return apierrors.Internal(
 			"failed inserting systems record",
-			errors.WithWrap(err),
+			apierrors.WithWrap(err),
 		)
 	}
 	return nil
@@ -157,13 +157,13 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("s.uuid = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
-				return nil, errors.UnsupportedPredicateOperator(op)
+				return nil, apierrors.UnsupportedPredicateOperator(op)
 			}
 		default:
-			return nil, errors.UnsupportedPredicate(pred)
+			return nil, apierrors.UnsupportedPredicate(pred)
 		}
 	default:
-		return nil, errors.UnsupportedExpression(expr)
+		return nil, apierrors.UnsupportedExpression(expr)
 	}
 
 	var recs []systemRecord
@@ -181,17 +181,17 @@ FROM systems AS s
 		qs += fmt.Sprintf("\nORDER BY s.uuid ASC LIMIT %d", opts.Limit())
 		rows, err := tx.Query(ctx, qs, qargs...)
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading system records",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		defer rows.Close()
 		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[systemRecord])
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed collecting system records",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		return nil

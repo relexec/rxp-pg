@@ -6,9 +6,9 @@ import (
 
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
+	apierrors "github.com/relexec/rxp/api/errors"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -58,8 +58,8 @@ func (d *Driver) DomainRead(
 	if sys.UUID != d.hostSystemUUID {
 		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, errors.ErrSystemUnknown
+			if err == apierrors.ErrNotFound {
+				return nil, apierrors.ErrSystemUnknown
 			}
 			return nil, err
 		}
@@ -150,8 +150,8 @@ func (d *Driver) DomainWrite(
 	if sys.UUID != d.hostSystemUUID {
 		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
-			if err == errors.ErrNotFound {
-				return errors.ErrSystemUnknown
+			if err == apierrors.ErrNotFound {
+				return apierrors.ErrSystemUnknown
 			}
 			return err
 		}
@@ -174,8 +174,8 @@ func (d *Driver) DomainWrite(
 			parDom, err = d.domainStore.ReadByName(ctx, sysRec, parName)
 		}
 		if err != nil {
-			if err == errors.ErrNotFound {
-				return errors.ErrDomainParentNotFound
+			if err == apierrors.ErrNotFound {
+				return apierrors.ErrDomainParentNotFound
 			}
 			return err
 		}
@@ -264,7 +264,7 @@ func (d *Driver) domainQueryValidate(
 	opts query.Options,
 ) error {
 	if expr == nil {
-		return errors.ErrQueryExpressionRequired
+		return apierrors.ErrQueryExpressionRequired
 	}
 	return nil
 }

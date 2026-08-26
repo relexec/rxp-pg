@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	apierrors "github.com/relexec/rxp/api/errors"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/errors"
 )
 
 type byRowIDCacheKey int64
@@ -73,7 +73,7 @@ func (s *Store) cacheWrite(
 	uuidKey := byUUIDCacheKey(rec.UUID)
 	set := s.byUUID.Set(uuidKey, rec)
 	if !set {
-		return errors.Internal(
+		return apierrors.Internal(
 			fmt.Sprintf("failed setting system cache uuid key %q", uuidKey),
 		)
 	}
@@ -83,7 +83,7 @@ func (s *Store) cacheWrite(
 	rowIDKey := byRowIDCacheKey(rowID)
 	set = s.byRowID.Set(rowIDKey, uuidKey)
 	if !set {
-		return errors.Internal(
+		return apierrors.Internal(
 			fmt.Sprintf("failed setting system cache rowid key %d", rowIDKey),
 		)
 	}

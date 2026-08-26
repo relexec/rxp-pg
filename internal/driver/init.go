@@ -7,9 +7,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	apicore "github.com/relexec/rxp/api/core"
+	apierrors "github.com/relexec/rxp/api/errors"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/errors"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
@@ -196,7 +196,7 @@ func (d *Driver) initHostSystemRecord(ctx context.Context) error {
 	if d.hostSystemRecord == nil {
 		rec, err := d.systemStore.ReadByUUID(ctx, d.hostSystemUUID)
 		if err != nil {
-			if err != errors.ErrNotFound {
+			if err != apierrors.ErrNotFound {
 				return err
 			}
 			d.Logger.Debug("creating host system record")

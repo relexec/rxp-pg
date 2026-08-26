@@ -4,8 +4,8 @@ import (
 	"context"
 
 	apidomain "github.com/relexec/rxp/api/domain"
+	apierrors "github.com/relexec/rxp/api/errors"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/errors"
 )
 
 // Write atomically writes the pre-validated Domain to persistent storage.
@@ -25,9 +25,9 @@ func (s *Store) Write(
 		// to update each cache entry and we rely on the
 		// write-to-cache-on-read-miss behaviour to keep cache entries fresh.
 		if err = s.cacheEvict(ctx, dom); err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed evicting domain records from cache",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 	}

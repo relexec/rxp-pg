@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	apierrors "github.com/relexec/rxp/api/errors"
 	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/errors"
 )
 
 type byRowIDCacheKey int64
@@ -95,7 +95,7 @@ func (s *Store) cacheWrite(
 	)
 	set := s.byName.Set(nameKey, rec)
 	if !set {
-		return errors.Internal(
+		return apierrors.Internal(
 			fmt.Sprintf(
 				"failed setting kindversion cache name key %q", nameKey,
 			),
@@ -106,7 +106,7 @@ func (s *Store) cacheWrite(
 	rowIDKey := byRowIDCacheKey(rowID)
 	set = s.byRowID.Set(rowIDKey, nameKey)
 	if !set {
-		return errors.Internal(
+		return apierrors.Internal(
 			fmt.Sprintf(
 				"failed setting kindversion cache rowid key %d", rowIDKey,
 			),

@@ -6,11 +6,11 @@ import (
 
 	"github.com/relexec/rxp-testing/fixtures"
 	apidomain "github.com/relexec/rxp/api/domain"
+	apierrors "github.com/relexec/rxp/api/errors"
 	apikind "github.com/relexec/rxp/api/kind"
 	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apiobject "github.com/relexec/rxp/api/object"
 	apirun "github.com/relexec/rxp/api/run"
-	"github.com/relexec/rxp/errors"
 
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/driver"
@@ -61,7 +61,7 @@ func KindVersionCreateIfNotExists(
 		),
 	)
 	if err != nil {
-		if err != errors.ErrNotFound {
+		if err != apierrors.ErrNotFound {
 			return err
 		}
 		return d.KindVersionWrite(ctx, *kv)
@@ -81,7 +81,7 @@ func KindCreateIfNotExists(
 		apikind.Select(apikind.ByName(k.Name)),
 	)
 	if err != nil {
-		if err != errors.ErrNotFound {
+		if err != apierrors.ErrNotFound {
 			return err
 		}
 		return d.KindWrite(ctx, k)
@@ -101,7 +101,7 @@ func DomainCreateIfNotExists(
 		apidomain.Select(apidomain.ByName(dom.Name)),
 	)
 	if err != nil {
-		if err != errors.ErrNotFound {
+		if err != apierrors.ErrNotFound {
 			return err
 		}
 		return d.DomainWrite(ctx, dom)
@@ -127,7 +127,7 @@ func ObjectCreateIfNotExists(
 	}
 	_, err := d.ObjectRead(ctx, o.KindVersionName, apiobject.Select(selopts...))
 	if err != nil {
-		if err != errors.ErrNotFound {
+		if err != apierrors.ErrNotFound {
 			return err
 		}
 		_, err := d.ObjectWrite(ctx, *o)
@@ -148,7 +148,7 @@ func RunCreateIfNotExists(
 		ctx, r.Request().Target, apirun.Select(selopts...),
 	)
 	if err != nil {
-		if err != errors.ErrNotFound {
+		if err != apierrors.ErrNotFound {
 			return err
 		}
 		_, err := d.RunWrite(ctx, *r)

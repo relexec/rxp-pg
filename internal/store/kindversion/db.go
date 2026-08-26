@@ -14,11 +14,11 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/relexec/pkg/version"
 	apicore "github.com/relexec/rxp/api/core"
+	apierrors "github.com/relexec/rxp/api/errors"
 	apikind "github.com/relexec/rxp/api/kind"
 	apikindversion "github.com/relexec/rxp/api/kindversion"
 	"github.com/relexec/rxp/api/kindversion/schema"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 )
 
@@ -47,27 +47,27 @@ func (s *Store) dbReadByRowID(
 		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
+				return apierrors.ErrNotFound
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading kindversions record",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		if schemaBytes.Valid {
 			err = json.Unmarshal([]byte(schemaBytes.String), &schema)
 			if err != nil {
-				return errors.Internal(
+				return apierrors.Internal(
 					"failed unmarshaling kindversion schema",
-					errors.WithWrap(err),
+					apierrors.WithWrap(err),
 				)
 			}
 		}
 		sv, err := semver.NewVersion(verStr)
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed parsing semver for kindversion",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		out.Version = *sv
@@ -117,19 +117,19 @@ AND version = $3
 		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
+				return apierrors.ErrNotFound
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading kindversions record",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		if schemaBytes.Valid {
 			err = json.Unmarshal([]byte(schemaBytes.String), &schema)
 			if err != nil {
-				return errors.Internal(
+				return apierrors.Internal(
 					"failed unmarshaling kindversion schema",
-					errors.WithWrap(err),
+					apierrors.WithWrap(err),
 				)
 			}
 		}
@@ -163,17 +163,17 @@ AND kind = $2
 `
 		rows, err := tx.Query(ctx, qs, sysRowID, kindRowID)
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading kindversion records",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		defer rows.Close()
 		versionStrs, err = pgx.CollectRows(rows, pgx.RowTo[string])
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed collecting kindversion versions",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 
@@ -186,9 +186,9 @@ AND kind = $2
 	for _, verStr := range versionStrs {
 		v, err := semver.NewVersion(verStr)
 		if err != nil {
-			return nil, errors.Internal(
+			return nil, apierrors.Internal(
 				"failed parsing semver",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		versions = append(versions, *v)
@@ -225,13 +225,13 @@ func (s *Store) dbInsert(
 			// ensure we were given the first version in the version series OR
 			// there was a force override option.
 			if ver.Minor() != 0 || ver.Patch() != 0 {
-				return errors.ExpectedFirstVersionInSeries(kv.Name())
+				return apierrors.ExpectedFirstVersionInSeries(kv.Name())
 			}
 		} else {
 			// If the supplied version already exists, return a precondition
 			// failed unless there was a force override option.
 			if versions.Contains(*ver) {
-				return errors.ExpectedNotToExist(kv.Name())
+				return apierrors.ExpectedNotToExist(kv.Name())
 			}
 		}
 
@@ -263,12 +263,12 @@ INSERT INTO kindversions (
 		if err != nil {
 			if pgErr, ok := err.(*pgconn.PgError); ok {
 				if pgErr.Code == pgerrcode.UniqueViolation {
-					return errors.ExpectedNotToExist(kv.Name())
+					return apierrors.ExpectedNotToExist(kv.Name())
 				}
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed inserting kindversions record",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		return nil
@@ -311,7 +311,7 @@ func (s *Store) dbReadByExpression(
 					// If we're looking up kindversions by a non-existent kind,
 					// just return am empty result since there's clearly not
 					// going to be any matching kindversion records.
-					if err == errors.ErrNotFound {
+					if err == apierrors.ErrNotFound {
 						return nil, nil
 					}
 					return nil, err
@@ -330,7 +330,7 @@ func (s *Store) dbReadByExpression(
 						ctx, &s.hostSystemRecord, kindName,
 					)
 					if err != nil {
-						if err == errors.ErrNotFound {
+						if err == apierrors.ErrNotFound {
 							continue
 						}
 						return nil, err
@@ -343,7 +343,7 @@ func (s *Store) dbReadByExpression(
 				}
 				wheres = append(wheres, "("+strings.Join(ors, " OR ")+")")
 			default:
-				return nil, errors.UnsupportedPredicateOperator(op)
+				return nil, apierrors.UnsupportedPredicateOperator(op)
 			}
 		case apisystem.UUIDPredicate:
 			op := pred.Op
@@ -355,7 +355,7 @@ func (s *Store) dbReadByExpression(
 					// If we're looking up kindversions by a non-existent system,
 					// just return am empty result since there's clearly not
 					// going to be any matching kindversion records.
-					if err == errors.ErrNotFound {
+					if err == apierrors.ErrNotFound {
 						return nil, nil
 					}
 					return nil, err
@@ -369,7 +369,7 @@ func (s *Store) dbReadByExpression(
 				for _, sysUUID := range sysUUIDs {
 					sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 					if err != nil {
-						if err == errors.ErrNotFound {
+						if err == apierrors.ErrNotFound {
 							continue
 						}
 						return nil, err
@@ -386,13 +386,13 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("kv.system = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, sysRowIDs)
 			default:
-				return nil, errors.UnsupportedPredicateOperator(op)
+				return nil, apierrors.UnsupportedPredicateOperator(op)
 			}
 		default:
-			return nil, errors.UnsupportedPredicate(pred)
+			return nil, apierrors.UnsupportedPredicate(pred)
 		}
 	default:
-		return nil, errors.UnsupportedExpression(expr)
+		return nil, apierrors.UnsupportedExpression(expr)
 	}
 
 	var recs []kindversionRecord
@@ -412,17 +412,17 @@ FROM kindversions AS kv
 		qs += fmt.Sprintf("\nORDER BY kv.kind ASC, kv.version ASC LIMIT %d", opts.Limit())
 		rows, err := tx.Query(ctx, qs, qargs...)
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading kindversion records",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		defer rows.Close()
 		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[kindversionRecord])
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed collecting kindversion records",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		return nil
@@ -435,33 +435,33 @@ FROM kindversions AS kv
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
-			return nil, errors.Internal(
+			return nil, apierrors.Internal(
 				"failed reading system record by rowid",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		kindRec, err := s.kindStore.ReadByRowID(ctx, rec.KindID)
 		if err != nil {
-			return nil, errors.Internal(
+			return nil, apierrors.Internal(
 				"failed reading kind record by rowid",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		var schema schema.Schema
 		if rec.Schema.Valid {
 			err = json.Unmarshal([]byte(rec.Schema.String), &schema)
 			if err != nil {
-				return nil, errors.Internal(
+				return nil, apierrors.Internal(
 					"failed unmarshaling kindversion schema",
-					errors.WithWrap(err),
+					apierrors.WithWrap(err),
 				)
 			}
 		}
 		sv, err := semver.NewVersion(rec.Version)
 		if err != nil {
-			return nil, errors.Internal(
+			return nil, apierrors.Internal(
 				"failed parsing semver for kindversion",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		kv := &apikindversion.KindVersion{

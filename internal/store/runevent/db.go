@@ -6,8 +6,8 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	apierrors "github.com/relexec/rxp/api/errors"
 	apirun "github.com/relexec/rxp/api/run"
-	"github.com/relexec/rxp/errors"
 )
 
 var (
@@ -46,12 +46,12 @@ func (s *Store) dbInsert(
 					// This will be the run ID and sequence key violation,
 					// which indicates that another thread has attempts to
 					// write these same run event records.
-					return errors.ErrConflict
+					return apierrors.ErrConflict
 				}
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed inserting run events records using COPY protocol",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		return nil

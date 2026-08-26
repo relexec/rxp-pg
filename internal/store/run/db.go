@@ -12,9 +12,9 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
+	apierrors "github.com/relexec/rxp/api/errors"
 	apirun "github.com/relexec/rxp/api/run"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
@@ -98,11 +98,11 @@ WHERE r.id = $1
 		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
+				return apierrors.ErrNotFound
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading runs record by row ID",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		caller := apicore.Caller{
@@ -181,17 +181,17 @@ ORDER BY r.id
 `
 		rows, err := tx.Query(ctx, qs, rootRowID)
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading run identifier records",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		defer rows.Close()
 		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[runIdentifierRecord])
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed collecting run identifier records",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 	}
@@ -218,7 +218,7 @@ ORDER BY r.id
 						"run record with row ID %d and UUID %q",
 					parRowID, rec.ID, rec.UUID,
 				)
-				return nil, errors.Internal(msg)
+				return nil, apierrors.Internal(msg)
 			}
 			runIDs.Parent = parentIDs
 		}
@@ -305,11 +305,11 @@ WHERE r.uuid = $1
 		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
+				return apierrors.ErrNotFound
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading runs record by UUID",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		caller := apicore.Caller{
@@ -418,12 +418,12 @@ func (s *Store) dbInsert(
 		targetRowID, err := s.dbReadObjectGenerationRowID(ctx, tx, targetRec)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return errors.ErrNotFound
+				return apierrors.ErrNotFound
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading object_generations row id by "+
 					"object row id and generation",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 
@@ -456,12 +456,12 @@ INSERT INTO runs (
 					// This will be the UUID column uniqueness constraint
 					// violation, which indicates that another thread has
 					// already created a Run with that request UUID.
-					return errors.DuplicateKey("run", "uuid", uuid)
+					return apierrors.DuplicateKey("run", "uuid", uuid)
 				}
 			}
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed inserting runs record",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		// If we are the root, we need to set the runs.root field to the
@@ -470,9 +470,9 @@ INSERT INTO runs (
 			qs = `UPDATE runs SET root = $1 WHERE id = $2`
 			_, err = tx.Exec(ctx, qs, runRowID, runRowID)
 			if err != nil {
-				return errors.Internal(
+				return apierrors.Internal(
 					"failed updating runs record with root row id",
-					errors.WithWrap(err),
+					apierrors.WithWrap(err),
 				)
 			}
 		}
@@ -508,9 +508,9 @@ INSERT INTO run_requests (
 			rr.In,
 		)
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed inserting run_requests record",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		return nil
@@ -654,17 +654,17 @@ INNER JOIN object_generations AS t
 		qs += fmt.Sprintf("\nORDER BY r.uuid ASC LIMIT %d", opts.Limit())
 		rows, err := tx.Query(ctx, qs, qargs...)
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed reading run records",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 		defer rows.Close()
 		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[runRecord])
 		if err != nil {
-			return errors.Internal(
+			return apierrors.Internal(
 				"failed collecting run records",
-				errors.WithWrap(err),
+				apierrors.WithWrap(err),
 			)
 		}
 

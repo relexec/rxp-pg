@@ -5,10 +5,10 @@ import (
 	"time"
 
 	apicore "github.com/relexec/rxp/api/core"
+	apierrors "github.com/relexec/rxp/api/errors"
 	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -58,8 +58,8 @@ func (d *Driver) KindVersionRead(
 	if sys != nil && sys.UUID != d.hostSystemUUID {
 		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, errors.ErrSystemUnknown
+			if err == apierrors.ErrNotFound {
+				return nil, apierrors.ErrSystemUnknown
 			}
 			return nil, err
 		}
@@ -70,8 +70,8 @@ func (d *Driver) KindVersionRead(
 	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, name.Kind())
 	if err != nil {
 		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, errors.ErrKindUnknown
+			if err == apierrors.ErrNotFound {
+				return nil, apierrors.ErrKindUnknown
 			}
 			return nil, err
 		}
@@ -132,8 +132,8 @@ func (d *Driver) KindVersionWrite(
 	if sys != nil && sys.UUID != d.hostSystemUUID {
 		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
-			if err == errors.ErrNotFound {
-				return errors.ErrSystemUnknown
+			if err == apierrors.ErrNotFound {
+				return apierrors.ErrSystemUnknown
 			}
 			return err
 		}
@@ -145,8 +145,8 @@ func (d *Driver) KindVersionWrite(
 	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, kn.Kind())
 	if err != nil {
 		if err != nil {
-			if err == errors.ErrNotFound {
-				return errors.ErrKindUnknown
+			if err == apierrors.ErrNotFound {
+				return apierrors.ErrKindUnknown
 			}
 			return err
 		}
@@ -233,7 +233,7 @@ func (d *Driver) kindversionQueryValidate(
 	opts query.Options,
 ) error {
 	if expr == nil {
-		return errors.ErrQueryExpressionRequired
+		return apierrors.ErrQueryExpressionRequired
 	}
 	return nil
 }

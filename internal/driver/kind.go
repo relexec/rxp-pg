@@ -5,10 +5,10 @@ import (
 	"time"
 
 	apicore "github.com/relexec/rxp/api/core"
+	apierrors "github.com/relexec/rxp/api/errors"
 	apikind "github.com/relexec/rxp/api/kind"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -55,8 +55,8 @@ func (d *Driver) KindRead(
 	if sys != nil && sys.UUID != d.hostSystemUUID {
 		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
-			if err == errors.ErrNotFound {
-				return nil, errors.ErrSystemUnknown
+			if err == apierrors.ErrNotFound {
+				return nil, apierrors.ErrSystemUnknown
 			}
 			return nil, err
 		}
@@ -115,8 +115,8 @@ func (d *Driver) KindWrite(
 	if sys != nil && sys.UUID != d.hostSystemUUID {
 		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
-			if err == errors.ErrNotFound {
-				return errors.ErrSystemUnknown
+			if err == apierrors.ErrNotFound {
+				return apierrors.ErrSystemUnknown
 			}
 			return err
 		}
@@ -206,7 +206,7 @@ func (d *Driver) kindQueryValidate(
 	opts query.Options,
 ) error {
 	if expr == nil {
-		return errors.ErrQueryExpressionRequired
+		return apierrors.ErrQueryExpressionRequired
 	}
 	return nil
 }

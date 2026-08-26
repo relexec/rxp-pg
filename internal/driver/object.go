@@ -6,12 +6,12 @@ import (
 
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
+	apierrors "github.com/relexec/rxp/api/errors"
 	apikind "github.com/relexec/rxp/api/kind"
 	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apiobject "github.com/relexec/rxp/api/object"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -81,8 +81,8 @@ func (d *Driver) ObjectRead(
 
 	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, kv.Kind())
 	if err != nil {
-		if err == errors.ErrNotFound {
-			return nil, errors.ErrKindUnknown
+		if err == apierrors.ErrNotFound {
+			return nil, apierrors.ErrKindUnknown
 		}
 		return nil, err
 	}
@@ -94,8 +94,8 @@ func (d *Driver) ObjectRead(
 
 	kvRec, err := d.kindversionStore.ReadByName(ctx, sysRec, kindRec, kv)
 	if err != nil {
-		if err == errors.ErrNotFound {
-			return nil, errors.ErrKindVersionUnknown
+		if err == apierrors.ErrNotFound {
+			return nil, apierrors.ErrKindVersionUnknown
 		}
 		return nil, err
 	}
@@ -200,7 +200,7 @@ func (d *Driver) objectReadValidateScope(
 	case apicore.ScopeDomain:
 		domain := sel.Domain()
 		if domain == nil {
-			return errors.ErrSelectorDomainRequired
+			return apierrors.ErrSelectorDomainRequired
 		}
 	}
 	return nil
@@ -263,8 +263,8 @@ func (d *Driver) ObjectWrite(
 
 	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, kv.Kind())
 	if err != nil {
-		if err == errors.ErrNotFound {
-			return nil, errors.ErrKindUnknown
+		if err == apierrors.ErrNotFound {
+			return nil, apierrors.ErrKindUnknown
 		}
 		return nil, err
 	}
@@ -276,8 +276,8 @@ func (d *Driver) ObjectWrite(
 
 	kvRec, err := d.kindversionStore.ReadByName(ctx, sysRec, kindRec, kv)
 	if err != nil {
-		if err == errors.ErrNotFound {
-			return nil, errors.ErrKindUnknown
+		if err == apierrors.ErrNotFound {
+			return nil, apierrors.ErrKindUnknown
 		}
 		return nil, err
 	}
@@ -297,15 +297,15 @@ func (d *Driver) objectWriteValidate(
 ) error {
 	kv := obj.KindVersionName
 	if kv == "" {
-		return errors.ErrObjectKindVersionRequired
+		return apierrors.ErrObjectKindVersionRequired
 	}
 	uuid := obj.UUID
 	if uuid == "" {
-		return errors.ErrObjectUUIDRequired
+		return apierrors.ErrObjectUUIDRequired
 	}
 	name := obj.Name
 	if name == "" {
-		return errors.ErrObjectNameRequired
+		return apierrors.ErrObjectNameRequired
 	}
 	return nil
 }
@@ -320,7 +320,7 @@ func (d *Driver) objectWriteValidateScope(
 	if kindRec.Scope == apicore.ScopeDomain {
 		dom := obj.Domain
 		if dom == nil {
-			return errors.ErrObjectDomainRequired
+			return apierrors.ErrObjectDomainRequired
 		}
 		return dom.Validate()
 	}
@@ -372,8 +372,8 @@ func (d *Driver) ObjectQuery(
 
 	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, kv.Kind())
 	if err != nil {
-		if err == errors.ErrNotFound {
-			return nil, errors.ErrKindUnknown
+		if err == apierrors.ErrNotFound {
+			return nil, apierrors.ErrKindUnknown
 		}
 		return nil, err
 	}

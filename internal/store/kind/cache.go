@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	apierrors "github.com/relexec/rxp/api/errors"
 	apikind "github.com/relexec/rxp/api/kind"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/errors"
 )
 
 type byRowIDCacheKey int64
@@ -113,7 +113,7 @@ func (s *Store) cacheWrite(
 	uuidKey := byUUIDCacheKey(rec.UUID)
 	set := s.byUUID.Set(uuidKey, rec)
 	if !set {
-		return errors.Internal(
+		return apierrors.Internal(
 			fmt.Sprintf("failed setting kind cache uuid key %q", uuidKey),
 		)
 	}
@@ -122,7 +122,7 @@ func (s *Store) cacheWrite(
 	uuid := rec.UUID
 	set = s.byName.Set(nameKey, byUUIDCacheKey(uuid))
 	if !set {
-		return errors.Internal(
+		return apierrors.Internal(
 			fmt.Sprintf("failed setting kind cache name key %q", nameKey),
 		)
 	}
@@ -130,7 +130,7 @@ func (s *Store) cacheWrite(
 	rowIDKey := byRowIDCacheKey(rowID)
 	set = s.byRowID.Set(rowIDKey, byUUIDCacheKey(uuid))
 	if !set {
-		return errors.Internal(
+		return apierrors.Internal(
 			fmt.Sprintf("failed setting kind cache rowid key %d", rowIDKey),
 		)
 	}

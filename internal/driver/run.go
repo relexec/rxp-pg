@@ -7,11 +7,11 @@ import (
 
 	apicore "github.com/relexec/rxp/api/core"
 	apidomain "github.com/relexec/rxp/api/domain"
+	apierrors "github.com/relexec/rxp/api/errors"
 	apikindversion "github.com/relexec/rxp/api/kindversion"
 	apimetrics "github.com/relexec/rxp/api/metrics"
 	apirun "github.com/relexec/rxp/api/run"
 	apisystem "github.com/relexec/rxp/api/system"
-	"github.com/relexec/rxp/errors"
 	"github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -165,8 +165,8 @@ func (d *Driver) RunWrite(
 		ctx, targetSys, targetKV.Kind(),
 	)
 	if err != nil {
-		if err == errors.ErrNotFound {
-			return nil, errors.ErrKindUnknown
+		if err == apierrors.ErrNotFound {
+			return nil, apierrors.ErrKindUnknown
 		}
 		return nil, err
 	}
@@ -175,8 +175,8 @@ func (d *Driver) RunWrite(
 		ctx, targetSys, targetKindRec, targetKV,
 	)
 	if err != nil {
-		if err == errors.ErrNotFound {
-			return nil, errors.ErrKindUnknown
+		if err == apierrors.ErrNotFound {
+			return nil, apierrors.ErrKindUnknown
 		}
 		return nil, err
 	}
