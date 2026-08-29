@@ -4,8 +4,9 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/relexec/rxp-pg/internal/cache"
 	apisystem "github.com/relexec/rxp/api/system"
+
+	"github.com/relexec/rxp-pg/internal/cache"
 )
 
 func (s *Store) init(ctx context.Context) error {
@@ -28,6 +29,10 @@ func (s *Store) initCache(ctx context.Context) error {
 	cfg := s.Config
 	if cfg.Cache.System.Enabled {
 		s.Logger.Debug("initializing system cache")
+
+		s.cacheLock.Lock()
+		defer s.cacheLock.Unlock()
+
 		cacheCfg := cfg.Cache.System
 		byUUID, err := cache.New[byUUIDCacheKey, *apisystem.System](
 			ctx,

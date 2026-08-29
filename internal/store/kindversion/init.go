@@ -29,6 +29,10 @@ func (s *Store) initCache(ctx context.Context) error {
 	cfg := s.Config
 	if cfg.Cache.KindVersion.Enabled {
 		s.Logger.Debug("initializing kindversion cache")
+
+		s.cacheLock.Lock()
+		defer s.cacheLock.Unlock()
+
 		cacheCfg := cfg.Cache.KindVersion
 		byName, err := cache.New[byNameCacheKey, *apikindversion.KindVersion](
 			ctx,

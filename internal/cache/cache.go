@@ -17,20 +17,20 @@ const (
 // Cache wraps a ristretto.Cache struct that manages a LRU in-memory cache of
 // generic key->value lookups.
 type Cache[K ristretto.Key, V any] struct {
-	// type is the Type of thing stored in the Lookup.
+	// type is the Type of thing stored in the Cache.
 	typ string
-	// cfg stores the Lookup's configuration.
+	// cfg stores the Cache's configuration.
 	cfg config.CacheConfig
 	// cache is the cache, keyed by row ID, valued by name.
 	cache *ristretto.Cache[K, V]
 }
 
-// Type returns the string name of the type of thing the Lookup stores.
+// Type returns the string name of the type of thing the Cache stores.
 func (c Cache[K, V]) Type() string {
 	return c.typ
 }
 
-// Close ensures the Lookup drains properly.
+// Close ensures the Cache drains properly.
 func (c *Cache[K, V]) Close(ctx context.Context) error {
 	if c.cache != nil {
 		c.cache.Close()
@@ -61,7 +61,7 @@ func (c *Cache[K, V]) Set(k K, v V) bool {
 	return inserted
 }
 
-// init sets up the Lookup, initializing the underlying ristretto cache and
+// init sets up the Cache, initializing the underlying ristretto cache and
 // metrics.
 func (c *Cache[K, V]) init(ctx context.Context) error {
 	maxSize, err := c.cfg.MaxSizeBytes()

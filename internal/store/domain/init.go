@@ -4,8 +4,9 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/relexec/rxp-pg/internal/cache"
 	apidomain "github.com/relexec/rxp/api/domain"
+
+	"github.com/relexec/rxp-pg/internal/cache"
 )
 
 func (s *Store) init(ctx context.Context) error {
