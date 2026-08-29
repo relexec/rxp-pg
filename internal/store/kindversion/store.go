@@ -3,8 +3,8 @@ package store
 import (
 	"sync"
 
-	apikindversion "github.com/relexec/rxp/api/kindversion"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpkindversion "github.com/relexec/rxp/api/kindversion"
+	rxpsystem "github.com/relexec/rxp/api/system"
 
 	"github.com/relexec/rxp-pg/internal/cache"
 	"github.com/relexec/rxp-pg/internal/store"
@@ -20,13 +20,13 @@ type Store struct {
 	cacheLock sync.RWMutex
 	// byKindVersion is a cache that stores known KindVersions keyed by System
 	// UUID+KindVersionName..
-	byName *cache.Cache[byNameCacheKey, *apikindversion.KindVersion]
+	byName *cache.Cache[byNameCacheKey, *rxpkindversion.KindVersion]
 	// byRowID is a cache that stores a lookup map of System UUID +
 	// KindVersionName to internal DB Row ID.
 	byRowID *cache.Cache[byRowIDCacheKey, byNameCacheKey]
 
-	// hostSystemapikindversion.KindVersion is the host System managed by the Driver.
-	hostSystemRecord apisystem.System
+	// hostSystemrxpkindversion.KindVersion is the host System managed by the Driver.
+	hostSystemRecord rxpsystem.System
 	// systemStore contains the Store for reading and writing System data.
 	systemStore *storesystem.Store
 	// kindStore contains the Store for reading and writing Kind data.

@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	apierrors "github.com/relexec/rxp/api/errors"
-	apirun "github.com/relexec/rxp/api/run"
+	rxprun "github.com/relexec/rxp/api/run"
 )
 
 var (
@@ -22,8 +22,8 @@ var (
 // dbInsert is called to atomically write run event records.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	run apirun.Run,
-	events []apirun.Event,
+	run rxprun.Run,
+	events []rxprun.Event,
 ) error {
 	runRowID := run.SystemInternalIDInt64()
 	fn := func(tx pgx.Tx) error {

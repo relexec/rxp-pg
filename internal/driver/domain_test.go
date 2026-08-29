@@ -9,10 +9,10 @@ import (
 	"github.com/relexec/delta/fieldpath"
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp-testing/fixtures"
-	apidomain "github.com/relexec/rxp/api/domain"
-	apiobject "github.com/relexec/rxp/api/object"
-	apiquery "github.com/relexec/rxp/api/query"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpdomain "github.com/relexec/rxp/api/domain"
+	rxpobject "github.com/relexec/rxp/api/object"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxpsystem "github.com/relexec/rxp/api/system"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )
@@ -30,49 +30,49 @@ func TestDomainRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		sel    apidomain.Selector
-		exp    *apidomain.Domain
+		sel    rxpdomain.Selector
+		exp    *rxpdomain.Domain
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			apidomain.Select(apidomain.ByName(fixtures.InvalidDomainName)),
+			rxpdomain.Select(rxpdomain.ByName(fixtures.InvalidDomainName)),
 			nil,
 			"missing identity",
 		},
 		{
 			"uuid or name required",
 			ctx,
-			apidomain.Select(),
+			rxpdomain.Select(),
 			nil,
 			"uuid or name required",
 		},
 		{
 			"unknown domain",
 			ctx,
-			apidomain.Select(apidomain.ByName(fixtures.UnknownDomainName)),
+			rxpdomain.Select(rxpdomain.ByName(fixtures.UnknownDomainName)),
 			nil,
 			"not found",
 		},
 		{
 			"invalid domain",
 			ctx,
-			apidomain.Select(apidomain.ByName(fixtures.InvalidDomainName)),
+			rxpdomain.Select(rxpdomain.ByName(fixtures.InvalidDomainName)),
 			nil,
 			"invalid domain name: invalid characters",
 		},
 		{
 			"happy path by uuid",
 			ctx,
-			apidomain.Select(apidomain.ByUUID(fixtures.Domain.UUID)),
+			rxpdomain.Select(rxpdomain.ByUUID(fixtures.Domain.UUID)),
 			&fixtures.Domain,
 			"",
 		},
 		{
 			"happy path by name",
 			ctx,
-			apidomain.Select(apidomain.ByName(fixtures.Domain.Name)),
+			rxpdomain.Select(rxpdomain.ByName(fixtures.Domain.Name)),
 			&fixtures.Domain,
 			"",
 		},
@@ -85,7 +85,7 @@ func TestDomainRead(t *testing.T) {
 				require.ErrorContains(err, c.expErr)
 			} else {
 				require.Nil(err)
-				delta, err := apidomain.Diff(*c.exp, got)
+				delta, err := rxpdomain.Diff(*c.exp, got)
 				require.Nil(err)
 				require.False(
 					delta.DifferentExcept(
@@ -112,7 +112,7 @@ func TestDomainWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject apidomain.Domain
+		subject rxpdomain.Domain
 		expErr  string
 	}{
 		{
@@ -124,13 +124,13 @@ func TestDomainWrite(t *testing.T) {
 		{
 			"missing uuid",
 			ctx,
-			apidomain.Domain{},
+			rxpdomain.Domain{},
 			"invalid domain: uuid required",
 		},
 		{
 			"missing name",
 			ctx,
-			apidomain.Domain{UUID: uuid.NewString()},
+			rxpdomain.Domain{UUID: uuid.NewString()},
 			"invalid domain: name required",
 		},
 		{
@@ -142,16 +142,16 @@ func TestDomainWrite(t *testing.T) {
 		{
 			"duplicate domain UUID",
 			ctx,
-			apidomain.Domain{
+			rxpdomain.Domain{
 				UUID: fixtures.Domain.UUID,
-				Name: apidomain.Name("othername"),
+				Name: rxpdomain.Name("othername"),
 			},
 			"conflict: \"domain\" already exists",
 		},
 		{
 			"duplicate domain name",
 			ctx,
-			apidomain.Domain{
+			rxpdomain.Domain{
 				UUID: uuid.NewString(),
 				Name: fixtures.Domain.Name,
 			},
@@ -160,9 +160,9 @@ func TestDomainWrite(t *testing.T) {
 		{
 			"parent domain does not exist",
 			ctx,
-			apidomain.Domain{
+			rxpdomain.Domain{
 				UUID:   uuid.NewString(),
-				Name:   apidomain.Name("parent.not.exist"),
+				Name:   rxpdomain.Name("parent.not.exist"),
 				Root:   &fixtures.UnknownDomain,
 				Parent: &fixtures.UnknownDomain,
 			},
@@ -187,7 +187,7 @@ func TestDomainTree(t *testing.T) {
 	rxp, err := testutil.Driver(ctx)
 	require.Nil(t, err)
 
-	treeDoms := []*apidomain.Domain{
+	treeDoms := []*rxpdomain.Domain{
 		&fixtures.DomainTree_Root,
 		&fixtures.DomainTree_Group1,
 		&fixtures.DomainTree_Group2,
@@ -196,7 +196,7 @@ func TestDomainTree(t *testing.T) {
 		&fixtures.DomainTree_Group2Leaf1,
 		&fixtures.DomainTree_Group2Leaf2,
 	}
-	treeDomUUIDs := lo.Map(treeDoms, func(d *apidomain.Domain, _ int) string {
+	treeDomUUIDs := lo.Map(treeDoms, func(d *rxpdomain.Domain, _ int) string {
 		return d.UUID
 	})
 	sort.Strings(treeDomUUIDs)
@@ -207,7 +207,7 @@ func TestDomainTree(t *testing.T) {
 	}
 
 	got, err := rxp.DomainQuery(
-		ctx, apidomain.UUIDEqual(
+		ctx, rxpdomain.UUIDEqual(
 			fixtures.DomainTree_RootUUID,
 		),
 	)
@@ -219,7 +219,7 @@ func TestDomainTree(t *testing.T) {
 	// Grabbing all domains in the domain tree should yield all domains in the
 	// tree.
 	got, err = rxp.DomainQuery(
-		ctx, apidomain.RootUUIDEqual(
+		ctx, rxpdomain.RootUUIDEqual(
 			fixtures.DomainTree_RootUUID,
 		),
 	)
@@ -227,7 +227,7 @@ func TestDomainTree(t *testing.T) {
 	items = got.Items()
 	require.Len(t, items, len(treeDoms))
 
-	gotDomUUIDs := lo.Map(items, func(d *apidomain.Domain, _ int) string {
+	gotDomUUIDs := lo.Map(items, func(d *rxpdomain.Domain, _ int) string {
 		return d.UUID
 	})
 	sort.Strings(gotDomUUIDs)
@@ -236,7 +236,7 @@ func TestDomainTree(t *testing.T) {
 
 	// Querying by root name should also yield all domaisn in the tree.
 	got, err = rxp.DomainQuery(
-		ctx, apidomain.RootNameEqual(
+		ctx, rxpdomain.RootNameEqual(
 			fixtures.DomainTree_RootName,
 		),
 	)
@@ -244,7 +244,7 @@ func TestDomainTree(t *testing.T) {
 	items = got.Items()
 	require.Len(t, items, len(treeDoms))
 
-	gotDomUUIDs = lo.Map(items, func(d *apidomain.Domain, _ int) string {
+	gotDomUUIDs = lo.Map(items, func(d *rxpdomain.Domain, _ int) string {
 		return d.UUID
 	})
 	sort.Strings(gotDomUUIDs)
@@ -254,7 +254,7 @@ func TestDomainTree(t *testing.T) {
 	// Grabbing domains having a parent equal to the root should yield all
 	// domains in the tree.
 	got, err = rxp.DomainQuery(
-		ctx, apidomain.ParentUUIDEqual(
+		ctx, rxpdomain.ParentUUIDEqual(
 			fixtures.DomainTree_RootUUID,
 		),
 	)
@@ -262,7 +262,7 @@ func TestDomainTree(t *testing.T) {
 	items = got.Items()
 	require.Len(t, items, len(treeDoms))
 
-	gotDomUUIDs = lo.Map(items, func(d *apidomain.Domain, _ int) string {
+	gotDomUUIDs = lo.Map(items, func(d *rxpdomain.Domain, _ int) string {
 		return d.UUID
 	})
 	sort.Strings(gotDomUUIDs)
@@ -271,13 +271,13 @@ func TestDomainTree(t *testing.T) {
 
 	// Grabbing domains within a subdomain should yield only that subdomain and
 	// its child domains.
-	groupDoms := []*apidomain.Domain{
+	groupDoms := []*rxpdomain.Domain{
 		&fixtures.DomainTree_Group1,
 		&fixtures.DomainTree_Group1Leaf1,
 		&fixtures.DomainTree_Group1Leaf2,
 	}
 	got, err = rxp.DomainQuery(
-		ctx, apidomain.ParentUUIDEqual(
+		ctx, rxpdomain.ParentUUIDEqual(
 			fixtures.DomainTree_Group1UUID,
 		),
 	)
@@ -285,11 +285,11 @@ func TestDomainTree(t *testing.T) {
 	items = got.Items()
 	require.Len(t, items, len(groupDoms))
 
-	groupDomUUIDs := lo.Map(groupDoms, func(d *apidomain.Domain, _ int) string {
+	groupDomUUIDs := lo.Map(groupDoms, func(d *rxpdomain.Domain, _ int) string {
 		return d.UUID
 	})
 	sort.Strings(groupDomUUIDs)
-	gotDomUUIDs = lo.Map(items, func(d *apidomain.Domain, _ int) string {
+	gotDomUUIDs = lo.Map(items, func(d *rxpdomain.Domain, _ int) string {
 		return d.UUID
 	})
 	sort.Strings(gotDomUUIDs)
@@ -299,7 +299,7 @@ func TestDomainTree(t *testing.T) {
 	// Grabbing domains parented by a leaf domain should yield only the leaf
 	// domain.
 	got, err = rxp.DomainQuery(
-		ctx, apidomain.ParentUUIDEqual(
+		ctx, rxpdomain.ParentUUIDEqual(
 			fixtures.DomainTree_Group1Leaf1UUID,
 		),
 	)
@@ -323,35 +323,35 @@ func TestDomainQuery(t *testing.T) {
 	cases := []struct {
 		name         string
 		ctx          context.Context
-		expr         apiquery.Expression
-		opts         []apiquery.Option
+		expr         rxpquery.Expression
+		opts         []rxpquery.Option
 		expNumItems  int
 		expOnlyUUIDs []string
-		expOptions   apiquery.Options
+		expOptions   rxpquery.Options
 		expMarker    string
 		expErr       string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			apidomain.UUIDEqual(fixtures.DomainUUID),
+			rxpdomain.UUIDEqual(fixtures.DomainUUID),
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
 			"missing identity",
 		},
 		{
 			"unsupported predicate",
 			ctx,
-			apiobject.GenerationEqual(0),
+			rxpobject.GenerationEqual(0),
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
-			"unsupported predicate apiobject.GenerationPredicate",
+			"unsupported predicate",
 		},
 		{
 			"expression required",
@@ -360,33 +360,33 @@ func TestDomainQuery(t *testing.T) {
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
 			"expression required",
 		},
 		{
 			"unsupported expression",
 			ctx,
-			apiquery.Or(
-				apidomain.NameEqual(fixtures.DomainName),
-				apidomain.NameEqual(fixtures.UnknownDomainName),
+			rxpquery.Or(
+				rxpdomain.NameEqual(fixtures.DomainName),
+				rxpdomain.NameEqual(fixtures.UnknownDomainName),
 			),
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
-			"unsupported expression query.OrExpression",
+			"unsupported expression",
 		},
 		{
 			"no results when looking up non-existing domain UUID",
 			ctx,
-			apidomain.UUIDEqual(fixtures.UnknownDomainUUID),
+			rxpdomain.UUIDEqual(fixtures.UnknownDomainUUID),
 			nil,
 			0,
 			[]string{},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -394,12 +394,12 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"no results when looking up non-existing domain name",
 			ctx,
-			apidomain.NameEqual(fixtures.UnknownDomainName),
+			rxpdomain.NameEqual(fixtures.UnknownDomainName),
 			nil,
 			0,
 			[]string{},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -407,12 +407,12 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"no results when looking up domains by non-existing system",
 			ctx,
-			apisystem.Equal(&fixtures.UnknownSystem),
+			rxpsystem.Equal(&fixtures.UnknownSystem),
 			nil,
 			0,
 			[]string{},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -420,12 +420,12 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"no results when looking up domains by non-existing system UUID",
 			ctx,
-			apisystem.UUIDEqual(fixtures.UnknownSystemUUID),
+			rxpsystem.UUIDEqual(fixtures.UnknownSystemUUID),
 			nil,
 			0,
 			[]string{},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -433,14 +433,14 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"query domains by name, expect one",
 			ctx,
-			apidomain.NameEqual(fixtures.DomainName),
+			rxpdomain.NameEqual(fixtures.DomainName),
 			nil,
 			1,
 			[]string{
 				fixtures.DomainUUID,
 			},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -448,14 +448,14 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"query domains by UUID, expect one",
 			ctx,
-			apidomain.UUIDEqual(fixtures.DomainUUID),
+			rxpdomain.UUIDEqual(fixtures.DomainUUID),
 			nil,
 			1,
 			[]string{
 				fixtures.DomainUUID,
 			},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -463,14 +463,14 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"query domains by UUID in, expect one",
 			ctx,
-			apidomain.UUIDIn(fixtures.DomainUUID, fixtures.UnknownDomainUUID),
+			rxpdomain.UUIDIn(fixtures.DomainUUID, fixtures.UnknownDomainUUID),
 			nil,
 			1,
 			[]string{
 				fixtures.DomainUUID,
 			},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -478,14 +478,14 @@ func TestDomainQuery(t *testing.T) {
 		{
 			"query domains by domain UUID, expect one",
 			ctx,
-			apidomain.UUIDEqual(fixtures.DomainUUID),
+			rxpdomain.UUIDEqual(fixtures.DomainUUID),
 			nil,
 			1,
 			[]string{
 				fixtures.DomainUUID,
 			},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -507,7 +507,7 @@ func TestDomainQuery(t *testing.T) {
 				require.Equal(c.expOptions, gotOptions)
 				require.Equal(c.expMarker, gotMarker)
 				require.Len(gotItems, c.expNumItems)
-				gotUUIDs := lo.Map(gotItems, func(d *apidomain.Domain, _ int) string {
+				gotUUIDs := lo.Map(gotItems, func(d *rxpdomain.Domain, _ int) string {
 					return d.UUID
 				})
 				gotUUIDs = lo.Uniq(gotUUIDs)

@@ -8,10 +8,10 @@ import (
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp-testing/fixtures/service"
-	apikind "github.com/relexec/rxp/api/kind"
-	apiobject "github.com/relexec/rxp/api/object"
-	apiquery "github.com/relexec/rxp/api/query"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpkind "github.com/relexec/rxp/api/kind"
+	rxpobject "github.com/relexec/rxp/api/object"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxpsystem "github.com/relexec/rxp/api/system"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )
@@ -29,35 +29,35 @@ func TestKindRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		sel    apikind.Selector
-		exp    *apikind.Kind
+		sel    rxpkind.Selector
+		exp    *rxpkind.Kind
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			apikind.Select(apikind.ByName(fixtures.InvalidKindName)),
+			rxpkind.Select(rxpkind.ByName(fixtures.InvalidKindName)),
 			nil,
 			"missing identity",
 		},
 		{
 			"invalid kind",
 			ctx,
-			apikind.Select(apikind.ByName(fixtures.InvalidKindName)),
+			rxpkind.Select(rxpkind.ByName(fixtures.InvalidKindName)),
 			nil,
 			"invalid kind name: invalid characters",
 		},
 		{
 			"unknown kind",
 			ctx,
-			apikind.Select(apikind.ByName(fixtures.UnknownKindName)),
+			rxpkind.Select(rxpkind.ByName(fixtures.UnknownKindName)),
 			nil,
 			"not found",
 		},
 		{
 			"happy path",
 			ctx,
-			apikind.Select(apikind.ByName(service.KindName)),
+			rxpkind.Select(rxpkind.ByName(service.KindName)),
 			&service.Kind,
 			"",
 		},
@@ -70,7 +70,7 @@ func TestKindRead(t *testing.T) {
 				require.ErrorContains(err, c.expErr)
 			} else {
 				require.Nil(err)
-				delta, err := apikind.Diff(*c.exp, got)
+				delta, err := rxpkind.Diff(*c.exp, got)
 				require.Nil(err)
 				require.False(
 					delta.DifferentExcept(
@@ -96,7 +96,7 @@ func TestKindWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject apikind.Kind
+		subject rxpkind.Kind
 		expErr  string
 	}{
 		{
@@ -144,35 +144,35 @@ func TestKindQuery(t *testing.T) {
 	cases := []struct {
 		name         string
 		ctx          context.Context
-		expr         apiquery.Expression
-		opts         []apiquery.Option
+		expr         rxpquery.Expression
+		opts         []rxpquery.Option
 		expNumItems  int
 		expOnlyUUIDs []string
-		expOptions   apiquery.Options
+		expOptions   rxpquery.Options
 		expMarker    string
 		expErr       string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			apikind.UUIDEqual(service.KindUUID),
+			rxpkind.UUIDEqual(service.KindUUID),
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
 			"missing identity",
 		},
 		{
 			"unsupported predicate",
 			ctx,
-			apiobject.GenerationEqual(0),
+			rxpobject.GenerationEqual(0),
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
-			"unsupported predicate apiobject.GenerationPredicate",
+			"unsupported predicate",
 		},
 		{
 			"expression required",
@@ -181,33 +181,33 @@ func TestKindQuery(t *testing.T) {
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
 			"expression required",
 		},
 		{
 			"unsupported expression",
 			ctx,
-			apiquery.Or(
-				apikind.NameEqual(service.KindName),
-				apikind.NameEqual(fixtures.UnknownKindName),
+			rxpquery.Or(
+				rxpkind.NameEqual(service.KindName),
+				rxpkind.NameEqual(fixtures.UnknownKindName),
 			),
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
-			"unsupported expression query.OrExpression",
+			"unsupported expression",
 		},
 		{
 			"no results when looking up non-existing kind UUID",
 			ctx,
-			apikind.UUIDEqual(fixtures.UnknownKindUUID),
+			rxpkind.UUIDEqual(fixtures.UnknownKindUUID),
 			nil,
 			0,
 			[]string{},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -215,12 +215,12 @@ func TestKindQuery(t *testing.T) {
 		{
 			"no results when looking up non-existing kind name",
 			ctx,
-			apikind.NameEqual(fixtures.UnknownKindName),
+			rxpkind.NameEqual(fixtures.UnknownKindName),
 			nil,
 			0,
 			[]string{},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -228,12 +228,12 @@ func TestKindQuery(t *testing.T) {
 		{
 			"no results when looking up kinds by non-existing system",
 			ctx,
-			apisystem.Equal(&fixtures.UnknownSystem),
+			rxpsystem.Equal(&fixtures.UnknownSystem),
 			nil,
 			0,
 			[]string{},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -241,12 +241,12 @@ func TestKindQuery(t *testing.T) {
 		{
 			"no results when looking up kinds by non-existing system UUID",
 			ctx,
-			apisystem.UUIDEqual(fixtures.UnknownSystemUUID),
+			rxpsystem.UUIDEqual(fixtures.UnknownSystemUUID),
 			nil,
 			0,
 			[]string{},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -254,14 +254,14 @@ func TestKindQuery(t *testing.T) {
 		{
 			"query kinds by name, expect one",
 			ctx,
-			apikind.NameEqual(service.KindName),
+			rxpkind.NameEqual(service.KindName),
 			nil,
 			1,
 			[]string{
 				service.KindUUID,
 			},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -269,14 +269,14 @@ func TestKindQuery(t *testing.T) {
 		{
 			"query kinds by UUID, expect one",
 			ctx,
-			apikind.UUIDEqual(service.KindUUID),
+			rxpkind.UUIDEqual(service.KindUUID),
 			nil,
 			1,
 			[]string{
 				service.KindUUID,
 			},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -284,14 +284,14 @@ func TestKindQuery(t *testing.T) {
 		{
 			"query kinds by UUID in, expect one",
 			ctx,
-			apikind.UUIDIn(service.KindUUID, fixtures.UnknownKindUUID),
+			rxpkind.UUIDIn(service.KindUUID, fixtures.UnknownKindUUID),
 			nil,
 			1,
 			[]string{
 				service.KindUUID,
 			},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -299,14 +299,14 @@ func TestKindQuery(t *testing.T) {
 		{
 			"query kinds by kind UUID, expect one",
 			ctx,
-			apikind.UUIDEqual(service.KindUUID),
+			rxpkind.UUIDEqual(service.KindUUID),
 			nil,
 			1,
 			[]string{
 				service.KindUUID,
 			},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -328,7 +328,7 @@ func TestKindQuery(t *testing.T) {
 				require.Equal(c.expOptions, gotOptions)
 				require.Equal(c.expMarker, gotMarker)
 				require.Len(gotItems, c.expNumItems)
-				gotUUIDs := lo.Map(gotItems, func(k *apikind.Kind, _ int) string {
+				gotUUIDs := lo.Map(gotItems, func(k *rxpkind.Kind, _ int) string {
 					return k.UUID
 				})
 				gotUUIDs = lo.Uniq(gotUUIDs)

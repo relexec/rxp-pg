@@ -15,25 +15,25 @@ import (
 	"github.com/relexec/pkg/version"
 	apicore "github.com/relexec/rxp/api/core"
 	apierrors "github.com/relexec/rxp/api/errors"
-	apikind "github.com/relexec/rxp/api/kind"
-	apikindversion "github.com/relexec/rxp/api/kindversion"
+	rxpkind "github.com/relexec/rxp/api/kind"
+	rxpkindversion "github.com/relexec/rxp/api/kindversion"
 	"github.com/relexec/rxp/api/kindversion/schema"
-	apiquery "github.com/relexec/rxp/api/query"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxpsystem "github.com/relexec/rxp/api/system"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored kindversion
 // record having the supplied internal DB RowID.
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	kindRec *apikind.Kind,
+	sysRec *rxpsystem.System,
+	kindRec *rxpkind.Kind,
 	rowID int64,
-) (*apikindversion.KindVersion, error) {
+) (*rxpkindversion.KindVersion, error) {
 	var verStr string
 	var schemaBytes sql.NullString
 	var schema schema.Schema
-	out := &apikindversion.KindVersion{
+	out := &rxpkindversion.KindVersion{
 		System: sysRec,
 		Kind:   *kindRec,
 	}
@@ -84,10 +84,10 @@ func (s *Store) dbReadByRowID(
 // having the supplied KindVersion.
 func (s *Store) dbReadByName(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	kindRec *apikind.Kind,
-	kv apikindversion.Name,
-) (*apikindversion.KindVersion, error) {
+	sysRec *rxpsystem.System,
+	kindRec *rxpkind.Kind,
+	kv rxpkindversion.Name,
+) (*rxpkindversion.KindVersion, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	kindRowID := kindRec.SystemInternalIDInt64()
 	sv, _ := kv.Version()
@@ -95,7 +95,7 @@ func (s *Store) dbReadByName(
 	var rowID int64
 	var schemaBytes sql.NullString
 	var schema schema.Schema
-	out := &apikindversion.KindVersion{
+	out := &rxpkindversion.KindVersion{
 		System: sysRec,
 		Kind:   *kindRec,
 	}
@@ -148,8 +148,8 @@ AND version = $3
 // versions known for the supplied Kind.
 func (s *Store) dbVersionsForKind(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	kindRec *apikind.Kind,
+	sysRec *rxpsystem.System,
+	kindRec *rxpkind.Kind,
 ) (version.Set, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	kindRowID := kindRec.SystemInternalIDInt64()
@@ -201,9 +201,9 @@ AND kind = $2
 // dbInsert atomically writes the supplied KindVersion to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	kindRec *apikind.Kind,
-	kv apikindversion.KindVersion,
+	sysRec *rxpsystem.System,
+	kindRec *rxpkind.Kind,
+	kv rxpkindversion.KindVersion,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	kindRowID := kindRec.SystemInternalIDInt64()
@@ -288,21 +288,21 @@ type kindversionRecord struct {
 // pre-validated expression and options.
 func (s *Store) dbReadByExpression(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts apiquery.Options,
-) ([]*apikindversion.KindVersion, error) {
+	expr rxpquery.Expression,
+	opts rxpquery.Options,
+) ([]*rxpkindversion.KindVersion, error) {
 	qargs := []any{}
 	wheres := []string{}
 
 	switch expr := expr.(type) {
-	case apiquery.UnaryExpression:
+	case rxpquery.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case apikindversion.NamePredicate:
+		case rxpkindversion.NamePredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
-				kvName := pred.Value.(apikindversion.Name)
+			case rxpquery.PredicateOperatorEqual:
+				kvName := pred.Value.(rxpkindversion.Name)
 				kindName := kvName.Kind()
 				kindRec, err := s.kindStore.ReadByName(
 					ctx, &s.hostSystemRecord, kindName,
@@ -321,9 +321,9 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("(kv.kind = $%d AND kv.version = $%d)", len(qargs)+1, len(qargs)+2))
 				qargs = append(qargs, kindRowID)
 				qargs = append(qargs, verStr)
-			case apiquery.PredicateOperatorIn:
+			case rxpquery.PredicateOperatorIn:
 				ors := []string{}
-				kvNames := pred.Value.([]apikindversion.Name)
+				kvNames := pred.Value.([]rxpkindversion.Name)
 				for _, kvName := range kvNames {
 					kindName := kvName.Kind()
 					kindRec, err := s.kindStore.ReadByName(
@@ -345,10 +345,10 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, apierrors.UnsupportedPredicateOperator(op)
 			}
-		case apisystem.UUIDPredicate:
+		case rxpsystem.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
+			case rxpquery.PredicateOperatorEqual:
 				sysUUID := pred.Value.(string)
 				sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 				if err != nil {
@@ -363,7 +363,7 @@ func (s *Store) dbReadByExpression(
 				sysRowID := sysRec.SystemInternalIDInt64()
 				wheres = append(wheres, fmt.Sprintf("kv.system = $%d", len(qargs)+1))
 				qargs = append(qargs, sysRowID)
-			case apiquery.PredicateOperatorIn:
+			case rxpquery.PredicateOperatorIn:
 				sysRowIDs := []int64{}
 				sysUUIDs := pred.Value.([]string)
 				for _, sysUUID := range sysUUIDs {
@@ -431,7 +431,7 @@ FROM kindversions AS kv
 		return nil, err
 	}
 
-	out := make([]*apikindversion.KindVersion, 0, len(recs))
+	out := make([]*rxpkindversion.KindVersion, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
@@ -464,7 +464,7 @@ FROM kindversions AS kv
 				apierrors.WithWrap(err),
 			)
 		}
-		kv := &apikindversion.KindVersion{
+		kv := &rxpkindversion.KindVersion{
 			System:  sysRec,
 			Kind:    *kindRec,
 			Version: *sv,

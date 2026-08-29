@@ -6,13 +6,13 @@ import (
 	"time"
 
 	apicore "github.com/relexec/rxp/api/core"
-	apidomain "github.com/relexec/rxp/api/domain"
+	rxpdomain "github.com/relexec/rxp/api/domain"
 	apierrors "github.com/relexec/rxp/api/errors"
-	apikindversion "github.com/relexec/rxp/api/kindversion"
+	rxpkindversion "github.com/relexec/rxp/api/kindversion"
 	apimetrics "github.com/relexec/rxp/api/metrics"
-	apiquery "github.com/relexec/rxp/api/query"
-	apirun "github.com/relexec/rxp/api/run"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxprun "github.com/relexec/rxp/api/run"
+	rxpsystem "github.com/relexec/rxp/api/system"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -20,9 +20,9 @@ import (
 // RunRead reads a single Run from persistent storage.
 func (d *Driver) RunRead(
 	ctx context.Context,
-	target apirun.Target,
-	sel apirun.Selector,
-) (*apirun.Run, error) {
+	target rxprun.Target,
+	sel rxprun.Selector,
+) (*rxprun.Run, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (d *Driver) RunRead(
 // options are not valid for reading a single Run.
 func (d *Driver) runReadValidate(
 	ctx context.Context,
-	sel apirun.Selector,
+	sel rxprun.Selector,
 ) error {
 	return sel.Validate()
 }
@@ -74,15 +74,15 @@ func (d *Driver) runReadValidate(
 // on successful write, the newly-created or updated Run is returned.
 func (d *Driver) RunWrite(
 	ctx context.Context,
-	run apirun.Run,
-) (*apirun.Run, error) {
+	run rxprun.Run,
+) (*rxprun.Run, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
 	}
 	start := time.Now()
 
-	var targetKV apikindversion.Name
+	var targetKV rxpkindversion.Name
 
 	defer func() {
 		elapsed := time.Since(start).Seconds()
@@ -108,8 +108,8 @@ func (d *Driver) RunWrite(
 	req := run.Request()
 	caller := req.Caller
 
-	var callerSys *apisystem.System
-	var callerDom *apidomain.Domain
+	var callerSys *rxpsystem.System
+	var callerDom *rxpdomain.Domain
 
 	// Resolve the caller's System if it's been specified or default it to the
 	// host system.
@@ -235,7 +235,7 @@ func (d *Driver) RunWrite(
 // options are not valid for writing a single Run.
 func (d *Driver) runWriteValidate(
 	ctx context.Context,
-	run apirun.Run,
+	run rxprun.Run,
 ) error {
 	return run.Validate()
 }
@@ -249,9 +249,9 @@ const (
 // from persistent storage.
 func (d *Driver) RunQuery(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts ...apiquery.Option,
-) (*apiquery.Result[*apirun.Run], error) {
+	expr rxpquery.Expression,
+	opts ...rxpquery.Option,
+) (*rxpquery.Result[*rxprun.Run], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -273,7 +273,7 @@ func (d *Driver) RunQuery(
 		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
-	qopts := apiquery.NewOptions(opts...)
+	qopts := rxpquery.NewOptions(opts...)
 	err = d.runQueryValidate(ctx, expr, qopts)
 	if err != nil {
 		return nil, err
@@ -287,27 +287,27 @@ func (d *Driver) RunQuery(
 	if err != nil {
 		return nil, err
 	}
-	resNewOpts := []apiquery.ResultModifier[*apirun.Run]{
-		apiquery.ResultWithItems(recs),
-		apiquery.ResultWithOptions[*apirun.Run](boundedOpts),
+	resNewOpts := []rxpquery.ResultModifier[*rxprun.Run]{
+		rxpquery.ResultWithItems(recs),
+		rxpquery.ResultWithOptions[*rxprun.Run](boundedOpts),
 	}
 	if len(recs) == int(boundedOpts.Limit()) {
 		resNewOpts = append(
 			resNewOpts,
-			apiquery.ResultWithMarker[*apirun.Run](
+			rxpquery.ResultWithMarker[*rxprun.Run](
 				recs[len(recs)-1].UUID(),
 			),
 		)
 	}
-	return apiquery.NewResult[*apirun.Run](resNewOpts...), nil
+	return rxpquery.NewResult[*rxprun.Run](resNewOpts...), nil
 }
 
 // runQueryValidate returns an error if the supplied expression and query
 // options are not valid.
 func (d *Driver) runQueryValidate(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts apiquery.Options,
+	expr rxpquery.Expression,
+	opts rxpquery.Options,
 ) error {
 	return nil
 }
@@ -317,12 +317,12 @@ func (d *Driver) runQueryValidate(
 // less than the max page result.
 func (d *Driver) runQueryBoundedOptions(
 	ctx context.Context,
-	opts apiquery.Options,
-) apiquery.Options {
+	opts rxpquery.Options,
+) rxpquery.Options {
 	limit := opts.Limit()
 	if limit <= 0 {
 		limit = DefaultRunQueryLimit
 	}
 	limit = min(limit, MaxRunQueryLimit)
-	return apiquery.NewOptions(apiquery.Limit(limit))
+	return rxpquery.NewOptions(rxpquery.Limit(limit))
 }

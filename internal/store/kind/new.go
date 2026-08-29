@@ -9,7 +9,7 @@ import (
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/store"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpsystem "github.com/relexec/rxp/api/system"
 )
 
 type WithOption func(*Store)
@@ -48,7 +48,7 @@ func WithLogger(logger *slog.Logger) WithOption {
 
 // WithHostSystemRecord sets the Store's host system record to the supplied
 // value.
-func WithHostSystemRecord(rec apisystem.System) WithOption {
+func WithHostSystemRecord(rec rxpsystem.System) WithOption {
 	return func(s *Store) {
 		s.hostSystemRecord = rec
 	}

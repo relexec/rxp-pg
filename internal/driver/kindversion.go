@@ -6,10 +6,10 @@ import (
 
 	apicore "github.com/relexec/rxp/api/core"
 	apierrors "github.com/relexec/rxp/api/errors"
-	apikindversion "github.com/relexec/rxp/api/kindversion"
+	rxpkindversion "github.com/relexec/rxp/api/kindversion"
 	apimetrics "github.com/relexec/rxp/api/metrics"
-	apiquery "github.com/relexec/rxp/api/query"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxpsystem "github.com/relexec/rxp/api/system"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -17,15 +17,15 @@ import (
 // KindVersionRead reads a KindVersion from persistent storage.
 func (d *Driver) KindVersionRead(
 	ctx context.Context,
-	sel apikindversion.Selector,
-) (*apikindversion.KindVersion, error) {
+	sel rxpkindversion.Selector,
+) (*rxpkindversion.KindVersion, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
 	}
 	start := time.Now()
 
-	var name apikindversion.Name
+	var name rxpkindversion.Name
 
 	defer func() {
 		elapsed := time.Since(start).Seconds()
@@ -48,7 +48,7 @@ func (d *Driver) KindVersionRead(
 		return nil, err
 	}
 
-	var sysRec *apisystem.System
+	var sysRec *rxpsystem.System
 
 	name = sel.Name()
 	sys := sel.System()
@@ -84,7 +84,7 @@ func (d *Driver) KindVersionRead(
 // options are not valid for reading a single KindVersion.
 func (d *Driver) kindversionReadValidate(
 	ctx context.Context,
-	sel apikindversion.Selector,
+	sel rxpkindversion.Selector,
 ) error {
 	return sel.Validate()
 }
@@ -92,7 +92,7 @@ func (d *Driver) kindversionReadValidate(
 // KindVersionWrite atomically writes the supplied KindVersion to persistent storage.
 func (d *Driver) KindVersionWrite(
 	ctx context.Context,
-	kv apikindversion.KindVersion,
+	kv rxpkindversion.KindVersion,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -123,7 +123,7 @@ func (d *Driver) KindVersionWrite(
 		return err
 	}
 
-	var sysRec *apisystem.System
+	var sysRec *rxpsystem.System
 
 	kn := kv.Name()
 	sys := kv.System
@@ -158,7 +158,7 @@ func (d *Driver) KindVersionWrite(
 // options are not valid for writing a single KindVersion.
 func (d *Driver) kindversionWriteValidate(
 	ctx context.Context,
-	kv apikindversion.KindVersion,
+	kv rxpkindversion.KindVersion,
 ) error {
 	return kv.Validate()
 }
@@ -171,9 +171,9 @@ const (
 // KindVersionQuery queries zero or more KindVersions from persistent storage.
 func (d *Driver) KindVersionQuery(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts ...apiquery.Option,
-) (*apiquery.Result[*apikindversion.KindVersion], error) {
+	expr rxpquery.Expression,
+	opts ...rxpquery.Option,
+) (*rxpquery.Result[*rxpkindversion.KindVersion], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -195,7 +195,7 @@ func (d *Driver) KindVersionQuery(
 		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
-	qopts := apiquery.NewOptions(opts...)
+	qopts := rxpquery.NewOptions(opts...)
 	err = d.kindversionQueryValidate(ctx, expr, qopts)
 	if err != nil {
 		return nil, err
@@ -209,28 +209,28 @@ func (d *Driver) KindVersionQuery(
 	if err != nil {
 		return nil, err
 	}
-	resOpts := apiquery.NewOptions(
-		apiquery.Limit(boundedOpts.Limit()),
+	resOpts := rxpquery.NewOptions(
+		rxpquery.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == int(boundedOpts.Limit()) {
-		resOpts = apiquery.NewOptions(
-			apiquery.ContinueFrom(string(recs[len(recs)-1].Name())),
-			apiquery.Limit(boundedOpts.Limit()),
+		resOpts = rxpquery.NewOptions(
+			rxpquery.ContinueFrom(string(recs[len(recs)-1].Name())),
+			rxpquery.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []apiquery.ResultModifier[*apikindversion.KindVersion]{
-		apiquery.ResultWithItems(recs),
-		apiquery.ResultWithOptions[*apikindversion.KindVersion](resOpts),
+	resNewOpts := []rxpquery.ResultModifier[*rxpkindversion.KindVersion]{
+		rxpquery.ResultWithItems(recs),
+		rxpquery.ResultWithOptions[*rxpkindversion.KindVersion](resOpts),
 	}
-	return apiquery.NewResult[*apikindversion.KindVersion](resNewOpts...), nil
+	return rxpquery.NewResult[*rxpkindversion.KindVersion](resNewOpts...), nil
 }
 
 // kindversionQueryValidate returns an error if the supplied expression and query
 // options are not valid.
 func (d *Driver) kindversionQueryValidate(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts apiquery.Options,
+	expr rxpquery.Expression,
+	opts rxpquery.Options,
 ) error {
 	if expr == nil {
 		return apierrors.ErrQueryExpressionRequired
@@ -243,12 +243,12 @@ func (d *Driver) kindversionQueryValidate(
 // than the max page result.
 func (d *Driver) kindversionQueryBoundedOptions(
 	ctx context.Context,
-	opts apiquery.Options,
-) apiquery.Options {
+	opts rxpquery.Options,
+) rxpquery.Options {
 	limit := opts.Limit()
 	if limit <= 0 {
 		limit = DefaultKindVersionQueryLimit
 	}
 	limit = min(limit, MaxKindVersionQueryLimit)
-	return apiquery.NewOptions(apiquery.Limit(limit))
+	return rxpquery.NewOptions(rxpquery.Limit(limit))
 }

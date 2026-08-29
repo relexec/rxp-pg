@@ -5,11 +5,11 @@ import (
 	"time"
 
 	apicore "github.com/relexec/rxp/api/core"
-	apidomain "github.com/relexec/rxp/api/domain"
+	rxpdomain "github.com/relexec/rxp/api/domain"
 	apierrors "github.com/relexec/rxp/api/errors"
 	apimetrics "github.com/relexec/rxp/api/metrics"
-	apiquery "github.com/relexec/rxp/api/query"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxpsystem "github.com/relexec/rxp/api/system"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -17,8 +17,8 @@ import (
 // DomainRead reads a Domain from persistent storage.
 func (d *Driver) DomainRead(
 	ctx context.Context,
-	sel apidomain.Selector,
-) (*apidomain.Domain, error) {
+	sel rxpdomain.Selector,
+) (*rxpdomain.Domain, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (d *Driver) DomainRead(
 		return nil, err
 	}
 
-	var sysRec *apisystem.System
+	var sysRec *rxpsystem.System
 
 	sys := sel.System()
 
@@ -80,7 +80,7 @@ func (d *Driver) DomainRead(
 // options are not valid for reading a single Domain.
 func (d *Driver) domainReadValidate(
 	ctx context.Context,
-	sel apidomain.Selector,
+	sel rxpdomain.Selector,
 ) error {
 	return sel.Validate()
 }
@@ -89,9 +89,9 @@ func (d *Driver) domainReadValidate(
 // associated Record from the domain store.
 func (d *Driver) domainRecordFromDomain(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	dom *apidomain.Domain,
-) (*apidomain.Domain, error) {
+	sysRec *rxpsystem.System,
+	dom *rxpdomain.Domain,
+) (*rxpdomain.Domain, error) {
 	if dom == nil {
 		return nil, nil
 	}
@@ -108,7 +108,7 @@ func (d *Driver) domainRecordFromDomain(
 // DomainWrite atomically writes the supplied Domain to persistent storage.
 func (d *Driver) DomainWrite(
 	ctx context.Context,
-	dom apidomain.Domain,
+	dom rxpdomain.Domain,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -136,7 +136,7 @@ func (d *Driver) DomainWrite(
 		return err
 	}
 
-	var sysRec *apisystem.System
+	var sysRec *rxpsystem.System
 
 	sys := dom.System
 
@@ -189,7 +189,7 @@ func (d *Driver) DomainWrite(
 // options are not valid for writing a single Domain.
 func (d *Driver) domainWriteValidate(
 	ctx context.Context,
-	dom apidomain.Domain,
+	dom rxpdomain.Domain,
 ) error {
 	return dom.Validate()
 }
@@ -202,9 +202,9 @@ const (
 // DomainQuery queries zero or more Domains from persistent storage.
 func (d *Driver) DomainQuery(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts ...apiquery.Option,
-) (*apiquery.Result[*apidomain.Domain], error) {
+	expr rxpquery.Expression,
+	opts ...rxpquery.Option,
+) (*rxpquery.Result[*rxpdomain.Domain], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -226,7 +226,7 @@ func (d *Driver) DomainQuery(
 		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
-	qopts := apiquery.NewOptions(opts...)
+	qopts := rxpquery.NewOptions(opts...)
 	err = d.domainQueryValidate(ctx, expr, qopts)
 	if err != nil {
 		return nil, err
@@ -240,28 +240,28 @@ func (d *Driver) DomainQuery(
 	if err != nil {
 		return nil, err
 	}
-	resOpts := apiquery.NewOptions(
-		apiquery.Limit(boundedOpts.Limit()),
+	resOpts := rxpquery.NewOptions(
+		rxpquery.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == int(boundedOpts.Limit()) {
-		resOpts = apiquery.NewOptions(
-			apiquery.ContinueFrom(recs[len(recs)-1].UUID),
-			apiquery.Limit(boundedOpts.Limit()),
+		resOpts = rxpquery.NewOptions(
+			rxpquery.ContinueFrom(recs[len(recs)-1].UUID),
+			rxpquery.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []apiquery.ResultModifier[*apidomain.Domain]{
-		apiquery.ResultWithItems(recs),
-		apiquery.ResultWithOptions[*apidomain.Domain](resOpts),
+	resNewOpts := []rxpquery.ResultModifier[*rxpdomain.Domain]{
+		rxpquery.ResultWithItems(recs),
+		rxpquery.ResultWithOptions[*rxpdomain.Domain](resOpts),
 	}
-	return apiquery.NewResult[*apidomain.Domain](resNewOpts...), nil
+	return rxpquery.NewResult[*rxpdomain.Domain](resNewOpts...), nil
 }
 
 // domainQueryValidate returns an error if the supplied expression and query
 // options are not valid.
 func (d *Driver) domainQueryValidate(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts apiquery.Options,
+	expr rxpquery.Expression,
+	opts rxpquery.Options,
 ) error {
 	if expr == nil {
 		return apierrors.ErrQueryExpressionRequired
@@ -274,12 +274,12 @@ func (d *Driver) domainQueryValidate(
 // less than the max page result.
 func (d *Driver) domainQueryBoundedOptions(
 	ctx context.Context,
-	opts apiquery.Options,
-) apiquery.Options {
+	opts rxpquery.Options,
+) rxpquery.Options {
 	limit := opts.Limit()
 	if limit <= 0 {
 		limit = DefaultDomainQueryLimit
 	}
 	limit = min(limit, MaxDomainQueryLimit)
-	return apiquery.NewOptions(apiquery.Limit(limit))
+	return rxpquery.NewOptions(rxpquery.Limit(limit))
 }

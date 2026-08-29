@@ -10,8 +10,8 @@ import (
 	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp-testing/fixtures/runnable"
 	apicore "github.com/relexec/rxp/api/core"
-	apiobject "github.com/relexec/rxp/api/object"
-	apirun "github.com/relexec/rxp/api/run"
+	rxpobject "github.com/relexec/rxp/api/object"
+	rxprun "github.com/relexec/rxp/api/run"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,7 +35,7 @@ func TestRunRead(t *testing.T) {
 
 	ctxMissingIdent := context.TODO()
 
-	runnable1 := &apiobject.Object{
+	runnable1 := &rxpobject.Object{
 		KindVersionName: runnable.KindVersion_V1_0_0.Name(),
 		UUID:            uuid.NewString(),
 		Domain:          &dom,
@@ -45,7 +45,7 @@ func TestRunRead(t *testing.T) {
 	err = testutil.ObjectCreateIfNotExists(ctx, rxp, runnable1)
 	require.Nil(t, err, err)
 
-	run1Target := apirun.Target{
+	run1Target := rxprun.Target{
 		KindVersionName: runnable.KindVersion_V1_0_0.Name(),
 		UUID:            runnable1.UUID,
 		Generation:      1,
@@ -55,9 +55,9 @@ func TestRunRead(t *testing.T) {
 	run1Caller := apicore.Caller{
 		Identity: testutil.UserIdentity,
 	}
-	run1 := &apirun.Run{}
+	run1 := &rxprun.Run{}
 	run1.SetRequest(
-		apirun.Request{
+		rxprun.Request{
 			Target: run1Target,
 			Caller: run1Caller,
 			UUID:   run1UUID,
@@ -71,16 +71,16 @@ func TestRunRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		target apirun.Target
-		sel    apirun.Selector
-		exp    *apirun.Run
+		target rxprun.Target
+		sel    rxprun.Selector
+		exp    *rxprun.Run
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
 			run1Target,
-			apirun.Select(apirun.ByUUID(run1.UUID())),
+			rxprun.Select(rxprun.ByUUID(run1.UUID())),
 			nil,
 			"missing identity",
 		},
@@ -88,7 +88,7 @@ func TestRunRead(t *testing.T) {
 			"unknown uuid",
 			ctx,
 			run1Target,
-			apirun.Select(apirun.ByUUID(uuid.NewString())),
+			rxprun.Select(rxprun.ByUUID(uuid.NewString())),
 			nil,
 			"not found",
 		},
@@ -96,7 +96,7 @@ func TestRunRead(t *testing.T) {
 			"uuid required in selector",
 			ctx,
 			run1Target,
-			apirun.Select(),
+			rxprun.Select(),
 			nil,
 			"invalid selector: uuid required",
 		},
@@ -104,7 +104,7 @@ func TestRunRead(t *testing.T) {
 			"happy path by uuid",
 			ctx,
 			run1Target,
-			apirun.Select(apirun.ByUUID(run1.Request().UUID)),
+			rxprun.Select(rxprun.ByUUID(run1.Request().UUID)),
 			run1,
 			"",
 		},

@@ -5,12 +5,12 @@ import (
 	"sync"
 
 	"github.com/relexec/rxp-testing/fixtures"
-	apidomain "github.com/relexec/rxp/api/domain"
+	rxpdomain "github.com/relexec/rxp/api/domain"
 	apierrors "github.com/relexec/rxp/api/errors"
-	apikind "github.com/relexec/rxp/api/kind"
-	apikindversion "github.com/relexec/rxp/api/kindversion"
-	apiobject "github.com/relexec/rxp/api/object"
-	apirun "github.com/relexec/rxp/api/run"
+	rxpkind "github.com/relexec/rxp/api/kind"
+	rxpkindversion "github.com/relexec/rxp/api/kindversion"
+	rxpobject "github.com/relexec/rxp/api/object"
+	rxprun "github.com/relexec/rxp/api/run"
 
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/driver"
@@ -52,12 +52,12 @@ func Driver(ctx context.Context) (*driver.Driver, error) {
 func KindVersionCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	kv *apikindversion.KindVersion,
+	kv *rxpkindversion.KindVersion,
 ) error {
 	_, err := d.KindVersionRead(
 		ctx,
-		apikindversion.Select(
-			apikindversion.ByName(kv.Name()),
+		rxpkindversion.Select(
+			rxpkindversion.ByName(kv.Name()),
 		),
 	)
 	if err != nil {
@@ -74,11 +74,11 @@ func KindVersionCreateIfNotExists(
 func KindCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	k apikind.Kind,
+	k rxpkind.Kind,
 ) error {
 	_, err := d.KindRead(
 		ctx,
-		apikind.Select(apikind.ByName(k.Name)),
+		rxpkind.Select(rxpkind.ByName(k.Name)),
 	)
 	if err != nil {
 		if err != apierrors.ErrNotFound {
@@ -94,11 +94,11 @@ func KindCreateIfNotExists(
 func DomainCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	dom apidomain.Domain,
+	dom rxpdomain.Domain,
 ) error {
 	_, err := d.DomainRead(
 		ctx,
-		apidomain.Select(apidomain.ByName(dom.Name)),
+		rxpdomain.Select(rxpdomain.ByName(dom.Name)),
 	)
 	if err != nil {
 		if err != apierrors.ErrNotFound {
@@ -114,18 +114,18 @@ func DomainCreateIfNotExists(
 func ObjectCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	o *apiobject.Object,
+	o *rxpobject.Object,
 ) error {
-	selopts := []apiobject.SelectOption{}
+	selopts := []rxpobject.SelectOption{}
 	if o.UUID != "" {
-		selopts = append(selopts, apiobject.ByUUID(o.UUID))
+		selopts = append(selopts, rxpobject.ByUUID(o.UUID))
 	} else if o.Name != "" {
-		selopts = append(selopts, apiobject.ByName(o.Name))
+		selopts = append(selopts, rxpobject.ByName(o.Name))
 	}
 	if o.Domain != nil {
-		selopts = append(selopts, apiobject.ByDomain(o.Domain))
+		selopts = append(selopts, rxpobject.ByDomain(o.Domain))
 	}
-	_, err := d.ObjectRead(ctx, o.KindVersionName, apiobject.Select(selopts...))
+	_, err := d.ObjectRead(ctx, o.KindVersionName, rxpobject.Select(selopts...))
 	if err != nil {
 		if err != apierrors.ErrNotFound {
 			return err
@@ -141,11 +141,11 @@ func ObjectCreateIfNotExists(
 func RunCreateIfNotExists(
 	ctx context.Context,
 	d *driver.Driver,
-	r *apirun.Run,
+	r *rxprun.Run,
 ) error {
-	selopts := []apirun.SelectOption{apirun.ByUUID(r.UUID())}
+	selopts := []rxprun.SelectOption{rxprun.ByUUID(r.UUID())}
 	_, err := d.RunRead(
-		ctx, r.Request().Target, apirun.Select(selopts...),
+		ctx, r.Request().Target, rxprun.Select(selopts...),
 	)
 	if err != nil {
 		if err != apierrors.ErrNotFound {

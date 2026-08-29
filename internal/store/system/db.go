@@ -12,8 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	apicore "github.com/relexec/rxp/api/core"
 	apierrors "github.com/relexec/rxp/api/errors"
-	apiquery "github.com/relexec/rxp/api/query"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxpsystem "github.com/relexec/rxp/api/system"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored system record
@@ -21,8 +21,8 @@ import (
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*apisystem.System, error) {
-	out := &apisystem.System{}
+) (*rxpsystem.System, error) {
+	out := &rxpsystem.System{}
 	out.SetSystemInternalID(rowID)
 	fn := func(tx pgx.Tx) error {
 		var uuid string
@@ -53,8 +53,8 @@ func (s *Store) dbReadByRowID(
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*apisystem.System, error) {
-	out := &apisystem.System{UUID: uuid}
+) (*rxpsystem.System, error) {
+	out := &rxpsystem.System{UUID: uuid}
 	fn := func(tx pgx.Tx) error {
 		var rowID int64
 		var tag sql.NullString
@@ -84,7 +84,7 @@ func (s *Store) dbReadByUUID(
 // dbInsert atomically writes the supplied System to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sys apisystem.System,
+	sys rxpsystem.System,
 ) error {
 	createdOn := time.Now().UnixNano()
 	caller := apicore.CallerFromContext(ctx)
@@ -137,23 +137,23 @@ type systemRecord struct {
 // pre-validated expression and options.
 func (s *Store) dbReadByExpression(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts apiquery.Options,
-) ([]*apisystem.System, error) {
+	expr rxpquery.Expression,
+	opts rxpquery.Options,
+) ([]*rxpsystem.System, error) {
 	qargs := []any{}
 	wheres := []string{}
 
 	switch expr := expr.(type) {
-	case apiquery.UnaryExpression:
+	case rxpquery.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case apisystem.UUIDPredicate:
+		case rxpsystem.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
+			case rxpquery.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("s.uuid = $%d", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
-			case apiquery.PredicateOperatorIn:
+			case rxpquery.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("s.uuid = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
@@ -200,9 +200,9 @@ FROM systems AS s
 		return nil, err
 	}
 
-	out := make([]*apisystem.System, 0, len(recs))
+	out := make([]*rxpsystem.System, 0, len(recs))
 	for _, rec := range recs {
-		sys := &apisystem.System{
+		sys := &rxpsystem.System{
 			UUID: rec.UUID,
 			Tag:  rec.Tag,
 		}

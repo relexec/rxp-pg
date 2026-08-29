@@ -11,11 +11,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	apicore "github.com/relexec/rxp/api/core"
-	apidomain "github.com/relexec/rxp/api/domain"
+	rxpdomain "github.com/relexec/rxp/api/domain"
 	apierrors "github.com/relexec/rxp/api/errors"
-	apiquery "github.com/relexec/rxp/api/query"
-	apirun "github.com/relexec/rxp/api/run"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxprun "github.com/relexec/rxp/api/run"
+	rxpsystem "github.com/relexec/rxp/api/system"
 
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
 )
@@ -25,7 +25,7 @@ import (
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*apirun.Run, error) {
+) (*rxprun.Run, error) {
 	var uuid string
 	var targetUUID string
 	var targetGeneration apicore.Generation
@@ -44,7 +44,7 @@ func (s *Store) dbReadByRowID(
 	var resumedOn sql.NullInt64
 	var canceledOn sql.NullInt64
 
-	out := &apirun.Run{}
+	out := &rxprun.Run{}
 	out.SetSystemInternalID(rowID)
 
 	qargs := []any{rowID}
@@ -108,11 +108,11 @@ WHERE r.id = $1
 		caller := apicore.Caller{
 			Identity: callerIdentity,
 		}
-		target := apirun.Target{
+		target := rxprun.Target{
 			UUID:       targetUUID,
 			Generation: targetGeneration,
 		}
-		rr := apirun.Request{
+		rr := rxprun.Request{
 			UUID:   uuid,
 			Target: target,
 			Caller: caller,
@@ -164,9 +164,9 @@ type runIdentifieRecord struct {
 func (s *Store) dbReadIdentifiersByRoot(
 	ctx context.Context,
 	rootRowID int64,
-) (*apirun.Identifiers, error) {
+) (*rxprun.Identifiers, error) {
 
-	out := &apirun.Identifiers{}
+	out := &rxprun.Identifiers{}
 	out.SetSystemInternalID(rootRowID)
 
 	fn := func(tx pgx.Tx) error {
@@ -199,10 +199,10 @@ ORDER BY r.id
 		return nil, err
 	}
 
-	rowIDToRunIDs := make(map[int64]*apirun.RunIdentifiers, len(recs))
+	rowIDToRunIDs := make(map[int64]*rxprun.RunIdentifiers, len(recs))
 
 	for _, rec := range recs {
-		runIDs := &apirun.Identifiers{UUID: rec.UUID}
+		runIDs := &rxprun.Identifiers{UUID: rec.UUID}
 		runIDs.SetSystemInternalID(rec.ID)
 		runIDs.Root = out
 
@@ -233,7 +233,7 @@ ORDER BY r.id
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*apirun.Run, error) {
+) (*rxprun.Run, error) {
 	var rowID int64
 	var targetUUID string
 	var targetGeneration apicore.Generation
@@ -251,7 +251,7 @@ func (s *Store) dbReadByUUID(
 	var pausedOn sql.NullInt64
 	var resumedOn sql.NullInt64
 	var canceledOn sql.NullInt64
-	out := apirun.Run{}
+	out := rxprun.Run{}
 	qargs := []any{uuid}
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -315,11 +315,11 @@ WHERE r.uuid = $1
 		caller := apicore.Caller{
 			Identity: callerIdentity,
 		}
-		target := apirun.Target{
+		target := rxprun.Target{
 			UUID:       targetUUID,
 			Generation: targetGeneration,
 		}
-		rr := apirun.Request{
+		rr := rxprun.Request{
 			UUID:   uuid,
 			Target: target,
 			Caller: caller,
@@ -384,12 +384,12 @@ WHERE object = $1 AND generation = $2
 func (s *Store) dbInsert(
 	ctx context.Context,
 	targetRec storeobject.Record,
-	callerSysRec *apisystem.System,
-	callerDomRec *apidomain.Domain,
-	root *apirun.Identifiers,
-	parent *apirun.Identifiers,
-	run apirun.Run,
-) (*apirun.Run, error) {
+	callerSysRec *rxpsystem.System,
+	callerDomRec *rxpdomain.Domain,
+	root *rxprun.Identifiers,
+	parent *rxprun.Identifiers,
+	run rxprun.Run,
+) (*rxprun.Run, error) {
 	rr := run.Request()
 	uuid := rr.UUID
 	createdOn := rr.On.UnixNano()
@@ -548,46 +548,46 @@ type runRecord struct {
 // the pre-validated expression and options.
 func (s *Store) dbReadByExpression(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts apiquery.Options,
-) ([]*apirun.Run, error) {
+	expr rxpquery.Expression,
+	opts rxpquery.Options,
+) ([]*rxprun.Run, error) {
 
 	qargs := []any{}
 	wheres := []string{}
 
 	switch expr := expr.(type) {
-	case apiquery.UnaryExpression:
+	case rxpquery.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case apirun.UUIDPredicate:
+		case rxprun.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
+			case rxpquery.PredicateOperatorEqual:
 				u := pred.Value.(string)
 				wheres = append(wheres, fmt.Sprintf("r.uuid = $%d", len(qargs)+1))
 				qargs = append(qargs, u)
-			case apiquery.PredicateOperatorIn:
+			case rxpquery.PredicateOperatorIn:
 				us := pred.Value.([]string)
 				wheres = append(wheres, fmt.Sprintf("r.uuid = ANY($%d)", len(qargs)+1))
 				qargs = append(qargs, us)
 			}
 		}
-	case apiquery.OrExpression:
+	case rxpquery.OrExpression:
 		subexprs := expr.Expressions()
 		ors := make([]string, 0, len(subexprs))
 		for _, subexpr := range subexprs {
 			switch subexpr := subexpr.(type) {
-			case apiquery.UnaryExpression:
+			case rxpquery.UnaryExpression:
 				pred := subexpr.Predicate
 				switch pred := pred.(type) {
-				case apirun.UUIDPredicate:
+				case rxprun.UUIDPredicate:
 					op := pred.Op
 					switch op {
-					case apiquery.PredicateOperatorEqual:
+					case rxpquery.PredicateOperatorEqual:
 						u := pred.Value.(string)
 						ors = append(ors, fmt.Sprintf("r.uuid = $%d", len(qargs)+1))
 						qargs = append(qargs, u)
-					case apiquery.PredicateOperatorIn:
+					case rxpquery.PredicateOperatorIn:
 						us := pred.Value.([]string)
 						ors = append(ors, fmt.Sprintf("r.uuid = ANY($%d)", len(qargs)+1))
 						qargs = append(qargs, us)
@@ -596,18 +596,18 @@ func (s *Store) dbReadByExpression(
 			}
 		}
 		wheres = append(wheres, "("+strings.Join(ors, ") OR (")+")")
-	case apiquery.AndExpression:
+	case rxpquery.AndExpression:
 		subexprs := expr.Expressions()
 		ands := make([]string, 0, len(subexprs))
 		for _, subexpr := range subexprs {
 			switch subexpr := subexpr.(type) {
-			case apiquery.UnaryExpression:
+			case rxpquery.UnaryExpression:
 				pred := subexpr.Predicate
 				switch pred := pred.(type) {
-				case apirun.UUIDPredicate:
+				case rxprun.UUIDPredicate:
 					op := pred.Op
 					switch op {
-					case apiquery.PredicateOperatorEqual:
+					case rxpquery.PredicateOperatorEqual:
 						u := pred.Value.(string)
 						ands = append(ands, fmt.Sprintf("r.uuid = $%d", len(qargs)+1))
 						qargs = append(qargs, u)
@@ -673,16 +673,16 @@ INNER JOIN object_generations AS t
 	if err := s.Exec(ctx, fn); err != nil {
 		return nil, err
 	}
-	out := make([]*apirun.Run, 0, len(recs))
+	out := make([]*rxprun.Run, 0, len(recs))
 	for _, rec := range recs {
 		caller := apicore.Caller{
 			Identity: rec.CallerIdentity,
 		}
-		target := apirun.Target{
+		target := rxprun.Target{
 			UUID:       rec.TargetUUID,
 			Generation: rec.TargetGeneration,
 		}
-		rr := apirun.Request{
+		rr := rxprun.Request{
 			UUID:   rec.UUID,
 			Target: target,
 			Caller: caller,
@@ -694,7 +694,7 @@ INNER JOIN object_generations AS t
 		if rec.InVars.Valid {
 			rr.In = rec.InVars.String
 		}
-		r := &apirun.Run{}
+		r := &rxprun.Run{}
 		r.SetSystemInternalID(rec.ID)
 		r.SetRequest(rr)
 		if rec.StartedOn.Valid {

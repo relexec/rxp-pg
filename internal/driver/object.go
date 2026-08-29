@@ -5,14 +5,14 @@ import (
 	"time"
 
 	apicore "github.com/relexec/rxp/api/core"
-	apidomain "github.com/relexec/rxp/api/domain"
+	rxpdomain "github.com/relexec/rxp/api/domain"
 	apierrors "github.com/relexec/rxp/api/errors"
-	apikind "github.com/relexec/rxp/api/kind"
-	apikindversion "github.com/relexec/rxp/api/kindversion"
+	rxpkind "github.com/relexec/rxp/api/kind"
+	rxpkindversion "github.com/relexec/rxp/api/kindversion"
 	apimetrics "github.com/relexec/rxp/api/metrics"
-	apiobject "github.com/relexec/rxp/api/object"
-	apiquery "github.com/relexec/rxp/api/query"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpobject "github.com/relexec/rxp/api/object"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxpsystem "github.com/relexec/rxp/api/system"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
@@ -22,9 +22,9 @@ import (
 // ObjectRead reads a single Object from persistent storage.
 func (d *Driver) ObjectRead(
 	ctx context.Context,
-	kv apikindversion.Name,
-	sel apiobject.Selector,
-) (*apiobject.Object, error) {
+	kv rxpkindversion.Name,
+	sel rxpobject.Selector,
+) (*rxpobject.Object, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -138,8 +138,8 @@ func (d *Driver) ObjectRead(
 // options are not valid for reading a single Object.
 func (d *Driver) objectReadValidate(
 	ctx context.Context,
-	kv apikindversion.Name,
-	sel apiobject.Selector,
+	kv rxpkindversion.Name,
+	sel rxpobject.Selector,
 ) error {
 	err := kv.Validate()
 	if err != nil {
@@ -152,10 +152,10 @@ func (d *Driver) objectReadValidate(
 // record, name and optional domain record.
 func (d *Driver) objectUUIDFromName(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	kindRec *apikind.Kind,
+	sysRec *rxpsystem.System,
+	kindRec *rxpkind.Kind,
 	name string,
-	domRec *apidomain.Domain,
+	domRec *rxpdomain.Domain,
 ) (string, error) {
 	qualifier := storeobject.NameQualifier{
 		System: sysRec,
@@ -172,10 +172,10 @@ func (d *Driver) objectUUIDFromName(
 // record, object UUID and optional domain record.
 func (d *Driver) objectNameFromUUID(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	kindRec *apikind.Kind,
+	sysRec *rxpsystem.System,
+	kindRec *rxpkind.Kind,
 	uuid string,
-	domRec *apidomain.Domain,
+	domRec *rxpdomain.Domain,
 ) (string, error) {
 	qualifier := storeobject.NameQualifier{
 		System: sysRec,
@@ -192,8 +192,8 @@ func (d *Driver) objectNameFromUUID(
 // domain in the selector if the scope of Kind is ScopeDomain.
 func (d *Driver) objectReadValidateScope(
 	ctx context.Context,
-	kindRec *apikind.Kind,
-	sel apiobject.Selector,
+	kindRec *rxpkind.Kind,
+	sel rxpobject.Selector,
 ) error {
 	scope := kindRec.Scope
 	switch scope {
@@ -210,8 +210,8 @@ func (d *Driver) objectReadValidateScope(
 // on successful write, the newly-created or updated Object is returned.
 func (d *Driver) ObjectWrite(
 	ctx context.Context,
-	obj apiobject.Object,
-) (*apiobject.Object, error) {
+	obj rxpobject.Object,
+) (*rxpobject.Object, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -293,7 +293,7 @@ func (d *Driver) ObjectWrite(
 // options are not valid for writing a single Object.
 func (d *Driver) objectWriteValidate(
 	ctx context.Context,
-	obj apiobject.Object,
+	obj rxpobject.Object,
 ) error {
 	kv := obj.KindVersionName
 	if kv == "" {
@@ -314,8 +314,8 @@ func (d *Driver) objectWriteValidate(
 // required domain qualification if the scope of Kind is ScopeDomain.
 func (d *Driver) objectWriteValidateScope(
 	ctx context.Context,
-	kindRec *apikind.Kind,
-	obj apiobject.Object,
+	kindRec *rxpkind.Kind,
+	obj rxpobject.Object,
 ) error {
 	if kindRec.Scope == apicore.ScopeDomain {
 		dom := obj.Domain
@@ -336,10 +336,10 @@ const (
 // from persistent storage.
 func (d *Driver) ObjectQuery(
 	ctx context.Context,
-	kv apikindversion.Name,
-	expr apiquery.Expression,
-	opts ...apiquery.Option,
-) (*apiquery.Result[*apiobject.Object], error) {
+	kv rxpkindversion.Name,
+	expr rxpquery.Expression,
+	opts ...rxpquery.Option,
+) (*rxpquery.Result[*rxpobject.Object], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -362,7 +362,7 @@ func (d *Driver) ObjectQuery(
 		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
-	qopts := apiquery.NewOptions(opts...)
+	qopts := rxpquery.NewOptions(opts...)
 	err = d.objectQueryValidate(ctx, kv, expr, qopts)
 	if err != nil {
 		return nil, err
@@ -386,32 +386,32 @@ func (d *Driver) ObjectQuery(
 	if err != nil {
 		return nil, err
 	}
-	objs := make([]*apiobject.Object, 0, len(recs))
+	objs := make([]*rxpobject.Object, 0, len(recs))
 	for _, rec := range recs {
 		objs = append(objs, rec.Object)
 	}
-	resNewOpts := []apiquery.ResultModifier[*apiobject.Object]{
-		apiquery.ResultWithItems(objs),
-		apiquery.ResultWithOptions[*apiobject.Object](boundedOpts),
+	resNewOpts := []rxpquery.ResultModifier[*rxpobject.Object]{
+		rxpquery.ResultWithItems(objs),
+		rxpquery.ResultWithOptions[*rxpobject.Object](boundedOpts),
 	}
 	if len(recs) == int(boundedOpts.Limit()) {
 		resNewOpts = append(
 			resNewOpts,
-			apiquery.ResultWithMarker[*apiobject.Object](
+			rxpquery.ResultWithMarker[*rxpobject.Object](
 				recs[len(recs)-1].Object.UUID,
 			),
 		)
 	}
-	return apiquery.NewResult[*apiobject.Object](resNewOpts...), nil
+	return rxpquery.NewResult[*rxpobject.Object](resNewOpts...), nil
 }
 
 // objectQueryValidate returns an error if the supplied expression and query
 // options are not valid.
 func (d *Driver) objectQueryValidate(
 	ctx context.Context,
-	kv apikindversion.Name,
-	expr apiquery.Expression,
-	opts apiquery.Options,
+	kv rxpkindversion.Name,
+	expr rxpquery.Expression,
+	opts rxpquery.Options,
 ) error {
 	return kv.Validate()
 }
@@ -421,12 +421,12 @@ func (d *Driver) objectQueryValidate(
 // than the max page result.
 func (d *Driver) objectQueryBoundedOptions(
 	ctx context.Context,
-	opts apiquery.Options,
-) apiquery.Options {
+	opts rxpquery.Options,
+) rxpquery.Options {
 	limit := opts.Limit()
 	if limit <= 0 {
 		limit = DefaultObjectQueryLimit
 	}
 	limit = min(limit, MaxObjectQueryLimit)
-	return apiquery.NewOptions(apiquery.Limit(limit))
+	return rxpquery.NewOptions(rxpquery.Limit(limit))
 }

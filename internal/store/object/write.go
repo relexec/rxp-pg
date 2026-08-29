@@ -3,23 +3,23 @@ package store
 import (
 	"context"
 
-	apidomain "github.com/relexec/rxp/api/domain"
-	apikind "github.com/relexec/rxp/api/kind"
-	apikindversion "github.com/relexec/rxp/api/kindversion"
-	apiobject "github.com/relexec/rxp/api/object"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpdomain "github.com/relexec/rxp/api/domain"
+	rxpkind "github.com/relexec/rxp/api/kind"
+	rxpkindversion "github.com/relexec/rxp/api/kindversion"
+	rxpobject "github.com/relexec/rxp/api/object"
+	rxpsystem "github.com/relexec/rxp/api/system"
 )
 
 // Write atomically writes the supplied Object to persistent storage. On
 // successful write, the newly created or updated Object is returned.
 func (s *Store) Write(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	kindRec *apikind.Kind,
-	kvRec *apikindversion.KindVersion,
-	domRec *apidomain.Domain,
-	obj apiobject.Object,
-) (*apiobject.Object, error) {
+	sysRec *rxpsystem.System,
+	kindRec *rxpkind.Kind,
+	kvRec *rxpkindversion.KindVersion,
+	domRec *rxpdomain.Domain,
+	obj rxpobject.Object,
+) (*rxpobject.Object, error) {
 	expectGeneration := obj.Generation
 	if expectGeneration == 0 {
 		// caller expects that they are the first writer of this object. This

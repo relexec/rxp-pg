@@ -7,8 +7,8 @@ import (
 	apicore "github.com/relexec/rxp/api/core"
 	apierrors "github.com/relexec/rxp/api/errors"
 	apimetrics "github.com/relexec/rxp/api/metrics"
-	apiquery "github.com/relexec/rxp/api/query"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxpsystem "github.com/relexec/rxp/api/system"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -16,8 +16,8 @@ import (
 // SystemRead reads a System from persistent storage.
 func (d *Driver) SystemRead(
 	ctx context.Context,
-	sel apisystem.Selector,
-) (*apisystem.System, error) {
+	sel rxpsystem.Selector,
+) (*rxpsystem.System, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (d *Driver) SystemRead(
 // options are not valid for reading a single System.
 func (d *Driver) systemReadValidate(
 	ctx context.Context,
-	sel apisystem.Selector,
+	sel rxpsystem.Selector,
 ) error {
 	return sel.Validate()
 }
@@ -63,8 +63,8 @@ func (d *Driver) systemReadValidate(
 // host system record when the supplied System is nil or the UUIDs match.
 func (d *Driver) systemRecordFromSystem(
 	ctx context.Context,
-	sys *apisystem.System,
-) (*apisystem.System, error) {
+	sys *rxpsystem.System,
+) (*rxpsystem.System, error) {
 	if sys == nil || sys.UUID == d.hostSystemUUID {
 		return d.hostSystemRecord, nil
 	}
@@ -81,7 +81,7 @@ func (d *Driver) systemRecordFromSystem(
 // SystemWrite atomically writes the supplied System to persistent storage.
 func (d *Driver) SystemWrite(
 	ctx context.Context,
-	sys apisystem.System,
+	sys rxpsystem.System,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -115,7 +115,7 @@ func (d *Driver) SystemWrite(
 // options are not valid for writing a single System.
 func (d *Driver) systemWriteValidate(
 	ctx context.Context,
-	sys apisystem.System,
+	sys rxpsystem.System,
 ) error {
 	return sys.Validate()
 }
@@ -128,9 +128,9 @@ const (
 // SystemQuery queries zero or more Systems from persistent storage.
 func (d *Driver) SystemQuery(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts ...apiquery.Option,
-) (*apiquery.Result[*apisystem.System], error) {
+	expr rxpquery.Expression,
+	opts ...rxpquery.Option,
+) (*rxpquery.Result[*rxpsystem.System], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ func (d *Driver) SystemQuery(
 		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
-	qopts := apiquery.NewOptions(opts...)
+	qopts := rxpquery.NewOptions(opts...)
 	err = d.systemQueryValidate(ctx, expr, qopts)
 	if err != nil {
 		return nil, err
@@ -166,28 +166,28 @@ func (d *Driver) SystemQuery(
 	if err != nil {
 		return nil, err
 	}
-	resOpts := apiquery.NewOptions(
-		apiquery.Limit(boundedOpts.Limit()),
+	resOpts := rxpquery.NewOptions(
+		rxpquery.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == int(boundedOpts.Limit()) {
-		resOpts = apiquery.NewOptions(
-			apiquery.ContinueFrom(recs[len(recs)-1].UUID),
-			apiquery.Limit(boundedOpts.Limit()),
+		resOpts = rxpquery.NewOptions(
+			rxpquery.ContinueFrom(recs[len(recs)-1].UUID),
+			rxpquery.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []apiquery.ResultModifier[*apisystem.System]{
-		apiquery.ResultWithItems(recs),
-		apiquery.ResultWithOptions[*apisystem.System](resOpts),
+	resNewOpts := []rxpquery.ResultModifier[*rxpsystem.System]{
+		rxpquery.ResultWithItems(recs),
+		rxpquery.ResultWithOptions[*rxpsystem.System](resOpts),
 	}
-	return apiquery.NewResult[*apisystem.System](resNewOpts...), nil
+	return rxpquery.NewResult[*rxpsystem.System](resNewOpts...), nil
 }
 
 // systemQueryValidate returns an error if the supplied expression and query
 // options are not valid.
 func (d *Driver) systemQueryValidate(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts apiquery.Options,
+	expr rxpquery.Expression,
+	opts rxpquery.Options,
 ) error {
 	if expr == nil {
 		return apierrors.ErrQueryExpressionRequired
@@ -200,12 +200,12 @@ func (d *Driver) systemQueryValidate(
 // than the max page result.
 func (d *Driver) systemQueryBoundedOptions(
 	ctx context.Context,
-	opts apiquery.Options,
-) apiquery.Options {
+	opts rxpquery.Options,
+) rxpquery.Options {
 	limit := opts.Limit()
 	if limit <= 0 {
 		limit = DefaultSystemQueryLimit
 	}
 	limit = min(limit, MaxSystemQueryLimit)
-	return apiquery.NewOptions(apiquery.Limit(limit))
+	return rxpquery.NewOptions(rxpquery.Limit(limit))
 }

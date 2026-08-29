@@ -11,9 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	apicore "github.com/relexec/rxp/api/core"
 	apierrors "github.com/relexec/rxp/api/errors"
-	apikind "github.com/relexec/rxp/api/kind"
-	apiquery "github.com/relexec/rxp/api/query"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpkind "github.com/relexec/rxp/api/kind"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxpsystem "github.com/relexec/rxp/api/system"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored kind record
@@ -21,13 +21,13 @@ import (
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*apikind.Kind, error) {
-	out := &apikind.Kind{}
+) (*rxpkind.Kind, error) {
+	out := &rxpkind.Kind{}
 	out.SetSystemInternalID(rowID)
 	fn := func(tx pgx.Tx) error {
 		var systemRowID int64
 		var uuid string
-		var name apikind.Name
+		var name rxpkind.Name
 		var scope apicore.Scope
 		qs := "SELECT system, uuid, name, scope FROM kinds WHERE id = $1"
 		err := tx.QueryRow(
@@ -66,13 +66,13 @@ func (s *Store) dbReadByRowID(
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*apikind.Kind, error) {
-	out := &apikind.Kind{
+) (*rxpkind.Kind, error) {
+	out := &rxpkind.Kind{
 		UUID: uuid,
 	}
 	fn := func(tx pgx.Tx) error {
 		var rowID int64
-		var name apikind.Name
+		var name rxpkind.Name
 		var scope apicore.Scope
 		qs := "SELECT id, name, scope FROM kinds WHERE uuid = $1"
 		err := tx.QueryRow(ctx, qs, uuid).Scan(&rowID, &name, &scope)
@@ -100,10 +100,10 @@ func (s *Store) dbReadByUUID(
 // having the supplied Name.
 func (s *Store) dbReadByName(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	name apikind.Name,
-) (*apikind.Kind, error) {
-	out := &apikind.Kind{
+	sysRec *rxpsystem.System,
+	name rxpkind.Name,
+) (*rxpkind.Kind, error) {
+	out := &rxpkind.Kind{
 		System: sysRec,
 		Name:   name,
 	}
@@ -144,8 +144,8 @@ AND name = $2
 // dbInsert atomically writes the supplied Kind to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	kind apikind.Kind,
+	sysRec *rxpsystem.System,
+	kind rxpkind.Kind,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	createdOn := time.Now().UnixNano()
@@ -195,7 +195,7 @@ type kindRecord struct {
 	SystemID int64         `db:"system_id"`
 	ID       int64         `db:"kind_id"`
 	UUID     string        `db:"kind_uuid"`
-	Name     apikind.Name  `db:"kind_name"`
+	Name     rxpkind.Name  `db:"kind_name"`
 	Scope    apicore.Scope `db:"kind_scope"`
 }
 
@@ -203,44 +203,44 @@ type kindRecord struct {
 // pre-validated expression and options.
 func (s *Store) dbReadByExpression(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts apiquery.Options,
-) ([]*apikind.Kind, error) {
+	expr rxpquery.Expression,
+	opts rxpquery.Options,
+) ([]*rxpkind.Kind, error) {
 	qargs := []any{}
 	wheres := []string{}
 
 	switch expr := expr.(type) {
-	case apiquery.UnaryExpression:
+	case rxpquery.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case apikind.UUIDPredicate:
+		case rxpkind.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
+			case rxpquery.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("k.uuid = $%d", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
-			case apiquery.PredicateOperatorIn:
+			case rxpquery.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("k.uuid = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
 				return nil, apierrors.UnsupportedPredicateOperator(op)
 			}
-		case apikind.NamePredicate:
+		case rxpkind.NamePredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
+			case rxpquery.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("k.name = $%d", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
-			case apiquery.PredicateOperatorIn:
+			case rxpquery.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("k.name = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
 				return nil, apierrors.UnsupportedPredicateOperator(op)
 			}
-		case apisystem.UUIDPredicate:
+		case rxpsystem.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
+			case rxpquery.PredicateOperatorEqual:
 				sysUUID := pred.Value.(string)
 				sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 				if err != nil {
@@ -255,7 +255,7 @@ func (s *Store) dbReadByExpression(
 				sysRowID := sysRec.SystemInternalIDInt64()
 				wheres = append(wheres, fmt.Sprintf("k.system = $%d", len(qargs)+1))
 				qargs = append(qargs, sysRowID)
-			case apiquery.PredicateOperatorIn:
+			case rxpquery.PredicateOperatorIn:
 				sysRowIDs := []int64{}
 				sysUUIDs := pred.Value.([]string)
 				for _, sysUUID := range sysUUIDs {
@@ -323,7 +323,7 @@ FROM kinds AS k
 		return nil, err
 	}
 
-	out := make([]*apikind.Kind, 0, len(recs))
+	out := make([]*rxpkind.Kind, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
@@ -332,7 +332,7 @@ FROM kinds AS k
 				apierrors.WithWrap(err),
 			)
 		}
-		k := &apikind.Kind{
+		k := &rxpkind.Kind{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
 			System: sysRec,

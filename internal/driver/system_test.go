@@ -6,9 +6,9 @@ import (
 
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp-testing/fixtures"
-	apidomain "github.com/relexec/rxp/api/domain"
-	apiquery "github.com/relexec/rxp/api/query"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpdomain "github.com/relexec/rxp/api/domain"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxpsystem "github.com/relexec/rxp/api/system"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )
@@ -23,35 +23,35 @@ func TestSystemRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		sel    apisystem.Selector
-		exp    *apisystem.System
+		sel    rxpsystem.Selector
+		exp    *rxpsystem.System
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			apisystem.Select(apisystem.ByUUID(fixtures.SystemUUID)),
+			rxpsystem.Select(rxpsystem.ByUUID(fixtures.SystemUUID)),
 			nil,
 			"missing identity",
 		},
 		{
 			"uuid required",
 			ctx,
-			apisystem.Selector{},
+			rxpsystem.Selector{},
 			nil,
 			"uuid required",
 		},
 		{
 			"unknown system",
 			ctx,
-			apisystem.Select(apisystem.ByUUID(fixtures.UnknownSystemUUID)),
+			rxpsystem.Select(rxpsystem.ByUUID(fixtures.UnknownSystemUUID)),
 			nil,
 			"not found",
 		},
 		{
 			"happy path",
 			ctx,
-			apisystem.Select(apisystem.ByUUID(fixtures.SystemUUID)),
+			rxpsystem.Select(rxpsystem.ByUUID(fixtures.SystemUUID)),
 			&fixtures.System,
 			"",
 		},
@@ -64,7 +64,7 @@ func TestSystemRead(t *testing.T) {
 				require.ErrorContains(err, c.expErr)
 			} else {
 				require.Nil(err)
-				delta, err := apisystem.Diff(*c.exp, got)
+				delta, err := rxpsystem.Diff(*c.exp, got)
 				require.Nil(err)
 				require.False(delta.Different(), delta.Differences())
 			}
@@ -82,7 +82,7 @@ func TestSystemWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject *apisystem.System
+		subject *rxpsystem.System
 		expErr  string
 	}{
 		{
@@ -121,35 +121,35 @@ func TestSystemQuery(t *testing.T) {
 	cases := []struct {
 		name         string
 		ctx          context.Context
-		expr         apiquery.Expression
-		opts         []apiquery.Option
+		expr         rxpquery.Expression
+		opts         []rxpquery.Option
 		expNumItems  int
 		expOnlyUUIDs []string
-		expOptions   apiquery.Options
+		expOptions   rxpquery.Options
 		expMarker    string
 		expErr       string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			apisystem.UUIDEqual(fixtures.SystemUUID),
+			rxpsystem.UUIDEqual(fixtures.SystemUUID),
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
 			"missing identity",
 		},
 		{
 			"unsupported predicate",
 			ctx,
-			apidomain.NameEqual(fixtures.DomainName),
+			rxpdomain.NameEqual(fixtures.DomainName),
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
-			"unsupported predicate apidomain.NamePredicate",
+			"unsupported predicate",
 		},
 		{
 			"expression required",
@@ -158,33 +158,33 @@ func TestSystemQuery(t *testing.T) {
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
 			"expression required",
 		},
 		{
 			"unsupported expression",
 			ctx,
-			apiquery.Or(
-				apidomain.NameEqual(fixtures.DomainName),
-				apidomain.NameEqual(fixtures.UnknownDomainName),
+			rxpquery.Or(
+				rxpdomain.NameEqual(fixtures.DomainName),
+				rxpdomain.NameEqual(fixtures.UnknownDomainName),
 			),
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
-			"unsupported expression query.OrExpression",
+			"unsupported expression",
 		},
 		{
 			"no results when looking up non-existing system UUID",
 			ctx,
-			apisystem.UUIDEqual(fixtures.UnknownSystemUUID),
+			rxpsystem.UUIDEqual(fixtures.UnknownSystemUUID),
 			nil,
 			0,
 			[]string{},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -192,14 +192,14 @@ func TestSystemQuery(t *testing.T) {
 		{
 			"query systems by UUID, expect one",
 			ctx,
-			apisystem.UUIDEqual(fixtures.SystemUUID),
+			rxpsystem.UUIDEqual(fixtures.SystemUUID),
 			nil,
 			1,
 			[]string{
 				fixtures.SystemUUID,
 			},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -207,14 +207,14 @@ func TestSystemQuery(t *testing.T) {
 		{
 			"query systems by UUID in, expect one",
 			ctx,
-			apisystem.UUIDIn(fixtures.SystemUUID, fixtures.UnknownSystemUUID),
+			rxpsystem.UUIDIn(fixtures.SystemUUID, fixtures.UnknownSystemUUID),
 			nil,
 			1,
 			[]string{
 				fixtures.SystemUUID,
 			},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -236,7 +236,7 @@ func TestSystemQuery(t *testing.T) {
 				require.Equal(c.expOptions, gotOptions)
 				require.Equal(c.expMarker, gotMarker)
 				require.Len(gotItems, c.expNumItems)
-				gotUUIDs := lo.Map(gotItems, func(s *apisystem.System, _ int) string {
+				gotUUIDs := lo.Map(gotItems, func(s *rxpsystem.System, _ int) string {
 					return s.UUID
 				})
 				gotUUIDs = lo.Uniq(gotUUIDs)

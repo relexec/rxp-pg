@@ -6,10 +6,10 @@ import (
 
 	apicore "github.com/relexec/rxp/api/core"
 	apierrors "github.com/relexec/rxp/api/errors"
-	apikind "github.com/relexec/rxp/api/kind"
+	rxpkind "github.com/relexec/rxp/api/kind"
 	apimetrics "github.com/relexec/rxp/api/metrics"
-	apiquery "github.com/relexec/rxp/api/query"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxpsystem "github.com/relexec/rxp/api/system"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -17,8 +17,8 @@ import (
 // KindRead reads a Kind from persistent storage.
 func (d *Driver) KindRead(
 	ctx context.Context,
-	sel apikind.Selector,
-) (*apikind.Kind, error) {
+	sel rxpkind.Selector,
+) (*rxpkind.Kind, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (d *Driver) KindRead(
 		return nil, err
 	}
 
-	var sysRec *apisystem.System
+	var sysRec *rxpsystem.System
 
 	name := sel.Name()
 	sys := sel.System()
@@ -71,7 +71,7 @@ func (d *Driver) KindRead(
 // options are not valid for reading a single Kind.
 func (d *Driver) kindReadValidate(
 	ctx context.Context,
-	sel apikind.Selector,
+	sel rxpkind.Selector,
 ) error {
 	return sel.Validate()
 }
@@ -79,7 +79,7 @@ func (d *Driver) kindReadValidate(
 // KindWrite atomically writes the supplied Kind to persistent storage.
 func (d *Driver) KindWrite(
 	ctx context.Context,
-	k apikind.Kind,
+	k rxpkind.Kind,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -107,7 +107,7 @@ func (d *Driver) KindWrite(
 		return err
 	}
 
-	var sysRec *apisystem.System
+	var sysRec *rxpsystem.System
 
 	sys := k.System
 
@@ -131,7 +131,7 @@ func (d *Driver) KindWrite(
 // options are not valid for writing a single Kind.
 func (d *Driver) kindWriteValidate(
 	ctx context.Context,
-	k apikind.Kind,
+	k rxpkind.Kind,
 ) error {
 	return k.Validate()
 }
@@ -144,9 +144,9 @@ const (
 // KindQuery queries zero or more Kinds from persistent storage.
 func (d *Driver) KindQuery(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts ...apiquery.Option,
-) (*apiquery.Result[*apikind.Kind], error) {
+	expr rxpquery.Expression,
+	opts ...rxpquery.Option,
+) (*rxpquery.Result[*rxpkind.Kind], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -168,7 +168,7 @@ func (d *Driver) KindQuery(
 		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
-	qopts := apiquery.NewOptions(opts...)
+	qopts := rxpquery.NewOptions(opts...)
 	err = d.kindQueryValidate(ctx, expr, qopts)
 	if err != nil {
 		return nil, err
@@ -182,28 +182,28 @@ func (d *Driver) KindQuery(
 	if err != nil {
 		return nil, err
 	}
-	resOpts := apiquery.NewOptions(
-		apiquery.Limit(boundedOpts.Limit()),
+	resOpts := rxpquery.NewOptions(
+		rxpquery.Limit(boundedOpts.Limit()),
 	)
 	if len(recs) == int(boundedOpts.Limit()) {
-		resOpts = apiquery.NewOptions(
-			apiquery.ContinueFrom(recs[len(recs)-1].UUID),
-			apiquery.Limit(boundedOpts.Limit()),
+		resOpts = rxpquery.NewOptions(
+			rxpquery.ContinueFrom(recs[len(recs)-1].UUID),
+			rxpquery.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []apiquery.ResultModifier[*apikind.Kind]{
-		apiquery.ResultWithItems(recs),
-		apiquery.ResultWithOptions[*apikind.Kind](resOpts),
+	resNewOpts := []rxpquery.ResultModifier[*rxpkind.Kind]{
+		rxpquery.ResultWithItems(recs),
+		rxpquery.ResultWithOptions[*rxpkind.Kind](resOpts),
 	}
-	return apiquery.NewResult[*apikind.Kind](resNewOpts...), nil
+	return rxpquery.NewResult[*rxpkind.Kind](resNewOpts...), nil
 }
 
 // kindQueryValidate returns an error if the supplied expression and query
 // options are not valid.
 func (d *Driver) kindQueryValidate(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts apiquery.Options,
+	expr rxpquery.Expression,
+	opts rxpquery.Options,
 ) error {
 	if expr == nil {
 		return apierrors.ErrQueryExpressionRequired
@@ -216,12 +216,12 @@ func (d *Driver) kindQueryValidate(
 // than the max page result.
 func (d *Driver) kindQueryBoundedOptions(
 	ctx context.Context,
-	opts apiquery.Options,
-) apiquery.Options {
+	opts rxpquery.Options,
+) rxpquery.Options {
 	limit := opts.Limit()
 	if limit <= 0 {
 		limit = DefaultKindQueryLimit
 	}
 	limit = min(limit, MaxKindQueryLimit)
-	return apiquery.NewOptions(apiquery.Limit(limit))
+	return rxpquery.NewOptions(rxpquery.Limit(limit))
 }

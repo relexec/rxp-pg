@@ -7,11 +7,11 @@ import (
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp-testing/fixtures"
 	"github.com/relexec/rxp-testing/fixtures/service"
-	apikind "github.com/relexec/rxp/api/kind"
-	apikindversion "github.com/relexec/rxp/api/kindversion"
-	apiobject "github.com/relexec/rxp/api/object"
-	apiquery "github.com/relexec/rxp/api/query"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpkind "github.com/relexec/rxp/api/kind"
+	rxpkindversion "github.com/relexec/rxp/api/kindversion"
+	rxpobject "github.com/relexec/rxp/api/object"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxpsystem "github.com/relexec/rxp/api/system"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )
@@ -32,15 +32,15 @@ func TestKindVersionRead(t *testing.T) {
 	cases := []struct {
 		name   string
 		ctx    context.Context
-		sel    apikindversion.Selector
-		exp    *apikindversion.KindVersion
+		sel    rxpkindversion.Selector
+		exp    *rxpkindversion.KindVersion
 		expErr string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			apikindversion.Select(
-				apikindversion.ByName(fixtures.UnknownKindVersionName),
+			rxpkindversion.Select(
+				rxpkindversion.ByName(fixtures.UnknownKindVersionName),
 			),
 			nil,
 			"missing identity",
@@ -48,8 +48,8 @@ func TestKindVersionRead(t *testing.T) {
 		{
 			"unknown kind version",
 			ctx,
-			apikindversion.Select(
-				apikindversion.ByName(fixtures.UnknownKindVersionName),
+			rxpkindversion.Select(
+				rxpkindversion.ByName(fixtures.UnknownKindVersionName),
 			),
 			nil,
 			"unknown kind",
@@ -57,8 +57,8 @@ func TestKindVersionRead(t *testing.T) {
 		{
 			"invalid kind version",
 			ctx,
-			apikindversion.Select(
-				apikindversion.ByName(fixtures.InvalidKindVersionName),
+			rxpkindversion.Select(
+				rxpkindversion.ByName(fixtures.InvalidKindVersionName),
 			),
 			nil,
 			"invalid kind name: invalid characters",
@@ -66,8 +66,8 @@ func TestKindVersionRead(t *testing.T) {
 		{
 			"happy path",
 			ctx,
-			apikindversion.Select(
-				apikindversion.ByName(service.FirstKindVersionName()),
+			rxpkindversion.Select(
+				rxpkindversion.ByName(service.FirstKindVersionName()),
 			),
 			service.KindVersion_V1_0_0,
 			"",
@@ -114,7 +114,7 @@ func TestKindVersionWrite(t *testing.T) {
 	cases := []struct {
 		name    string
 		ctx     context.Context
-		subject apikindversion.KindVersion
+		subject rxpkindversion.KindVersion
 		expErr  string
 	}{
 		{
@@ -177,35 +177,35 @@ func TestKindVersionQuery(t *testing.T) {
 	cases := []struct {
 		name         string
 		ctx          context.Context
-		expr         apiquery.Expression
-		opts         []apiquery.Option
+		expr         rxpquery.Expression
+		opts         []rxpquery.Option
 		expNumItems  int
-		expOnlyNames []apikindversion.Name
-		expOptions   apiquery.Options
+		expOnlyNames []rxpkindversion.Name
+		expOptions   rxpquery.Options
 		expMarker    string
 		expErr       string
 	}{
 		{
 			"missing identity",
 			ctxMissingIdent,
-			apikindversion.NameEqual(service.FirstKindVersionName()),
+			rxpkindversion.NameEqual(service.FirstKindVersionName()),
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
 			"missing identity",
 		},
 		{
 			"unsupported predicate",
 			ctx,
-			apiobject.GenerationEqual(0),
+			rxpobject.GenerationEqual(0),
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
-			"unsupported predicate apiobject.GenerationPredicate",
+			"unsupported predicate",
 		},
 		{
 			"expression required",
@@ -214,33 +214,33 @@ func TestKindVersionQuery(t *testing.T) {
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
 			"expression required",
 		},
 		{
 			"unsupported expression",
 			ctx,
-			apiquery.Or(
-				apikind.NameEqual(service.KindName),
-				apikind.NameEqual(fixtures.UnknownKindName),
+			rxpquery.Or(
+				rxpkind.NameEqual(service.KindName),
+				rxpkind.NameEqual(fixtures.UnknownKindName),
 			),
 			nil,
 			0,
 			nil,
-			apiquery.Options{},
+			rxpquery.Options{},
 			"",
-			"unsupported expression query.OrExpression",
+			"unsupported expression",
 		},
 		{
 			"no results when looking up non-existing kind version name",
 			ctx,
-			apikindversion.NameEqual(fixtures.UnknownKindVersionName),
+			rxpkindversion.NameEqual(fixtures.UnknownKindVersionName),
 			nil,
 			0,
-			[]apikindversion.Name{},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			[]rxpkindversion.Name{},
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -248,12 +248,12 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"no results when looking up kindversions by non-existing system",
 			ctx,
-			apisystem.Equal(&fixtures.UnknownSystem),
+			rxpsystem.Equal(&fixtures.UnknownSystem),
 			nil,
 			0,
-			[]apikindversion.Name{},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			[]rxpkindversion.Name{},
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -261,12 +261,12 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"no results when looking up kindversions by non-existing system UUID",
 			ctx,
-			apisystem.UUIDEqual(fixtures.UnknownSystemUUID),
+			rxpsystem.UUIDEqual(fixtures.UnknownSystemUUID),
 			nil,
 			0,
-			[]apikindversion.Name{},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			[]rxpkindversion.Name{},
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -274,14 +274,14 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"query kindversions by name, expect one",
 			ctx,
-			apikindversion.NameEqual(service.FirstKindVersionName()),
+			rxpkindversion.NameEqual(service.FirstKindVersionName()),
 			nil,
 			1,
-			[]apikindversion.Name{
+			[]rxpkindversion.Name{
 				service.FirstKindVersionName(),
 			},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -289,14 +289,14 @@ func TestKindVersionQuery(t *testing.T) {
 		{
 			"query kindversions by name in set, expect one",
 			ctx,
-			apikindversion.NameIn(service.FirstKindVersionName(), fixtures.UnknownKindVersionName),
+			rxpkindversion.NameIn(service.FirstKindVersionName(), fixtures.UnknownKindVersionName),
 			nil,
 			1,
-			[]apikindversion.Name{
+			[]rxpkindversion.Name{
 				service.FirstKindVersionName(),
 			},
-			apiquery.NewOptions(
-				apiquery.Limit(10), // 10 is default when not specified
+			rxpquery.NewOptions(
+				rxpquery.Limit(10), // 10 is default when not specified
 			),
 			"",
 			"",
@@ -318,7 +318,7 @@ func TestKindVersionQuery(t *testing.T) {
 				require.Equal(c.expOptions, gotOptions)
 				require.Equal(c.expMarker, gotMarker)
 				require.Len(gotItems, c.expNumItems)
-				gotNames := lo.Map(gotItems, func(kv *apikindversion.KindVersion, _ int) apikindversion.Name {
+				gotNames := lo.Map(gotItems, func(kv *rxpkindversion.KindVersion, _ int) rxpkindversion.Name {
 					return kv.Name()
 				})
 				gotNames = lo.Uniq(gotNames)

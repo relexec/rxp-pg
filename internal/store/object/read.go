@@ -4,10 +4,10 @@ import (
 	"context"
 
 	apicore "github.com/relexec/rxp/api/core"
-	apidomain "github.com/relexec/rxp/api/domain"
-	apikindversion "github.com/relexec/rxp/api/kindversion"
-	apiobject "github.com/relexec/rxp/api/object"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpdomain "github.com/relexec/rxp/api/domain"
+	rxpkindversion "github.com/relexec/rxp/api/kindversion"
+	rxpobject "github.com/relexec/rxp/api/object"
+	rxpsystem "github.com/relexec/rxp/api/system"
 )
 
 // Record decorates an Object with internal DB information.
@@ -15,14 +15,14 @@ type Record struct {
 	// RowID is the internal database SERIAL for the objects record.
 	RowID int64
 	// Object is the publicly-exposed Object object.
-	Object *apiobject.Object
+	Object *rxpobject.Object
 }
 
 // NameQualifier contains either a System or Domain store record that qualifies
 // an Object name.
 type NameQualifier struct {
-	System *apisystem.System
-	Domain *apidomain.Domain
+	System *rxpsystem.System
+	Domain *rxpdomain.Domain
 }
 
 // UUIDFromName returns the UUID associated with the supplied object name with
@@ -69,7 +69,7 @@ func (s *Store) ReadByRowIDAndGeneration(
 // UUID amd generation.
 func (s *Store) ReadByUUIDAndGeneration(
 	ctx context.Context,
-	kvRec *apikindversion.KindVersion,
+	kvRec *rxpkindversion.KindVersion,
 	uuid string,
 	requestedGen apicore.Generation,
 ) (*Record, error) {

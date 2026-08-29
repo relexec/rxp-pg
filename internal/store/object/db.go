@@ -11,21 +11,21 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	apicore "github.com/relexec/rxp/api/core"
-	apidomain "github.com/relexec/rxp/api/domain"
+	rxpdomain "github.com/relexec/rxp/api/domain"
 	apierrors "github.com/relexec/rxp/api/errors"
-	apikind "github.com/relexec/rxp/api/kind"
-	apikindversion "github.com/relexec/rxp/api/kindversion"
-	apiobject "github.com/relexec/rxp/api/object"
-	apiquery "github.com/relexec/rxp/api/query"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpkind "github.com/relexec/rxp/api/kind"
+	rxpkindversion "github.com/relexec/rxp/api/kindversion"
+	rxpobject "github.com/relexec/rxp/api/object"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxpsystem "github.com/relexec/rxp/api/system"
 )
 
 // dbUUIDFromNameDomainQualified returns the UUID associated with the object
 // with the supplied name and domain.
 func (s *Store) dbUUIDFromNameDomainQualified(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	domRec apidomain.Domain,
+	sysRec *rxpsystem.System,
+	domRec rxpdomain.Domain,
 	name string,
 ) (string, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -70,8 +70,8 @@ AND n.name = $3
 // with the supplied UUID and domain.
 func (s *Store) dbNameFromUUIDDomainQualified(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	domRec apidomain.Domain,
+	sysRec *rxpsystem.System,
+	domRec rxpdomain.Domain,
 	uuid string,
 ) (string, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -116,7 +116,7 @@ AND o.uuid = $3
 // with the supplied name and system.
 func (s *Store) dbUUIDFromNameSystemQualified(
 	ctx context.Context,
-	sysRec *apisystem.System,
+	sysRec *rxpsystem.System,
 	name string,
 ) (string, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -157,7 +157,7 @@ AND n.name = $2
 // with the supplied name and system.
 func (s *Store) dbNameFromUUIDSystemQualified(
 	ctx context.Context,
-	sysRec *apisystem.System,
+	sysRec *rxpsystem.System,
 	uuid string,
 ) (string, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -246,7 +246,7 @@ WHERE o.id = $1
 				apierrors.WithWrap(err),
 			)
 		}
-		out.Object = &apiobject.Object{
+		out.Object = &rxpobject.Object{
 			UUID:       uuid,
 			Generation: generation,
 		}
@@ -269,7 +269,7 @@ WHERE o.id = $1
 // doesn't match that object's KindVersion.
 func (s *Store) dbReadByUUIDAndGeneration(
 	ctx context.Context,
-	kvRec *apikindversion.KindVersion,
+	kvRec *rxpkindversion.KindVersion,
 	uuid string,
 	requestedGen apicore.Generation,
 ) (*Record, error) {
@@ -314,7 +314,7 @@ AND o.kindversion = $2
 				apierrors.WithWrap(err),
 			)
 		}
-		out.Object = &apiobject.Object{
+		out.Object = &rxpobject.Object{
 			KindVersionName: kvRec.Name(),
 			UUID:            uuid,
 			Generation:      generation,
@@ -335,12 +335,12 @@ AND o.kindversion = $2
 // writer of an object.
 func (s *Store) dbInsertFirst(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	kindRec *apikind.Kind,
-	kvRec *apikindversion.KindVersion,
-	domRec *apidomain.Domain,
-	obj apiobject.Object,
-) (*apiobject.Object, error) {
+	sysRec *rxpsystem.System,
+	kindRec *rxpkind.Kind,
+	kvRec *rxpkindversion.KindVersion,
+	domRec *rxpdomain.Domain,
+	obj rxpobject.Object,
+) (*rxpobject.Object, error) {
 	if kindRec.Scope == apicore.ScopeDomain && domRec == nil {
 		return nil, apierrors.ErrObjectDomainRequired
 	}
@@ -545,12 +545,12 @@ INSERT INTO object_generations (
 // writer of an object and expect to see a supplied generation.
 func (s *Store) dbInsertGeneration(
 	ctx context.Context,
-	kindRec *apikind.Kind,
-	kvRec *apikindversion.KindVersion,
-	domRec *apidomain.Domain,
-	obj apiobject.Object,
+	kindRec *rxpkind.Kind,
+	kvRec *rxpkindversion.KindVersion,
+	domRec *rxpdomain.Domain,
+	obj rxpobject.Object,
 	expectGeneration apicore.Generation,
-) (*apiobject.Object, error) {
+) (*rxpobject.Object, error) {
 	if kindRec.Scope == apicore.ScopeDomain && domRec == nil {
 		return nil, apierrors.ErrObjectDomainRequired
 	}
@@ -655,14 +655,14 @@ AND generation = $5`
 	return &out, nil
 }
 
-func isKindishPredicate(p apiquery.Predicate) bool {
+func isKindishPredicate(p rxpquery.Predicate) bool {
 	switch p.(type) {
 	case
-		apikind.NamePredicate,
-		apikind.UUIDPredicate,
-		apikind.KindPredicate,
-		apikindversion.KindVersionPredicate,
-		apikindversion.NamePredicate:
+		rxpkind.NamePredicate,
+		rxpkind.UUIDPredicate,
+		rxpkind.KindPredicate,
+		rxpkindversion.KindVersionPredicate,
+		rxpkindversion.NamePredicate:
 		return true
 	default:
 		return false
@@ -685,13 +685,13 @@ type dqObjectRecord struct {
 // expression and options.
 func (s *Store) dbReadDomainQualifiedByExpression(
 	ctx context.Context,
-	kv apikindversion.Name,
-	sysRec *apisystem.System,
-	kindRec *apikind.Kind,
-	expr apiquery.Expression,
-	opts apiquery.Options,
+	kv rxpkindversion.Name,
+	sysRec *rxpsystem.System,
+	kindRec *rxpkind.Kind,
+	expr rxpquery.Expression,
+	opts rxpquery.Options,
 ) ([]*Record, error) {
-	if apiquery.ContainsPredicate(expr, isKindishPredicate) {
+	if rxpquery.ContainsPredicate(expr, isKindishPredicate) {
 		return nil, apierrors.ErrInvalidQueryKindPredicate
 	}
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -778,7 +778,7 @@ INNER JOIN object_generations AS og
 		if err != nil {
 			return nil, err
 		}
-		obj := &apiobject.Object{
+		obj := &rxpobject.Object{
 			KindVersionName: kvName,
 			UUID:            rec.UUID,
 			Name:            rec.Name,
@@ -812,13 +812,13 @@ type sqObjectRecord struct {
 // expression and options.
 func (s *Store) dbReadSystemQualifiedByExpression(
 	ctx context.Context,
-	kv apikindversion.Name,
-	sysRec *apisystem.System,
-	kindRec *apikind.Kind,
-	expr apiquery.Expression,
-	opts apiquery.Options,
+	kv rxpkindversion.Name,
+	sysRec *rxpsystem.System,
+	kindRec *rxpkind.Kind,
+	expr rxpquery.Expression,
+	opts rxpquery.Options,
 ) ([]*Record, error) {
-	if apiquery.ContainsPredicate(expr, isKindishPredicate) {
+	if rxpquery.ContainsPredicate(expr, isKindishPredicate) {
 		return nil, apierrors.ErrInvalidQueryKindPredicate
 	}
 	sysRowID := sysRec.SystemInternalIDInt64()
@@ -839,62 +839,62 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 	}
 
 	switch expr := expr.(type) {
-	case apiquery.UnaryExpression:
+	case rxpquery.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case apiobject.UUIDPredicate:
+		case rxpobject.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
+			case rxpquery.PredicateOperatorEqual:
 				u := pred.Value.(string)
 				wheres = append(wheres, fmt.Sprintf("o.uuid = $%d", len(qargs)+1))
 				qargs = append(qargs, u)
-			case apiquery.PredicateOperatorIn:
+			case rxpquery.PredicateOperatorIn:
 				us := pred.Value.([]string)
 				wheres = append(wheres, fmt.Sprintf("o.uuid = ANY($%d)", len(qargs)+1))
 				qargs = append(qargs, us)
 			}
-		case apiobject.NamePredicate:
+		case rxpobject.NamePredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
+			case rxpquery.PredicateOperatorEqual:
 				name := pred.Value.(string)
 				wheres = append(wheres, fmt.Sprintf("n.name = $%d", len(qargs)+1))
 				qargs = append(qargs, name)
-			case apiquery.PredicateOperatorIn:
+			case rxpquery.PredicateOperatorIn:
 				names := pred.Value.([]string)
 				wheres = append(wheres, fmt.Sprintf("n.name = ANY($%d)", len(qargs)+1))
 				qargs = append(qargs, names)
 			}
 		}
-	case apiquery.OrExpression:
+	case rxpquery.OrExpression:
 		subexprs := expr.Expressions()
 		ors := make([]string, 0, len(subexprs))
 		for _, subexpr := range subexprs {
 			switch subexpr := subexpr.(type) {
-			case apiquery.UnaryExpression:
+			case rxpquery.UnaryExpression:
 				pred := subexpr.Predicate
 				switch pred := pred.(type) {
-				case apiobject.UUIDPredicate:
+				case rxpobject.UUIDPredicate:
 					op := pred.Op
 					switch op {
-					case apiquery.PredicateOperatorEqual:
+					case rxpquery.PredicateOperatorEqual:
 						u := pred.Value.(string)
 						ors = append(ors, fmt.Sprintf("o.uuid = $%d", len(qargs)+1))
 						qargs = append(qargs, u)
-					case apiquery.PredicateOperatorIn:
+					case rxpquery.PredicateOperatorIn:
 						us := pred.Value.([]string)
 						ors = append(ors, fmt.Sprintf("o.uuid = ANY($%d)", len(qargs)+1))
 						qargs = append(qargs, us)
 					}
-				case apiobject.NamePredicate:
+				case rxpobject.NamePredicate:
 					op := pred.Op
 					switch op {
-					case apiquery.PredicateOperatorEqual:
+					case rxpquery.PredicateOperatorEqual:
 						name := pred.Value.(string)
 						ors = append(ors, fmt.Sprintf("n.name = $%d", len(qargs)+1))
 						qargs = append(qargs, name)
-					case apiquery.PredicateOperatorIn:
+					case rxpquery.PredicateOperatorIn:
 						names := pred.Value.([]string)
 						ors = append(ors, fmt.Sprintf("n.name = ANY($%d)", len(qargs)+1))
 						qargs = append(qargs, names)
@@ -903,26 +903,26 @@ func (s *Store) dbReadSystemQualifiedByExpression(
 			}
 		}
 		wheres = append(wheres, "("+strings.Join(ors, ") OR (")+")")
-	case apiquery.AndExpression:
+	case rxpquery.AndExpression:
 		subexprs := expr.Expressions()
 		ands := make([]string, 0, len(subexprs))
 		for _, subexpr := range subexprs {
 			switch subexpr := subexpr.(type) {
-			case apiquery.UnaryExpression:
+			case rxpquery.UnaryExpression:
 				pred := subexpr.Predicate
 				switch pred := pred.(type) {
-				case apiobject.UUIDPredicate:
+				case rxpobject.UUIDPredicate:
 					op := pred.Op
 					switch op {
-					case apiquery.PredicateOperatorEqual:
+					case rxpquery.PredicateOperatorEqual:
 						u := pred.Value.(string)
 						ands = append(ands, fmt.Sprintf("o.uuid = $%d", len(qargs)+1))
 						qargs = append(qargs, u)
 					}
-				case apiobject.NamePredicate:
+				case rxpobject.NamePredicate:
 					op := pred.Op
 					switch op {
-					case apiquery.PredicateOperatorEqual:
+					case rxpquery.PredicateOperatorEqual:
 						name := pred.Value.(string)
 						ands = append(ands, fmt.Sprintf("n.name = $%d", len(qargs)+1))
 						qargs = append(qargs, name)
@@ -993,7 +993,7 @@ INNER JOIN object_generations AS og
 			}
 			kvName = kvRec.Name()
 		}
-		obj := &apiobject.Object{
+		obj := &rxpobject.Object{
 			KindVersionName: kvName,
 			UUID:            rec.UUID,
 			Name:            rec.Name,

@@ -11,25 +11,25 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	apicore "github.com/relexec/rxp/api/core"
-	apidomain "github.com/relexec/rxp/api/domain"
+	rxpdomain "github.com/relexec/rxp/api/domain"
 	apierrors "github.com/relexec/rxp/api/errors"
-	apiquery "github.com/relexec/rxp/api/query"
-	apisystem "github.com/relexec/rxp/api/system"
+	rxpquery "github.com/relexec/rxp/api/query"
+	rxpsystem "github.com/relexec/rxp/api/system"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored domain record
 // having the supplied internal DB RowID.
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
-	sysRec *apisystem.System,
+	sysRec *rxpsystem.System,
 	rowID int64,
-) (*apidomain.Domain, error) {
-	out := &apidomain.Domain{
+) (*rxpdomain.Domain, error) {
+	out := &rxpdomain.Domain{
 		System: sysRec,
 	}
 	out.SetSystemInternalID(rowID)
 	fn := func(tx pgx.Tx) error {
-		var name apidomain.Name
+		var name rxpdomain.Name
 		var uuid string
 		var rootRowID int64
 		var parentRowID sql.NullInt64
@@ -95,16 +95,16 @@ WHERE id = $1
 // having the supplied UUID.
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
-	sysRec *apisystem.System,
+	sysRec *rxpsystem.System,
 	uuid string,
-) (*apidomain.Domain, error) {
-	out := &apidomain.Domain{
+) (*rxpdomain.Domain, error) {
+	out := &rxpdomain.Domain{
 		UUID:   uuid,
 		System: sysRec,
 	}
 	fn := func(tx pgx.Tx) error {
 		var rowID int64
-		var name apidomain.Name
+		var name rxpdomain.Name
 		var rootRowID int64
 		var parentRowID sql.NullInt64
 		var left int64
@@ -169,11 +169,11 @@ WHERE uuid = $1
 // having the supplied Name.
 func (s *Store) dbReadByName(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	name apidomain.Name,
-) (*apidomain.Domain, error) {
+	sysRec *rxpsystem.System,
+	name rxpdomain.Name,
+) (*rxpdomain.Domain, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
-	out := &apidomain.Domain{
+	out := &rxpdomain.Domain{
 		System: sysRec,
 		Name:   name,
 	}
@@ -245,8 +245,8 @@ AND name = $2
 // dbInsert atomically writes the supplied Domain to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	dom apidomain.Domain,
+	sysRec *rxpsystem.System,
+	dom rxpdomain.Domain,
 ) error {
 	parent := dom.Parent
 	if parent == nil {
@@ -258,8 +258,8 @@ func (s *Store) dbInsert(
 // dbInsertRoot creates a new domain record for a root node in a "domain tree".
 func (s *Store) dbInsertRoot(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	dom apidomain.Domain,
+	sysRec *rxpsystem.System,
+	dom rxpdomain.Domain,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	left := 1
@@ -327,9 +327,9 @@ INSERT INTO domains (
 // set model values for the domain tree.
 func (s *Store) dbInsertNonRoot(
 	ctx context.Context,
-	sysRec *apisystem.System,
-	parent apidomain.Domain,
-	dom apidomain.Domain,
+	sysRec *rxpsystem.System,
+	parent rxpdomain.Domain,
+	dom rxpdomain.Domain,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	if !parent.HasSystemInternalID() {
@@ -449,7 +449,7 @@ type domainRecord struct {
 	SystemID  int64          `db:"system_id"`
 	ID        int64          `db:"domain_id"`
 	UUID      string         `db:"domain_uuid"`
-	Name      apidomain.Name `db:"domain_name"`
+	Name      rxpdomain.Name `db:"domain_name"`
 	RootID    int64          `db:"root_id"`
 	ParentID  sql.NullInt64  `db:"parent_id"`
 	LeftSide  int64          `db:"left_side"`
@@ -460,45 +460,45 @@ type domainRecord struct {
 // pre-validated expression and options.
 func (s *Store) dbReadByExpression(
 	ctx context.Context,
-	expr apiquery.Expression,
-	opts apiquery.Options,
-) ([]*apidomain.Domain, error) {
+	expr rxpquery.Expression,
+	opts rxpquery.Options,
+) ([]*rxpdomain.Domain, error) {
 	qargs := []any{}
 	wheres := []string{}
 	treeOp := false
 
 	switch expr := expr.(type) {
-	case apiquery.UnaryExpression:
+	case rxpquery.UnaryExpression:
 		pred := expr.Predicate
 		switch pred := pred.(type) {
-		case apidomain.UUIDPredicate:
+		case rxpdomain.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
+			case rxpquery.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("d.uuid = $%d", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
-			case apiquery.PredicateOperatorIn:
+			case rxpquery.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("d.uuid = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
 				return nil, apierrors.UnsupportedPredicateOperator(op)
 			}
-		case apidomain.NamePredicate:
+		case rxpdomain.NamePredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
+			case rxpquery.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("d.name = $%d", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
-			case apiquery.PredicateOperatorIn:
+			case rxpquery.PredicateOperatorIn:
 				wheres = append(wheres, fmt.Sprintf("d.name = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
 				return nil, apierrors.UnsupportedPredicateOperator(op)
 			}
-		case apisystem.UUIDPredicate:
+		case rxpsystem.UUIDPredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
+			case rxpquery.PredicateOperatorEqual:
 				sysUUID := pred.Value.(string)
 				sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 				if err != nil {
@@ -513,7 +513,7 @@ func (s *Store) dbReadByExpression(
 				sysRowID := sysRec.SystemInternalIDInt64()
 				wheres = append(wheres, fmt.Sprintf("d.system = $%d", len(qargs)+1))
 				qargs = append(qargs, sysRowID)
-			case apiquery.PredicateOperatorIn:
+			case rxpquery.PredicateOperatorIn:
 				sysRowIDs := []int64{}
 				sysUUIDs := pred.Value.([]string)
 				for _, sysUUID := range sysUUIDs {
@@ -538,28 +538,28 @@ func (s *Store) dbReadByExpression(
 			default:
 				return nil, apierrors.UnsupportedPredicateOperator(op)
 			}
-		case apidomain.RootUUIDPredicate:
+		case rxpdomain.RootUUIDPredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
+			case rxpquery.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("d.root = (SELECT id FROM domains WHERE uuid = $%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
 				return nil, apierrors.UnsupportedPredicateOperator(op)
 			}
-		case apidomain.RootNamePredicate:
+		case rxpdomain.RootNamePredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
+			case rxpquery.PredicateOperatorEqual:
 				wheres = append(wheres, fmt.Sprintf("d.root = (SELECT id FROM domains WHERE name = $%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
 				return nil, apierrors.UnsupportedPredicateOperator(op)
 			}
-		case apidomain.ParentUUIDPredicate:
+		case rxpdomain.ParentUUIDPredicate:
 			op := pred.Op
 			switch op {
-			case apiquery.PredicateOperatorEqual:
+			case rxpquery.PredicateOperatorEqual:
 				treeOp = true
 				wheres = append(
 					wheres,
@@ -623,7 +623,7 @@ FROM domains AS d`
 		return nil, err
 	}
 
-	out := make([]*apidomain.Domain, 0, len(recs))
+	out := make([]*rxpdomain.Domain, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
@@ -632,7 +632,7 @@ FROM domains AS d`
 				apierrors.WithWrap(err),
 			)
 		}
-		dom := &apidomain.Domain{
+		dom := &rxpdomain.Domain{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
 			System: sysRec,
@@ -663,12 +663,12 @@ FROM domains AS d`
 	return out, nil
 }
 
-// dbReadDomainsInTreeByRootRowID returns the set of apidomain.Domains comprising the
+// dbReadDomainsInTreeByRootRowID returns the set of rxpdomain.Domains comprising the
 // "domain tree" rooted at the supplied root domain row ID.
 func (s *Store) dbReadDomainsInTreeByRootRowID(
 	ctx context.Context,
 	rootRowID int64,
-) ([]*apidomain.Domain, error) {
+) ([]*rxpdomain.Domain, error) {
 	var recs []domainRecord
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -705,7 +705,7 @@ WHERE d.root = $1
 		return nil, err
 	}
 
-	out := make([]*apidomain.Domain, 0, len(recs))
+	out := make([]*rxpdomain.Domain, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
@@ -714,7 +714,7 @@ WHERE d.root = $1
 				apierrors.WithWrap(err),
 			)
 		}
-		dom := &apidomain.Domain{
+		dom := &rxpdomain.Domain{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
 			System: sysRec,
