@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	apimetrics "github.com/relexec/rxp/api/metrics"
-
 	"github.com/relexec/rxp-pg/config"
+	"github.com/relexec/rxp-pg/metrics"
 )
 
 type WithOption func(*Driver)
@@ -59,7 +58,7 @@ func WithLogger(logger *slog.Logger) WithOption {
 }
 
 // WithMetrics sets the Driver's Metrics handler to the supplied value.
-func WithMetrics(h *apimetrics.Handler) WithOption {
+func WithMetrics(h *metrics.Handler) WithOption {
 	return func(d *Driver) {
 		d.Metrics = h
 	}

@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	apimetrics "github.com/relexec/rxp/api/metrics"
 	rxpsystem "github.com/relexec/rxp/api/system"
 
 	"github.com/relexec/rxp-pg/config"
@@ -16,6 +15,7 @@ import (
 	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
+	"github.com/relexec/rxp-pg/metrics"
 )
 
 // Driver implements an rxp backend using PostgreSQL for persistence.
@@ -29,7 +29,7 @@ type Driver struct {
 	Pool *pgxpool.Pool
 
 	// Metrics is the metrics handler for the Driver.
-	Metrics *apimetrics.Handler
+	Metrics *metrics.Handler
 
 	// hostSystemUUID is the UUID of the host System managed by this Driver.
 	hostSystemUUID string

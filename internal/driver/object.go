@@ -9,7 +9,6 @@ import (
 	apierrors "github.com/relexec/rxp/api/errors"
 	rxpkind "github.com/relexec/rxp/api/kind"
 	rxpkindversion "github.com/relexec/rxp/api/kindversion"
-	apimetrics "github.com/relexec/rxp/api/metrics"
 	rxpobject "github.com/relexec/rxp/api/object"
 	rxpquery "github.com/relexec/rxp/api/query"
 	rxpsystem "github.com/relexec/rxp/api/system"
@@ -17,6 +16,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
+	"github.com/relexec/rxp-pg/metrics"
 )
 
 // ObjectRead reads a single Object from persistent storage.
@@ -34,17 +34,17 @@ func (d *Driver) ObjectRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(apicore.TypeObject),
-			apimetrics.AttributeKindVersion(kv),
+			metrics.AttributeType(apicore.TypeObject),
+			metrics.AttributeKindVersion(kv),
 		}
 		if err != nil {
-			attrs = append(attrs, apimetrics.AttributeErrCode(err))
+			attrs = append(attrs, metrics.AttributeErrCode(err))
 		}
-		apimetrics.InstrumentReadRequest.Add(
+		metrics.InstrumentReadRequest.Add(
 			ctx, 1,
 			metric.WithAttributes(attrs...),
 		)
-		apimetrics.InstrumentReadDuration.Record(ctx, elapsed)
+		metrics.InstrumentReadDuration.Record(ctx, elapsed)
 	}()
 
 	err = d.objectReadValidate(ctx, kv, sel)
@@ -223,17 +223,17 @@ func (d *Driver) ObjectWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(apicore.TypeObject),
-			apimetrics.AttributeKindVersion(kv),
+			metrics.AttributeType(apicore.TypeObject),
+			metrics.AttributeKindVersion(kv),
 		}
 		if err != nil {
-			attrs = append(attrs, apimetrics.AttributeErrCode(err))
+			attrs = append(attrs, metrics.AttributeErrCode(err))
 		}
-		apimetrics.InstrumentWriteRequest.Add(
+		metrics.InstrumentWriteRequest.Add(
 			ctx, 1,
 			metric.WithAttributes(attrs...),
 		)
-		apimetrics.InstrumentWriteDuration.Record(ctx, elapsed)
+		metrics.InstrumentWriteDuration.Record(ctx, elapsed)
 	}()
 
 	err = d.objectWriteValidate(ctx, obj)
@@ -349,17 +349,17 @@ func (d *Driver) ObjectQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			apimetrics.AttributeType(apicore.TypeObject),
-			apimetrics.AttributeKindVersion(kv),
+			metrics.AttributeType(apicore.TypeObject),
+			metrics.AttributeKindVersion(kv),
 		}
 		if err != nil {
-			attrs = append(attrs, apimetrics.AttributeErrCode(err))
+			attrs = append(attrs, metrics.AttributeErrCode(err))
 		}
-		apimetrics.InstrumentQueryRequest.Add(
+		metrics.InstrumentQueryRequest.Add(
 			ctx, 1,
 			metric.WithAttributes(attrs...),
 		)
-		apimetrics.InstrumentQueryDuration.Record(ctx, elapsed)
+		metrics.InstrumentQueryDuration.Record(ctx, elapsed)
 	}()
 
 	qopts := rxpquery.NewOptions(opts...)

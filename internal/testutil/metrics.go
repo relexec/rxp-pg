@@ -3,19 +3,19 @@ package testutil
 import (
 	"context"
 
-	apimetrics "github.com/relexec/rxp/api/metrics"
+	"github.com/relexec/rxp-pg/metrics"
 	otelmetric "go.opentelemetry.io/otel/sdk/metric"
 )
 
 // Metrics returns the Metrics handler for the test suite.
-func Metrics(ctx context.Context) (*apimetrics.Handler, error) {
+func Metrics(ctx context.Context) (*metrics.Handler, error) {
 	reader := otelmetric.NewManualReader()
 	mp := otelmetric.NewMeterProvider(
 		otelmetric.WithReader(reader),
 	)
-	return apimetrics.New(
+	return metrics.New(
 		ctx,
-		apimetrics.WithMeterProvider(mp),
-		apimetrics.WithReader(reader),
+		metrics.WithMeterProvider(mp),
+		metrics.WithReader(reader),
 	)
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	apicore "github.com/relexec/rxp/api/core"
 	apierrors "github.com/relexec/rxp/api/errors"
-	apimetrics "github.com/relexec/rxp/api/metrics"
 	rxpsystem "github.com/relexec/rxp/api/system"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
@@ -16,6 +15,7 @@ import (
 	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
+	"github.com/relexec/rxp-pg/metrics"
 )
 
 func (d *Driver) init(ctx context.Context) error {
@@ -99,7 +99,7 @@ func (d *Driver) ensureHostSystem() error {
 func (d *Driver) initMetrics(ctx context.Context) error {
 	d.Logger.Debug("initializing metrics")
 	if d.Metrics == nil {
-		h, err := apimetrics.New(ctx)
+		h, err := metrics.New(ctx)
 		if err != nil {
 			return fmt.Errorf("failed initializing metrics: %w", err)
 		}
