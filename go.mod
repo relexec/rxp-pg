@@ -11,12 +11,13 @@ require (
 	github.com/matoous/go-nanoid v1.5.1
 	github.com/relexec/delta v0.1.0
 	github.com/relexec/pkg v0.2.0
-	github.com/relexec/rxp v0.5.0
-	github.com/relexec/rxp-testing v0.5.0
+	github.com/relexec/rxp v0.6.0
+	github.com/relexec/rxp-testing v0.6.0
 	github.com/samber/lo v1.53.0
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.44.0
+	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.44.0
 	go.opentelemetry.io/otel/metric v1.44.0
 	go.opentelemetry.io/otel/sdk/metric v1.44.0
 )
@@ -33,7 +34,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.44.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
