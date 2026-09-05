@@ -15,8 +15,6 @@ import (
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
 	storekindversion "github.com/relexec/rxp-pg/internal/store/kindversion"
 	storeobject "github.com/relexec/rxp-pg/internal/store/object"
-	storerun "github.com/relexec/rxp-pg/internal/store/run"
-	storerunevent "github.com/relexec/rxp-pg/internal/store/runevent"
 	storesystem "github.com/relexec/rxp-pg/internal/store/system"
 )
 
@@ -52,10 +50,6 @@ type Driver struct {
 	domainStore *storedomain.Store
 	// objectStore contains the Store for reading and writing Object data.
 	objectStore *storeobject.Store
-	// runStore contains the Store for reading and writing Run data.
-	runStore *storerun.Store
-	// runEventStore contains the Store for reading and writing RunEvent data.
-	runEventStore *storerunevent.Store
 
 	// onClose are a set of callbacks that will be executed in reverse
 	// order when the Driver is closed.
