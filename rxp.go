@@ -3,7 +3,6 @@ package rxppg
 import (
 	"context"
 
-	"github.com/relexec/rxp"
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/driver"
 )
@@ -18,6 +17,6 @@ func New(
 	ctx context.Context,
 	cfg config.Config,
 	opts ...driver.WithOption,
-) (rxp.Driver, error) {
+) (*driver.Driver, error) {
 	return driver.New(ctx, cfg, opts...)
 }
