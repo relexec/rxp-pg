@@ -10,26 +10,26 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	apicore "github.com/relexec/rxp/api/core"
-	rxpdomain "github.com/relexec/rxp/api/domain"
-	apierrors "github.com/relexec/rxp/api/errors"
-	rxpquery "github.com/relexec/rxp/api/query"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxpdomain "github.com/relexec/rxp/domain"
+	rxperrors "github.com/relexec/rxp/errors"
+	rxpquery "github.com/relexec/rxp/query"
+	rxpsystem "github.com/relexec/rxp/system"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored domain record
 // having the supplied internal DB RowID.
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
-	sysRec *rxpsystem.System,
+	sysRec *rxp.System,
 	rowID int64,
-) (*rxpdomain.Domain, error) {
-	out := &rxpdomain.Domain{
+) (*rxp.Domain, error) {
+	out := &rxp.Domain{
 		System: sysRec,
 	}
 	out.SetSystemInternalID(rowID)
 	fn := func(tx pgx.Tx) error {
-		var name rxpdomain.Name
+		var name rxp.DomainName
 		var uuid string
 		var rootRowID int64
 		var parentRowID sql.NullInt64
@@ -56,11 +56,11 @@ WHERE id = $1
 		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return apierrors.ErrNotFound
+				return rxperrors.ErrNotFound
 			}
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed reading domains record by rowid",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		if parentRowID.Valid {
@@ -95,16 +95,16 @@ WHERE id = $1
 // having the supplied UUID.
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
-	sysRec *rxpsystem.System,
+	sysRec *rxp.System,
 	uuid string,
-) (*rxpdomain.Domain, error) {
-	out := &rxpdomain.Domain{
+) (*rxp.Domain, error) {
+	out := &rxp.Domain{
 		UUID:   uuid,
 		System: sysRec,
 	}
 	fn := func(tx pgx.Tx) error {
 		var rowID int64
-		var name rxpdomain.Name
+		var name rxp.DomainName
 		var rootRowID int64
 		var parentRowID sql.NullInt64
 		var left int64
@@ -130,11 +130,11 @@ WHERE uuid = $1
 		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return apierrors.ErrNotFound
+				return rxperrors.ErrNotFound
 			}
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed reading domains record by uuid",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		if parentRowID.Valid {
@@ -169,11 +169,11 @@ WHERE uuid = $1
 // having the supplied Name.
 func (s *Store) dbReadByName(
 	ctx context.Context,
-	sysRec *rxpsystem.System,
-	name rxpdomain.Name,
-) (*rxpdomain.Domain, error) {
+	sysRec *rxp.System,
+	name rxp.DomainName,
+) (*rxp.Domain, error) {
 	sysRowID := sysRec.SystemInternalIDInt64()
-	out := &rxpdomain.Domain{
+	out := &rxp.Domain{
 		System: sysRec,
 		Name:   name,
 	}
@@ -206,11 +206,11 @@ AND name = $2
 		)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return apierrors.ErrNotFound
+				return rxperrors.ErrNotFound
 			}
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed reading domains record by name",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		if parentRowID.Valid {
@@ -245,8 +245,8 @@ AND name = $2
 // dbInsert atomically writes the supplied Domain to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sysRec *rxpsystem.System,
-	dom rxpdomain.Domain,
+	sysRec *rxp.System,
+	dom rxp.Domain,
 ) error {
 	parent := dom.Parent
 	if parent == nil {
@@ -258,14 +258,14 @@ func (s *Store) dbInsert(
 // dbInsertRoot creates a new domain record for a root node in a "domain tree".
 func (s *Store) dbInsertRoot(
 	ctx context.Context,
-	sysRec *rxpsystem.System,
-	dom rxpdomain.Domain,
+	sysRec *rxp.System,
+	dom rxp.Domain,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	left := 1
 	right := 2
 	createdOn := time.Now().UnixNano()
-	caller := apicore.CallerFromContext(ctx)
+	caller := rxp.CallerFromContext(ctx)
 	createdBy := caller.Identity
 	uuid := dom.UUID
 	name := dom.Name
@@ -305,9 +305,9 @@ INSERT INTO domains (
 				if pgErr.Code == pgerrcode.UniqueViolation {
 					conName := pgErr.ConstraintName
 					if strings.Contains(conName, "uuid") {
-						return apierrors.DuplicateKey("domain", "uuid", uuid)
+						return rxperrors.DuplicateKey("domain", "uuid", uuid)
 					} else {
-						return apierrors.DuplicateName("domain", name)
+						return rxperrors.DuplicateName("domain", name)
 					}
 				}
 			}
@@ -315,9 +315,9 @@ INSERT INTO domains (
 		return err
 	}
 	if err := s.Exec(ctx, fn); err != nil {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			"failed inserting root domains record",
-			apierrors.WithWrap(err),
+			rxperrors.WithWrap(err),
 		)
 	}
 	return nil
@@ -327,9 +327,9 @@ INSERT INTO domains (
 // set model values for the domain tree.
 func (s *Store) dbInsertNonRoot(
 	ctx context.Context,
-	sysRec *rxpsystem.System,
-	parent rxpdomain.Domain,
-	dom rxpdomain.Domain,
+	sysRec *rxp.System,
+	parent rxp.Domain,
+	dom rxp.Domain,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	if !parent.HasSystemInternalID() {
@@ -359,7 +359,7 @@ func (s *Store) dbInsertNonRoot(
 	thisRight := thisLeft + 1
 
 	createdOn := time.Now().UnixNano()
-	caller := apicore.CallerFromContext(ctx)
+	caller := rxp.CallerFromContext(ctx)
 	createdBy := caller.Identity
 	uuid := dom.UUID
 	name := dom.Name
@@ -427,9 +427,9 @@ INSERT INTO domains (
 				if pgErr.Code == pgerrcode.UniqueViolation {
 					conName := pgErr.ConstraintName
 					if strings.Contains(conName, "uuid") {
-						return apierrors.DuplicateKey("domain", "uuid", uuid)
+						return rxperrors.DuplicateKey("domain", "uuid", uuid)
 					} else {
-						return apierrors.DuplicateName("domain", name)
+						return rxperrors.DuplicateName("domain", name)
 					}
 				}
 			}
@@ -437,9 +437,9 @@ INSERT INTO domains (
 		return err
 	}
 	if err := s.Exec(ctx, fn); err != nil {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			"failed inserting non-root domains record",
-			apierrors.WithWrap(err),
+			rxperrors.WithWrap(err),
 		)
 	}
 	return nil
@@ -449,7 +449,7 @@ type domainRecord struct {
 	SystemID  int64          `db:"system_id"`
 	ID        int64          `db:"domain_id"`
 	UUID      string         `db:"domain_uuid"`
-	Name      rxpdomain.Name `db:"domain_name"`
+	Name      rxp.DomainName `db:"domain_name"`
 	RootID    int64          `db:"root_id"`
 	ParentID  sql.NullInt64  `db:"parent_id"`
 	LeftSide  int64          `db:"left_side"`
@@ -462,7 +462,7 @@ func (s *Store) dbReadByExpression(
 	ctx context.Context,
 	expr rxpquery.Expression,
 	opts rxpquery.Options,
-) ([]*rxpdomain.Domain, error) {
+) ([]*rxp.Domain, error) {
 	qargs := []any{}
 	wheres := []string{}
 	treeOp := false
@@ -481,7 +481,7 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("d.uuid = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
-				return nil, apierrors.UnsupportedPredicateOperator(op)
+				return nil, rxperrors.UnsupportedPredicateOperator(op)
 			}
 		case rxpdomain.NamePredicate:
 			op := pred.Op
@@ -493,7 +493,7 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("d.name = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
-				return nil, apierrors.UnsupportedPredicateOperator(op)
+				return nil, rxperrors.UnsupportedPredicateOperator(op)
 			}
 		case rxpsystem.UUIDPredicate:
 			op := pred.Op
@@ -505,7 +505,7 @@ func (s *Store) dbReadByExpression(
 					// If we're looking up domains by a non-existent system,
 					// just return am empty result since there's clearly not
 					// going to be any matching domain records.
-					if err == apierrors.ErrNotFound {
+					if err == rxperrors.ErrNotFound {
 						return nil, nil
 					}
 					return nil, err
@@ -519,7 +519,7 @@ func (s *Store) dbReadByExpression(
 				for _, sysUUID := range sysUUIDs {
 					sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 					if err != nil {
-						if err == apierrors.ErrNotFound {
+						if err == rxperrors.ErrNotFound {
 							continue
 						}
 						return nil, err
@@ -536,7 +536,7 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("d.system = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, sysRowIDs)
 			default:
-				return nil, apierrors.UnsupportedPredicateOperator(op)
+				return nil, rxperrors.UnsupportedPredicateOperator(op)
 			}
 		case rxpdomain.RootUUIDPredicate:
 			op := pred.Op
@@ -545,7 +545,7 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("d.root = (SELECT id FROM domains WHERE uuid = $%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
-				return nil, apierrors.UnsupportedPredicateOperator(op)
+				return nil, rxperrors.UnsupportedPredicateOperator(op)
 			}
 		case rxpdomain.RootNamePredicate:
 			op := pred.Op
@@ -554,7 +554,7 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("d.root = (SELECT id FROM domains WHERE name = $%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
-				return nil, apierrors.UnsupportedPredicateOperator(op)
+				return nil, rxperrors.UnsupportedPredicateOperator(op)
 			}
 		case rxpdomain.ParentUUIDPredicate:
 			op := pred.Op
@@ -571,13 +571,13 @@ func (s *Store) dbReadByExpression(
 				)
 				qargs = append(qargs, pred.Value)
 			default:
-				return nil, apierrors.UnsupportedPredicateOperator(op)
+				return nil, rxperrors.UnsupportedPredicateOperator(op)
 			}
 		default:
-			return nil, apierrors.UnsupportedPredicate(pred)
+			return nil, rxperrors.UnsupportedPredicate(pred)
 		}
 	default:
-		return nil, apierrors.UnsupportedExpression(expr)
+		return nil, rxperrors.UnsupportedExpression(expr)
 	}
 
 	var recs []domainRecord
@@ -604,17 +604,17 @@ FROM domains AS d`
 		qs += fmt.Sprintf("\nORDER BY d.uuid ASC LIMIT %d", opts.Limit())
 		rows, err := tx.Query(ctx, qs, qargs...)
 		if err != nil {
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed reading domain records",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		defer rows.Close()
 		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[domainRecord])
 		if err != nil {
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed collecting domain records",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		return nil
@@ -623,16 +623,16 @@ FROM domains AS d`
 		return nil, err
 	}
 
-	out := make([]*rxpdomain.Domain, 0, len(recs))
+	out := make([]*rxp.Domain, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
-			return nil, apierrors.Internal(
+			return nil, rxperrors.Internal(
 				"failed reading system record by rowid",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
-		dom := &rxpdomain.Domain{
+		dom := &rxp.Domain{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
 			System: sysRec,
@@ -663,12 +663,12 @@ FROM domains AS d`
 	return out, nil
 }
 
-// dbReadDomainsInTreeByRootRowID returns the set of rxpdomain.Domains comprising the
+// dbReadDomainsInTreeByRootRowID returns the set of rxp.Domains comprising the
 // "domain tree" rooted at the supplied root domain row ID.
 func (s *Store) dbReadDomainsInTreeByRootRowID(
 	ctx context.Context,
 	rootRowID int64,
-) ([]*rxpdomain.Domain, error) {
+) ([]*rxp.Domain, error) {
 	var recs []domainRecord
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -686,17 +686,17 @@ WHERE d.root = $1
 `
 		rows, err := tx.Query(ctx, qs, rootRowID)
 		if err != nil {
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed reading domain records in tree by root rowid",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		defer rows.Close()
 		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[domainRecord])
 		if err != nil {
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed collecting domain records in tree by root rowid",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		return nil
@@ -705,16 +705,16 @@ WHERE d.root = $1
 		return nil, err
 	}
 
-	out := make([]*rxpdomain.Domain, 0, len(recs))
+	out := make([]*rxp.Domain, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
-			return nil, apierrors.Internal(
+			return nil, rxperrors.Internal(
 				"failed reading system record by rowid",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
-		dom := &rxpdomain.Domain{
+		dom := &rxp.Domain{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
 			System: sysRec,

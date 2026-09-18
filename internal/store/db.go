@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	apierrors "github.com/relexec/rxp/api/errors"
+	rxperrors "github.com/relexec/rxp/errors"
 )
 
 const (
@@ -41,18 +41,18 @@ func (s Store) Exec(
 
 	conn, err := s.Pool.Acquire(acqCtx)
 	if err != nil {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			"failed acquiring connection from pool",
-			apierrors.WithWrap(err),
+			rxperrors.WithWrap(err),
 		)
 	}
 	defer conn.Release()
 
 	tx, err := conn.BeginTx(ctx, txOptsStrict)
 	if err != nil {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			"failed beginning transaction",
-			apierrors.WithWrap(err),
+			rxperrors.WithWrap(err),
 		)
 	}
 
@@ -75,9 +75,9 @@ func (s Store) Exec(
 	if err != nil {
 		rbErr := tx.Rollback(ctx)
 		if rbErr != nil && rbErr != pgx.ErrTxClosed {
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed rolling back transaction",
-				apierrors.WithWrap(rbErr),
+				rxperrors.WithWrap(rbErr),
 			)
 		}
 		return err
@@ -85,9 +85,9 @@ func (s Store) Exec(
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			"failed committing transaction",
-			apierrors.WithWrap(err),
+			rxperrors.WithWrap(err),
 		)
 	}
 	return nil

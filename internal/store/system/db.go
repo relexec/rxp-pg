@@ -10,10 +10,10 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	apicore "github.com/relexec/rxp/api/core"
-	apierrors "github.com/relexec/rxp/api/errors"
-	rxpquery "github.com/relexec/rxp/api/query"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxperrors "github.com/relexec/rxp/errors"
+	rxpquery "github.com/relexec/rxp/query"
+	rxpsystem "github.com/relexec/rxp/system"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored system record
@@ -21,8 +21,8 @@ import (
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*rxpsystem.System, error) {
-	out := &rxpsystem.System{}
+) (*rxp.System, error) {
+	out := &rxp.System{}
 	out.SetSystemInternalID(rowID)
 	fn := func(tx pgx.Tx) error {
 		var uuid string
@@ -31,11 +31,11 @@ func (s *Store) dbReadByRowID(
 		err := tx.QueryRow(ctx, qs, rowID).Scan(&uuid, &tag)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return apierrors.ErrNotFound
+				return rxperrors.ErrNotFound
 			}
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed reading systems record by rowid",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		out.UUID = uuid
@@ -53,8 +53,8 @@ func (s *Store) dbReadByRowID(
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*rxpsystem.System, error) {
-	out := &rxpsystem.System{UUID: uuid}
+) (*rxp.System, error) {
+	out := &rxp.System{UUID: uuid}
 	fn := func(tx pgx.Tx) error {
 		var rowID int64
 		var tag sql.NullString
@@ -62,11 +62,11 @@ func (s *Store) dbReadByUUID(
 		err := tx.QueryRow(ctx, qs, uuid).Scan(&rowID, &tag)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return apierrors.ErrNotFound
+				return rxperrors.ErrNotFound
 			}
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed reading systems record by uuid",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		out.SetSystemInternalID(rowID)
@@ -84,10 +84,10 @@ func (s *Store) dbReadByUUID(
 // dbInsert atomically writes the supplied System to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sys rxpsystem.System,
+	sys rxp.System,
 ) error {
 	createdOn := time.Now().UnixNano()
-	caller := apicore.CallerFromContext(ctx)
+	caller := rxp.CallerFromContext(ctx)
 	createdBy := caller.Identity
 	var tag *string
 	uuid := sys.UUID
@@ -112,16 +112,16 @@ INSERT INTO systems (
 		if err != nil {
 			if pgErr, ok := err.(*pgconn.PgError); ok {
 				if pgErr.Code == pgerrcode.UniqueViolation {
-					return apierrors.DuplicateKey("system", "uuid", uuid)
+					return rxperrors.DuplicateKey("system", "uuid", uuid)
 				}
 			}
 		}
 		return err
 	}
 	if err := s.Exec(ctx, fn); err != nil {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			"failed inserting systems record",
-			apierrors.WithWrap(err),
+			rxperrors.WithWrap(err),
 		)
 	}
 	return nil
@@ -139,7 +139,7 @@ func (s *Store) dbReadByExpression(
 	ctx context.Context,
 	expr rxpquery.Expression,
 	opts rxpquery.Options,
-) ([]*rxpsystem.System, error) {
+) ([]*rxp.System, error) {
 	qargs := []any{}
 	wheres := []string{}
 
@@ -157,13 +157,13 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("s.uuid = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
-				return nil, apierrors.UnsupportedPredicateOperator(op)
+				return nil, rxperrors.UnsupportedPredicateOperator(op)
 			}
 		default:
-			return nil, apierrors.UnsupportedPredicate(pred)
+			return nil, rxperrors.UnsupportedPredicate(pred)
 		}
 	default:
-		return nil, apierrors.UnsupportedExpression(expr)
+		return nil, rxperrors.UnsupportedExpression(expr)
 	}
 
 	var recs []systemRecord
@@ -181,17 +181,17 @@ FROM systems AS s
 		qs += fmt.Sprintf("\nORDER BY s.uuid ASC LIMIT %d", opts.Limit())
 		rows, err := tx.Query(ctx, qs, qargs...)
 		if err != nil {
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed reading system records",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		defer rows.Close()
 		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[systemRecord])
 		if err != nil {
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed collecting system records",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		return nil
@@ -200,9 +200,9 @@ FROM systems AS s
 		return nil, err
 	}
 
-	out := make([]*rxpsystem.System, 0, len(recs))
+	out := make([]*rxp.System, 0, len(recs))
 	for _, rec := range recs {
-		sys := &rxpsystem.System{
+		sys := &rxp.System{
 			UUID: rec.UUID,
 			Tag:  rec.Tag,
 		}

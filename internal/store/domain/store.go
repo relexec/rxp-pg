@@ -3,8 +3,7 @@ package store
 import (
 	"sync"
 
-	rxpdomain "github.com/relexec/rxp/api/domain"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
 
 	"github.com/relexec/rxp-pg/internal/cache"
 	"github.com/relexec/rxp-pg/internal/store"
@@ -18,7 +17,7 @@ type Store struct {
 	// cacheLock protects the set of lookup caches.
 	cacheLock sync.RWMutex
 	// byUUID is a cache that stores known Domains keyed by domain UUID.
-	byUUID *cache.Cache[byUUIDCacheKey, *rxpdomain.Domain]
+	byUUID *cache.Cache[byUUIDCacheKey, *rxp.Domain]
 	// byName is a cache that stores a lookup map of System UUID+DomainName to
 	// Domain UUID.
 	byName *cache.Cache[byNameCacheKey, byUUIDCacheKey]
@@ -27,7 +26,7 @@ type Store struct {
 	byRowID *cache.Cache[byRowIDCacheKey, byUUIDCacheKey]
 
 	// hostSystemRecord is the host System managed by the Driver.
-	hostSystemRecord rxpsystem.System
+	hostSystemRecord rxp.System
 	// systemStore contains the Store for reading and writing System data.
 	systemStore *storesystem.Store
 }

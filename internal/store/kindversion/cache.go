@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	apierrors "github.com/relexec/rxp/api/errors"
-	rxpkindversion "github.com/relexec/rxp/api/kindversion"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxperrors "github.com/relexec/rxp/errors"
 )
 
 type byRowIDCacheKey int64
@@ -18,24 +17,24 @@ func (k byNameCacheKey) SystemUUID() string {
 	return parts[0]
 }
 
-func (k byNameCacheKey) KindVersion() rxpkindversion.Name {
+func (k byNameCacheKey) KindVersion() rxp.KindVersionName {
 	parts := strings.Split(string(k), "|")
-	return rxpkindversion.Name(parts[1])
+	return rxp.KindVersionName(parts[1])
 }
 
 func newByNameCacheKey(
-	system *rxpsystem.System,
-	kv rxpkindversion.Name,
+	system *rxp.System,
+	kv rxp.KindVersionName,
 ) byNameCacheKey {
 	return byNameCacheKey(system.UUID + "|" + string(kv))
 }
 
 // cacheReadByRowID looks up a cached KindVersion by RowID, returning the cached
-// rxpkindversion.KindVersion and whether or not the entry was found.
+// rxp.KindVersion and whether or not the entry was found.
 func (s *Store) cacheReadByRowID(
 	ctx context.Context,
 	key byRowIDCacheKey,
-) (*rxpkindversion.KindVersion, bool) {
+) (*rxp.KindVersion, bool) {
 	if s.byRowID == nil {
 		return nil, false
 	}
@@ -51,11 +50,11 @@ func (s *Store) cacheReadByRowID(
 }
 
 // cacheReadByName looks up a cached KindVersion by Name, returning
-// the cached rxpkindversion.KindVersion and whether or not the entry was found.
+// the cached rxp.KindVersion and whether or not the entry was found.
 func (s *Store) cacheReadByName(
 	ctx context.Context,
 	key byNameCacheKey,
-) (*rxpkindversion.KindVersion, bool) {
+) (*rxp.KindVersion, bool) {
 	if s.byName == nil {
 		return nil, false
 	}
@@ -67,20 +66,20 @@ func (s *Store) cacheReadByName(
 }
 
 // cacheReadByNameNoLock looks up a cached Kind by name, returning the cached
-// rxpkindversion.KindVersion and whether or not the entry was found. This method assumes the cache
+// rxp.KindVersion and whether or not the entry was found. This method assumes the cache
 // lock is already held.
 func (s *Store) cacheReadByNameNoLock(
 	ctx context.Context,
 	key byNameCacheKey,
-) (*rxpkindversion.KindVersion, bool) {
+) (*rxp.KindVersion, bool) {
 	return s.byName.Get(key)
 }
 
-// cacheWrite ensures the supplied rxpkindversion.KindVersion is written to the lookup caches if
+// cacheWrite ensures the supplied rxp.KindVersion is written to the lookup caches if
 // enabled.
 func (s *Store) cacheWrite(
 	ctx context.Context,
-	rec *rxpkindversion.KindVersion,
+	rec *rxp.KindVersion,
 ) error {
 	if s.byName == nil {
 		return nil
@@ -95,7 +94,7 @@ func (s *Store) cacheWrite(
 	)
 	set := s.byName.Set(nameKey, rec)
 	if !set {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			fmt.Sprintf(
 				"failed setting kindversion cache name key %q", nameKey,
 			),
@@ -106,7 +105,7 @@ func (s *Store) cacheWrite(
 	rowIDKey := byRowIDCacheKey(rowID)
 	set = s.byRowID.Set(rowIDKey, nameKey)
 	if !set {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			fmt.Sprintf(
 				"failed setting kindversion cache rowid key %d", rowIDKey,
 			),

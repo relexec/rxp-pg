@@ -4,11 +4,9 @@ import (
 	"context"
 	"time"
 
-	apicore "github.com/relexec/rxp/api/core"
-	apierrors "github.com/relexec/rxp/api/errors"
-	rxpkind "github.com/relexec/rxp/api/kind"
-	rxpquery "github.com/relexec/rxp/api/query"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxpkind "github.com/relexec/rxp/kind"
+	rxpquery "github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
@@ -19,7 +17,7 @@ import (
 func (d *Driver) KindRead(
 	ctx context.Context,
 	sel rxpkind.Selector,
-) (*rxpkind.Kind, error) {
+) (*rxp.Kind, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -29,7 +27,7 @@ func (d *Driver) KindRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeKind),
+			metrics.AttributeType(rxp.TypeKind),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -46,7 +44,7 @@ func (d *Driver) KindRead(
 		return nil, err
 	}
 
-	var sysRec *rxpsystem.System
+	var sysRec *rxp.System
 
 	name := sel.Name()
 	sys := sel.System()
@@ -56,8 +54,8 @@ func (d *Driver) KindRead(
 	if sys != nil && sys.UUID != d.hostSystemUUID {
 		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
-			if err == apierrors.ErrNotFound {
-				return nil, apierrors.ErrSystemUnknown
+			if err == rxp.ErrNotFound {
+				return nil, rxp.ErrSystemUnknown
 			}
 			return nil, err
 		}
@@ -80,7 +78,7 @@ func (d *Driver) kindReadValidate(
 // KindWrite atomically writes the supplied Kind to persistent storage.
 func (d *Driver) KindWrite(
 	ctx context.Context,
-	k rxpkind.Kind,
+	k rxp.Kind,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -91,7 +89,7 @@ func (d *Driver) KindWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeKind),
+			metrics.AttributeType(rxp.TypeKind),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -108,7 +106,7 @@ func (d *Driver) KindWrite(
 		return err
 	}
 
-	var sysRec *rxpsystem.System
+	var sysRec *rxp.System
 
 	sys := k.System
 
@@ -116,8 +114,8 @@ func (d *Driver) KindWrite(
 	if sys != nil && sys.UUID != d.hostSystemUUID {
 		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
-			if err == apierrors.ErrNotFound {
-				return apierrors.ErrSystemUnknown
+			if err == rxp.ErrNotFound {
+				return rxp.ErrSystemUnknown
 			}
 			return err
 		}
@@ -132,7 +130,7 @@ func (d *Driver) KindWrite(
 // options are not valid for writing a single Kind.
 func (d *Driver) kindWriteValidate(
 	ctx context.Context,
-	k rxpkind.Kind,
+	k rxp.Kind,
 ) error {
 	return k.Validate()
 }
@@ -147,7 +145,7 @@ func (d *Driver) KindQuery(
 	ctx context.Context,
 	expr rxpquery.Expression,
 	opts ...rxpquery.Option,
-) (*rxpquery.Result[*rxpkind.Kind], error) {
+) (*rxpquery.Result[*rxp.Kind], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -157,7 +155,7 @@ func (d *Driver) KindQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeKind),
+			metrics.AttributeType(rxp.TypeKind),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -192,11 +190,11 @@ func (d *Driver) KindQuery(
 			rxpquery.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []rxpquery.ResultModifier[*rxpkind.Kind]{
+	resNewOpts := []rxpquery.ResultModifier[*rxp.Kind]{
 		rxpquery.ResultWithItems(recs),
-		rxpquery.ResultWithOptions[*rxpkind.Kind](resOpts),
+		rxpquery.ResultWithOptions[*rxp.Kind](resOpts),
 	}
-	return rxpquery.NewResult[*rxpkind.Kind](resNewOpts...), nil
+	return rxpquery.NewResult[*rxp.Kind](resNewOpts...), nil
 }
 
 // kindQueryValidate returns an error if the supplied expression and query
@@ -207,7 +205,7 @@ func (d *Driver) kindQueryValidate(
 	opts rxpquery.Options,
 ) error {
 	if expr == nil {
-		return apierrors.ErrQueryExpressionRequired
+		return rxp.ErrQueryExpressionRequired
 	}
 	return nil
 }

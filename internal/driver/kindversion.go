@@ -4,11 +4,9 @@ import (
 	"context"
 	"time"
 
-	apicore "github.com/relexec/rxp/api/core"
-	apierrors "github.com/relexec/rxp/api/errors"
-	rxpkindversion "github.com/relexec/rxp/api/kindversion"
-	rxpquery "github.com/relexec/rxp/api/query"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxpkindversion "github.com/relexec/rxp/kindversion"
+	rxpquery "github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
@@ -26,12 +24,12 @@ func (d *Driver) KindVersionRead(
 	}
 	start := time.Now()
 
-	var name rxpkindversion.Name
+	var name rxp.KindVersionName
 
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeKindVersion),
+			metrics.AttributeType(rxp.TypeKindVersion),
 			metrics.AttributeKindVersion(name),
 		}
 		if err != nil {
@@ -49,7 +47,7 @@ func (d *Driver) KindVersionRead(
 		return nil, err
 	}
 
-	var sysRec *rxpsystem.System
+	var sysRec *rxp.System
 
 	name = sel.Name()
 	sys := sel.System()
@@ -59,8 +57,8 @@ func (d *Driver) KindVersionRead(
 	if sys != nil && sys.UUID != d.hostSystemUUID {
 		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
-			if err == apierrors.ErrNotFound {
-				return nil, apierrors.ErrSystemUnknown
+			if err == rxp.ErrNotFound {
+				return nil, rxp.ErrSystemUnknown
 			}
 			return nil, err
 		}
@@ -71,8 +69,8 @@ func (d *Driver) KindVersionRead(
 	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, name.Kind())
 	if err != nil {
 		if err != nil {
-			if err == apierrors.ErrNotFound {
-				return nil, apierrors.ErrKindUnknown
+			if err == rxp.ErrNotFound {
+				return nil, rxp.ErrKindUnknown
 			}
 			return nil, err
 		}
@@ -106,7 +104,7 @@ func (d *Driver) KindVersionWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeKindVersion),
+			metrics.AttributeType(rxp.TypeKindVersion),
 			metrics.AttributeKindVersion(name),
 		}
 		if err != nil {
@@ -124,7 +122,7 @@ func (d *Driver) KindVersionWrite(
 		return err
 	}
 
-	var sysRec *rxpsystem.System
+	var sysRec *rxp.System
 
 	kn := kv.Name()
 	sys := kv.System
@@ -133,8 +131,8 @@ func (d *Driver) KindVersionWrite(
 	if sys != nil && sys.UUID != d.hostSystemUUID {
 		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
-			if err == apierrors.ErrNotFound {
-				return apierrors.ErrSystemUnknown
+			if err == rxp.ErrNotFound {
+				return rxp.ErrSystemUnknown
 			}
 			return err
 		}
@@ -146,8 +144,8 @@ func (d *Driver) KindVersionWrite(
 	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, kn.Kind())
 	if err != nil {
 		if err != nil {
-			if err == apierrors.ErrNotFound {
-				return apierrors.ErrKindUnknown
+			if err == rxp.ErrNotFound {
+				return rxp.ErrKindUnknown
 			}
 			return err
 		}
@@ -184,7 +182,7 @@ func (d *Driver) KindVersionQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeKindVersion),
+			metrics.AttributeType(rxp.TypeKindVersion),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -234,7 +232,7 @@ func (d *Driver) kindversionQueryValidate(
 	opts rxpquery.Options,
 ) error {
 	if expr == nil {
-		return apierrors.ErrQueryExpressionRequired
+		return rxp.ErrQueryExpressionRequired
 	}
 	return nil
 }

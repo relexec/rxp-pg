@@ -3,17 +3,16 @@ package driver
 import (
 	"context"
 
-	apicore "github.com/relexec/rxp/api/core"
-	apierrors "github.com/relexec/rxp/api/errors"
+	"github.com/relexec/rxp"
 )
 
 // requestValidate performs some basic verification of the request.
 func (d *Driver) requestValidate(
 	ctx context.Context,
 ) error {
-	caller := apicore.CallerFromContext(ctx)
+	caller := rxp.CallerFromContext(ctx)
 	if caller == nil || caller.Identity == "" {
-		return apierrors.ErrMissingIdentity
+		return rxp.ErrMissingIdentity
 	}
 	return nil
 }

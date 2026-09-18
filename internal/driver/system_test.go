@@ -6,9 +6,9 @@ import (
 
 	"github.com/relexec/rxp-pg/internal/testutil"
 	"github.com/relexec/rxp-testing/fixtures"
-	rxpdomain "github.com/relexec/rxp/api/domain"
-	rxpquery "github.com/relexec/rxp/api/query"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	rxpdomain "github.com/relexec/rxp/domain"
+	rxpquery "github.com/relexec/rxp/query"
+	rxpsystem "github.com/relexec/rxp/system"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )

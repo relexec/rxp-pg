@@ -3,13 +3,13 @@ package store
 import (
 	"context"
 
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
 )
 
 // Write atomically writes the supplied System to persistent storage.
 func (s *Store) Write(
 	ctx context.Context,
-	sys rxpsystem.System,
+	sys rxp.System,
 ) error {
 	return s.dbInsert(ctx, sys)
 }

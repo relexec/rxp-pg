@@ -3,16 +3,15 @@ package store
 import (
 	"context"
 
-	rxpdomain "github.com/relexec/rxp/api/domain"
-	apierrors "github.com/relexec/rxp/api/errors"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxperrors "github.com/relexec/rxp/errors"
 )
 
 // Write atomically writes the pre-validated Domain to persistent storage.
 func (s *Store) Write(
 	ctx context.Context,
-	sysRec *rxpsystem.System,
-	dom rxpdomain.Domain,
+	sysRec *rxp.System,
+	dom rxp.Domain,
 ) error {
 	err := s.dbInsert(ctx, sysRec, dom)
 	if err != nil {
@@ -25,9 +24,9 @@ func (s *Store) Write(
 		// to update each cache entry and we rely on the
 		// write-to-cache-on-read-miss behaviour to keep cache entries fresh.
 		if err = s.cacheEvict(ctx, dom); err != nil {
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed evicting domain records from cache",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 	}

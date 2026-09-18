@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	rxpdomain "github.com/relexec/rxp/api/domain"
-	apierrors "github.com/relexec/rxp/api/errors"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxperrors "github.com/relexec/rxp/errors"
 )
 
 type byRowIDCacheKey int64
@@ -19,24 +18,24 @@ func (k byNameCacheKey) SystemUUID() string {
 	return parts[0]
 }
 
-func (k byNameCacheKey) DomainName() rxpdomain.Name {
+func (k byNameCacheKey) DomainName() rxp.DomainName {
 	parts := strings.Split(string(k), "|")
-	return rxpdomain.Name(parts[1])
+	return rxp.DomainName(parts[1])
 }
 
 func newByNameCacheKey(
-	system *rxpsystem.System,
-	name rxpdomain.Name,
+	system *rxp.System,
+	name rxp.DomainName,
 ) byNameCacheKey {
 	return byNameCacheKey(system.UUID + "|" + string(name))
 }
 
 // cacheReadByRowID looks up a cached Domain by RowID, returning the cached
-// rxpdomain.Domain and whether or not the entry was found.
+// rxp.Domain and whether or not the entry was found.
 func (s *Store) cacheReadByRowID(
 	ctx context.Context,
 	key byRowIDCacheKey,
-) (*rxpdomain.Domain, bool) {
+) (*rxp.Domain, bool) {
 	if s.byRowID == nil {
 		return nil, false
 	}
@@ -52,11 +51,11 @@ func (s *Store) cacheReadByRowID(
 }
 
 // cacheReadByUUID looks up a cached Domain by UUID, returning the cached
-// rxpdomain.Domain and whether or not the entry was found.
+// rxp.Domain and whether or not the entry was found.
 func (s *Store) cacheReadByUUID(
 	ctx context.Context,
 	key byUUIDCacheKey,
-) (*rxpdomain.Domain, bool) {
+) (*rxp.Domain, bool) {
 	if s.byUUID == nil {
 		return nil, false
 	}
@@ -68,21 +67,21 @@ func (s *Store) cacheReadByUUID(
 }
 
 // cacheReadByUUIDNoLock looks up a cached Domain by UUID, returning the cached
-// rxpdomain.Domain and whether or not the entry was found. This method assumes the cache
+// rxp.Domain and whether or not the entry was found. This method assumes the cache
 // lock is already held.
 func (s *Store) cacheReadByUUIDNoLock(
 	ctx context.Context,
 	key byUUIDCacheKey,
-) (*rxpdomain.Domain, bool) {
+) (*rxp.Domain, bool) {
 	return s.byUUID.Get(key)
 }
 
 // cacheReadByName looks up a cached Domain by System UUID + Name, returning the cached
-// rxpdomain.Domain and whether or not the entry was found.
+// rxp.Domain and whether or not the entry was found.
 func (s *Store) cacheReadByName(
 	ctx context.Context,
 	key byNameCacheKey,
-) (*rxpdomain.Domain, bool) {
+) (*rxp.Domain, bool) {
 	if s.byName == nil {
 		return nil, false
 	}
@@ -97,11 +96,11 @@ func (s *Store) cacheReadByName(
 	return s.cacheReadByUUIDNoLock(ctx, uuid)
 }
 
-// cacheWrite ensures the supplied rxpdomain.Domain is written to the lookup caches if
+// cacheWrite ensures the supplied rxp.Domain is written to the lookup caches if
 // enabled.
 func (s *Store) cacheWrite(
 	ctx context.Context,
-	rec *rxpdomain.Domain,
+	rec *rxp.Domain,
 ) error {
 	if s.byUUID == nil {
 		return nil
@@ -113,7 +112,7 @@ func (s *Store) cacheWrite(
 	uuidKey := byUUIDCacheKey(rec.UUID)
 	set := s.byUUID.Set(uuidKey, rec)
 	if !set {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			fmt.Sprintf("failed setting domain cache uuid key %q", uuidKey),
 		)
 	}
@@ -122,7 +121,7 @@ func (s *Store) cacheWrite(
 	uuid := rec.UUID
 	set = s.byName.Set(nameKey, byUUIDCacheKey(uuid))
 	if !set {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			fmt.Sprintf("failed setting domain cache name key %q", nameKey),
 		)
 	}
@@ -130,7 +129,7 @@ func (s *Store) cacheWrite(
 	rowIDKey := byRowIDCacheKey(rowID)
 	set = s.byRowID.Set(rowIDKey, byUUIDCacheKey(uuid))
 	if !set {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			fmt.Sprintf("failed setting domain cache rowid key %d", rowIDKey),
 		)
 	}
@@ -140,7 +139,7 @@ func (s *Store) cacheWrite(
 // cacheEvict purges the caches of all Domains in the supplied Domain's tree.
 func (s *Store) cacheEvict(
 	ctx context.Context,
-	dom rxpdomain.Domain,
+	dom rxp.Domain,
 ) error {
 	if s.byUUID == nil {
 		return nil
@@ -178,7 +177,7 @@ func (s *Store) cacheEvict(
 // assumes the cache lock is already held.
 func (s *Store) cacheEvictNoLock(
 	ctx context.Context,
-	rec *rxpdomain.Domain,
+	rec *rxp.Domain,
 ) error {
 	uuidKey := byUUIDCacheKey(rec.UUID)
 	s.byUUID.Del(uuidKey)

@@ -9,11 +9,11 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	apicore "github.com/relexec/rxp/api/core"
-	apierrors "github.com/relexec/rxp/api/errors"
-	rxpkind "github.com/relexec/rxp/api/kind"
-	rxpquery "github.com/relexec/rxp/api/query"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxperrors "github.com/relexec/rxp/errors"
+	rxpkind "github.com/relexec/rxp/kind"
+	rxpquery "github.com/relexec/rxp/query"
+	rxpsystem "github.com/relexec/rxp/system"
 )
 
 // dbReadByRowID performs a SELECT query to return the stored kind record
@@ -21,32 +21,32 @@ import (
 func (s *Store) dbReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*rxpkind.Kind, error) {
-	out := &rxpkind.Kind{}
+) (*rxp.Kind, error) {
+	out := &rxp.Kind{}
 	out.SetSystemInternalID(rowID)
 	fn := func(tx pgx.Tx) error {
 		var systemRowID int64
 		var uuid string
-		var name rxpkind.Name
-		var scope apicore.Scope
+		var name rxp.KindName
+		var scope rxp.Scope
 		qs := "SELECT system, uuid, name, scope FROM kinds WHERE id = $1"
 		err := tx.QueryRow(
 			ctx, qs, rowID,
 		).Scan(&systemRowID, &uuid, &name, &scope)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return apierrors.ErrNotFound
+				return rxperrors.ErrNotFound
 			}
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed reading kinds record by rowid",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		sysRec, err := s.systemStore.ReadByRowID(ctx, systemRowID)
 		if err != nil {
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed reading system record for kind",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		out.System = sysRec
@@ -66,23 +66,23 @@ func (s *Store) dbReadByRowID(
 func (s *Store) dbReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*rxpkind.Kind, error) {
-	out := &rxpkind.Kind{
+) (*rxp.Kind, error) {
+	out := &rxp.Kind{
 		UUID: uuid,
 	}
 	fn := func(tx pgx.Tx) error {
 		var rowID int64
-		var name rxpkind.Name
-		var scope apicore.Scope
+		var name rxp.KindName
+		var scope rxp.Scope
 		qs := "SELECT id, name, scope FROM kinds WHERE uuid = $1"
 		err := tx.QueryRow(ctx, qs, uuid).Scan(&rowID, &name, &scope)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return apierrors.ErrNotFound
+				return rxperrors.ErrNotFound
 			}
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed reading kinds record by uuid",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		out.SetSystemInternalID(rowID)
@@ -100,10 +100,10 @@ func (s *Store) dbReadByUUID(
 // having the supplied Name.
 func (s *Store) dbReadByName(
 	ctx context.Context,
-	sysRec *rxpsystem.System,
-	name rxpkind.Name,
-) (*rxpkind.Kind, error) {
-	out := &rxpkind.Kind{
+	sysRec *rxp.System,
+	name rxp.KindName,
+) (*rxp.Kind, error) {
+	out := &rxp.Kind{
 		System: sysRec,
 		Name:   name,
 	}
@@ -111,7 +111,7 @@ func (s *Store) dbReadByName(
 	fn := func(tx pgx.Tx) error {
 		var rowID int64
 		var uuid string
-		var scope apicore.Scope
+		var scope rxp.Scope
 		qs := `
 SELECT id, uuid, scope
 FROM kinds
@@ -123,11 +123,11 @@ AND name = $2
 		).Scan(&rowID, &uuid, &scope)
 		if err != nil {
 			if err == pgx.ErrNoRows {
-				return apierrors.ErrNotFound
+				return rxperrors.ErrNotFound
 			}
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed reading kinds record by name",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		out.SetSystemInternalID(rowID)
@@ -144,12 +144,12 @@ AND name = $2
 // dbInsert atomically writes the supplied Kind to persistent storage.
 func (s *Store) dbInsert(
 	ctx context.Context,
-	sysRec *rxpsystem.System,
-	kind rxpkind.Kind,
+	sysRec *rxp.System,
+	kind rxp.Kind,
 ) error {
 	sysRowID := sysRec.SystemInternalIDInt64()
 	createdOn := time.Now().UnixNano()
-	caller := apicore.CallerFromContext(ctx)
+	caller := rxp.CallerFromContext(ctx)
 	createdBy := caller.Identity
 	fn := func(tx pgx.Tx) error {
 		qs := `
@@ -176,27 +176,27 @@ INSERT INTO kinds (
 		if err != nil {
 			if pgErr, ok := err.(*pgconn.PgError); ok {
 				if pgErr.Code == pgerrcode.UniqueViolation {
-					return apierrors.DuplicateName("kind", kind.Name)
+					return rxperrors.DuplicateName("kind", kind.Name)
 				}
 			}
 		}
 		return err
 	}
 	if err := s.Exec(ctx, fn); err != nil {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			"failed inserting kinds record",
-			apierrors.WithWrap(err),
+			rxperrors.WithWrap(err),
 		)
 	}
 	return nil
 }
 
 type kindRecord struct {
-	SystemID int64         `db:"system_id"`
-	ID       int64         `db:"kind_id"`
-	UUID     string        `db:"kind_uuid"`
-	Name     rxpkind.Name  `db:"kind_name"`
-	Scope    apicore.Scope `db:"kind_scope"`
+	SystemID int64        `db:"system_id"`
+	ID       int64        `db:"kind_id"`
+	UUID     string       `db:"kind_uuid"`
+	Name     rxp.KindName `db:"kind_name"`
+	Scope    rxp.Scope    `db:"kind_scope"`
 }
 
 // dbReadByExpression queries zero or more Kinds that match the given
@@ -205,7 +205,7 @@ func (s *Store) dbReadByExpression(
 	ctx context.Context,
 	expr rxpquery.Expression,
 	opts rxpquery.Options,
-) ([]*rxpkind.Kind, error) {
+) ([]*rxp.Kind, error) {
 	qargs := []any{}
 	wheres := []string{}
 
@@ -223,7 +223,7 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("k.uuid = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
-				return nil, apierrors.UnsupportedPredicateOperator(op)
+				return nil, rxperrors.UnsupportedPredicateOperator(op)
 			}
 		case rxpkind.NamePredicate:
 			op := pred.Op
@@ -235,7 +235,7 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("k.name = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, pred.Value)
 			default:
-				return nil, apierrors.UnsupportedPredicateOperator(op)
+				return nil, rxperrors.UnsupportedPredicateOperator(op)
 			}
 		case rxpsystem.UUIDPredicate:
 			op := pred.Op
@@ -247,7 +247,7 @@ func (s *Store) dbReadByExpression(
 					// If we're looking up kinds by a non-existent system,
 					// just return am empty result since there's clearly not
 					// going to be any matching kind records.
-					if err == apierrors.ErrNotFound {
+					if err == rxperrors.ErrNotFound {
 						return nil, nil
 					}
 					return nil, err
@@ -261,7 +261,7 @@ func (s *Store) dbReadByExpression(
 				for _, sysUUID := range sysUUIDs {
 					sysRec, err := s.systemStore.ReadByUUID(ctx, sysUUID)
 					if err != nil {
-						if err == apierrors.ErrNotFound {
+						if err == rxperrors.ErrNotFound {
 							continue
 						}
 						return nil, err
@@ -278,13 +278,13 @@ func (s *Store) dbReadByExpression(
 				wheres = append(wheres, fmt.Sprintf("k.system = ANY ($%d)", len(qargs)+1))
 				qargs = append(qargs, sysRowIDs)
 			default:
-				return nil, apierrors.UnsupportedPredicateOperator(op)
+				return nil, rxperrors.UnsupportedPredicateOperator(op)
 			}
 		default:
-			return nil, apierrors.UnsupportedPredicate(pred)
+			return nil, rxperrors.UnsupportedPredicate(pred)
 		}
 	default:
-		return nil, apierrors.UnsupportedExpression(expr)
+		return nil, rxperrors.UnsupportedExpression(expr)
 	}
 
 	var recs []kindRecord
@@ -304,17 +304,17 @@ FROM kinds AS k
 		qs += fmt.Sprintf("\nORDER BY k.uuid ASC LIMIT %d", opts.Limit())
 		rows, err := tx.Query(ctx, qs, qargs...)
 		if err != nil {
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed reading kind records",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		defer rows.Close()
 		recs, err = pgx.CollectRows(rows, pgx.RowToStructByName[kindRecord])
 		if err != nil {
-			return apierrors.Internal(
+			return rxperrors.Internal(
 				"failed collecting kind records",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
 		return nil
@@ -323,16 +323,16 @@ FROM kinds AS k
 		return nil, err
 	}
 
-	out := make([]*rxpkind.Kind, 0, len(recs))
+	out := make([]*rxp.Kind, 0, len(recs))
 	for _, rec := range recs {
 		sysRec, err := s.systemStore.ReadByRowID(ctx, rec.SystemID)
 		if err != nil {
-			return nil, apierrors.Internal(
+			return nil, rxperrors.Internal(
 				"failed reading system record by rowid",
-				apierrors.WithWrap(err),
+				rxperrors.WithWrap(err),
 			)
 		}
-		k := &rxpkind.Kind{
+		k := &rxp.Kind{
 			UUID:   rec.UUID,
 			Name:   rec.Name,
 			System: sysRec,

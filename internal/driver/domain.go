@@ -4,11 +4,9 @@ import (
 	"context"
 	"time"
 
-	apicore "github.com/relexec/rxp/api/core"
-	rxpdomain "github.com/relexec/rxp/api/domain"
-	apierrors "github.com/relexec/rxp/api/errors"
-	rxpquery "github.com/relexec/rxp/api/query"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxpdomain "github.com/relexec/rxp/domain"
+	rxpquery "github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
@@ -19,7 +17,7 @@ import (
 func (d *Driver) DomainRead(
 	ctx context.Context,
 	sel rxpdomain.Selector,
-) (*rxpdomain.Domain, error) {
+) (*rxp.Domain, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -29,7 +27,7 @@ func (d *Driver) DomainRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeDomain),
+			metrics.AttributeType(rxp.TypeDomain),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -46,7 +44,7 @@ func (d *Driver) DomainRead(
 		return nil, err
 	}
 
-	var sysRec *rxpsystem.System
+	var sysRec *rxp.System
 
 	sys := sel.System()
 
@@ -59,8 +57,8 @@ func (d *Driver) DomainRead(
 	if sys.UUID != d.hostSystemUUID {
 		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
-			if err == apierrors.ErrNotFound {
-				return nil, apierrors.ErrSystemUnknown
+			if err == rxp.ErrNotFound {
+				return nil, rxp.ErrSystemUnknown
 			}
 			return nil, err
 		}
@@ -90,9 +88,9 @@ func (d *Driver) domainReadValidate(
 // associated Record from the domain store.
 func (d *Driver) domainRecordFromDomain(
 	ctx context.Context,
-	sysRec *rxpsystem.System,
-	dom *rxpdomain.Domain,
-) (*rxpdomain.Domain, error) {
+	sysRec *rxp.System,
+	dom *rxp.Domain,
+) (*rxp.Domain, error) {
 	if dom == nil {
 		return nil, nil
 	}
@@ -109,7 +107,7 @@ func (d *Driver) domainRecordFromDomain(
 // DomainWrite atomically writes the supplied Domain to persistent storage.
 func (d *Driver) DomainWrite(
 	ctx context.Context,
-	dom rxpdomain.Domain,
+	dom rxp.Domain,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -120,7 +118,7 @@ func (d *Driver) DomainWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeDomain),
+			metrics.AttributeType(rxp.TypeDomain),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -137,7 +135,7 @@ func (d *Driver) DomainWrite(
 		return err
 	}
 
-	var sysRec *rxpsystem.System
+	var sysRec *rxp.System
 
 	sys := dom.System
 
@@ -151,8 +149,8 @@ func (d *Driver) DomainWrite(
 	if sys.UUID != d.hostSystemUUID {
 		sysRec, err = d.systemStore.ReadByUUID(ctx, sys.UUID)
 		if err != nil {
-			if err == apierrors.ErrNotFound {
-				return apierrors.ErrSystemUnknown
+			if err == rxp.ErrNotFound {
+				return rxp.ErrSystemUnknown
 			}
 			return err
 		}
@@ -175,8 +173,8 @@ func (d *Driver) DomainWrite(
 			parDom, err = d.domainStore.ReadByName(ctx, sysRec, parName)
 		}
 		if err != nil {
-			if err == apierrors.ErrNotFound {
-				return apierrors.ErrDomainParentNotFound
+			if err == rxp.ErrNotFound {
+				return rxp.ErrDomainParentNotFound
 			}
 			return err
 		}
@@ -190,7 +188,7 @@ func (d *Driver) DomainWrite(
 // options are not valid for writing a single Domain.
 func (d *Driver) domainWriteValidate(
 	ctx context.Context,
-	dom rxpdomain.Domain,
+	dom rxp.Domain,
 ) error {
 	return dom.Validate()
 }
@@ -205,7 +203,7 @@ func (d *Driver) DomainQuery(
 	ctx context.Context,
 	expr rxpquery.Expression,
 	opts ...rxpquery.Option,
-) (*rxpquery.Result[*rxpdomain.Domain], error) {
+) (*rxpquery.Result[*rxp.Domain], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -215,7 +213,7 @@ func (d *Driver) DomainQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeDomain),
+			metrics.AttributeType(rxp.TypeDomain),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -250,11 +248,11 @@ func (d *Driver) DomainQuery(
 			rxpquery.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []rxpquery.ResultModifier[*rxpdomain.Domain]{
+	resNewOpts := []rxpquery.ResultModifier[*rxp.Domain]{
 		rxpquery.ResultWithItems(recs),
-		rxpquery.ResultWithOptions[*rxpdomain.Domain](resOpts),
+		rxpquery.ResultWithOptions[*rxp.Domain](resOpts),
 	}
-	return rxpquery.NewResult[*rxpdomain.Domain](resNewOpts...), nil
+	return rxpquery.NewResult[*rxp.Domain](resNewOpts...), nil
 }
 
 // domainQueryValidate returns an error if the supplied expression and query
@@ -265,7 +263,7 @@ func (d *Driver) domainQueryValidate(
 	opts rxpquery.Options,
 ) error {
 	if expr == nil {
-		return apierrors.ErrQueryExpressionRequired
+		return rxp.ErrQueryExpressionRequired
 	}
 	return nil
 }

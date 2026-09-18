@@ -3,8 +3,8 @@ package metrics
 import (
 	"go.opentelemetry.io/otel/attribute"
 
-	apicore "github.com/relexec/rxp/api/core"
-	apikindversion "github.com/relexec/rxp/api/kindversion"
+	rxpcore "github.com/relexec/rxp/core"
+	apikindversion "github.com/relexec/rxp/kindversion"
 )
 
 const (
@@ -31,7 +31,7 @@ const (
 
 // AttributeType returns the target type attribute KeyValue with the
 // value of the supplied target type.
-func AttributeType(tt apicore.Type) attribute.KeyValue {
+func AttributeType(tt rxpcore.Type) attribute.KeyValue {
 	return attribute.String(AttributeNameType, string(tt))
 }
 

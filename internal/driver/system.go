@@ -4,10 +4,9 @@ import (
 	"context"
 	"time"
 
-	apicore "github.com/relexec/rxp/api/core"
-	apierrors "github.com/relexec/rxp/api/errors"
-	rxpquery "github.com/relexec/rxp/api/query"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxpquery "github.com/relexec/rxp/query"
+	rxpsystem "github.com/relexec/rxp/system"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
@@ -18,7 +17,7 @@ import (
 func (d *Driver) SystemRead(
 	ctx context.Context,
 	sel rxpsystem.Selector,
-) (*rxpsystem.System, error) {
+) (*rxp.System, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -28,7 +27,7 @@ func (d *Driver) SystemRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeSystem),
+			metrics.AttributeType(rxp.TypeSystem),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -64,15 +63,15 @@ func (d *Driver) systemReadValidate(
 // host system record when the supplied System is nil or the UUIDs match.
 func (d *Driver) systemRecordFromSystem(
 	ctx context.Context,
-	sys *rxpsystem.System,
-) (*rxpsystem.System, error) {
+	sys *rxp.System,
+) (*rxp.System, error) {
 	if sys == nil || sys.UUID == d.hostSystemUUID {
 		return d.hostSystemRecord, nil
 	}
 	sysRec, err := d.systemStore.ReadByUUID(ctx, sys.UUID)
 	if err != nil {
-		if err == apierrors.ErrNotFound {
-			return nil, apierrors.ErrSystemUnknown
+		if err == rxp.ErrNotFound {
+			return nil, rxp.ErrSystemUnknown
 		}
 		return nil, err
 	}
@@ -82,7 +81,7 @@ func (d *Driver) systemRecordFromSystem(
 // SystemWrite atomically writes the supplied System to persistent storage.
 func (d *Driver) SystemWrite(
 	ctx context.Context,
-	sys rxpsystem.System,
+	sys rxp.System,
 ) error {
 	err := d.requestValidate(ctx)
 	if err != nil {
@@ -93,7 +92,7 @@ func (d *Driver) SystemWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeSystem),
+			metrics.AttributeType(rxp.TypeSystem),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -116,7 +115,7 @@ func (d *Driver) SystemWrite(
 // options are not valid for writing a single System.
 func (d *Driver) systemWriteValidate(
 	ctx context.Context,
-	sys rxpsystem.System,
+	sys rxp.System,
 ) error {
 	return sys.Validate()
 }
@@ -131,7 +130,7 @@ func (d *Driver) SystemQuery(
 	ctx context.Context,
 	expr rxpquery.Expression,
 	opts ...rxpquery.Option,
-) (*rxpquery.Result[*rxpsystem.System], error) {
+) (*rxpquery.Result[*rxp.System], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -141,7 +140,7 @@ func (d *Driver) SystemQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeSystem),
+			metrics.AttributeType(rxp.TypeSystem),
 		}
 		if err != nil {
 			attrs = append(attrs, metrics.AttributeErrCode(err))
@@ -176,11 +175,11 @@ func (d *Driver) SystemQuery(
 			rxpquery.Limit(boundedOpts.Limit()),
 		)
 	}
-	resNewOpts := []rxpquery.ResultModifier[*rxpsystem.System]{
+	resNewOpts := []rxpquery.ResultModifier[*rxp.System]{
 		rxpquery.ResultWithItems(recs),
-		rxpquery.ResultWithOptions[*rxpsystem.System](resOpts),
+		rxpquery.ResultWithOptions[*rxp.System](resOpts),
 	}
-	return rxpquery.NewResult[*rxpsystem.System](resNewOpts...), nil
+	return rxpquery.NewResult[*rxp.System](resNewOpts...), nil
 }
 
 // systemQueryValidate returns an error if the supplied expression and query
@@ -191,7 +190,7 @@ func (d *Driver) systemQueryValidate(
 	opts rxpquery.Options,
 ) error {
 	if expr == nil {
-		return apierrors.ErrQueryExpressionRequired
+		return rxp.ErrQueryExpressionRequired
 	}
 	return nil
 }

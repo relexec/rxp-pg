@@ -3,8 +3,8 @@ package store
 import (
 	"context"
 
-	rxpkindversion "github.com/relexec/rxp/api/kindversion"
-	rxpquery "github.com/relexec/rxp/api/query"
+	rxpkindversion "github.com/relexec/rxp/kindversion"
+	rxpquery "github.com/relexec/rxp/query"
 )
 
 // Query queries zero or more KindVersions from persistent storage.

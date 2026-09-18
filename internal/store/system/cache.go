@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	apierrors "github.com/relexec/rxp/api/errors"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxperrors "github.com/relexec/rxp/errors"
 )
 
 type byRowIDCacheKey int64
@@ -16,7 +16,7 @@ type byUUIDCacheKey string
 func (s *Store) cacheReadByRowID(
 	ctx context.Context,
 	key byRowIDCacheKey,
-) (*rxpsystem.System, bool) {
+) (*rxp.System, bool) {
 	if s.byRowID == nil {
 		return nil, false
 	}
@@ -36,7 +36,7 @@ func (s *Store) cacheReadByRowID(
 func (s *Store) cacheReadByUUID(
 	ctx context.Context,
 	key byUUIDCacheKey,
-) (*rxpsystem.System, bool) {
+) (*rxp.System, bool) {
 	if s.byUUID == nil {
 		return nil, false
 	}
@@ -53,7 +53,7 @@ func (s *Store) cacheReadByUUID(
 func (s *Store) cacheReadByUUIDNoLock(
 	ctx context.Context,
 	key byUUIDCacheKey,
-) (*rxpsystem.System, bool) {
+) (*rxp.System, bool) {
 	return s.byUUID.Get(key)
 }
 
@@ -61,7 +61,7 @@ func (s *Store) cacheReadByUUIDNoLock(
 // enabled.
 func (s *Store) cacheWrite(
 	ctx context.Context,
-	rec *rxpsystem.System,
+	rec *rxp.System,
 ) error {
 	if s.byUUID == nil {
 		return nil
@@ -73,7 +73,7 @@ func (s *Store) cacheWrite(
 	uuidKey := byUUIDCacheKey(rec.UUID)
 	set := s.byUUID.Set(uuidKey, rec)
 	if !set {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			fmt.Sprintf("failed setting system cache uuid key %q", uuidKey),
 		)
 	}
@@ -83,7 +83,7 @@ func (s *Store) cacheWrite(
 	rowIDKey := byRowIDCacheKey(rowID)
 	set = s.byRowID.Set(rowIDKey, uuidKey)
 	if !set {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			fmt.Sprintf("failed setting system cache rowid key %d", rowIDKey),
 		)
 	}

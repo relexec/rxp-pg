@@ -3,11 +3,7 @@ package store
 import (
 	"context"
 
-	apicore "github.com/relexec/rxp/api/core"
-	rxpdomain "github.com/relexec/rxp/api/domain"
-	rxpkindversion "github.com/relexec/rxp/api/kindversion"
-	rxpobject "github.com/relexec/rxp/api/object"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
 )
 
 // Record decorates an Object with internal DB information.
@@ -15,14 +11,14 @@ type Record struct {
 	// RowID is the internal database SERIAL for the objects record.
 	RowID int64
 	// Object is the publicly-exposed Object object.
-	Object *rxpobject.Object
+	Object *rxp.Object
 }
 
 // NameQualifier contains either a System or Domain store record that qualifies
 // an Object name.
 type NameQualifier struct {
-	System *rxpsystem.System
-	Domain *rxpdomain.Domain
+	System *rxp.System
+	Domain *rxp.Domain
 }
 
 // UUIDFromName returns the UUID associated with the supplied object name with
@@ -60,7 +56,7 @@ func (s *Store) NameFromUUID(
 func (s *Store) ReadByRowIDAndGeneration(
 	ctx context.Context,
 	rowID int64,
-	requestedGen apicore.Generation,
+	requestedGen rxp.Generation,
 ) (*Record, error) {
 	return s.dbReadByRowIDAndGeneration(ctx, rowID, requestedGen)
 }
@@ -69,9 +65,9 @@ func (s *Store) ReadByRowIDAndGeneration(
 // UUID amd generation.
 func (s *Store) ReadByUUIDAndGeneration(
 	ctx context.Context,
-	kvRec *rxpkindversion.KindVersion,
+	kvRec *rxp.KindVersion,
 	uuid string,
-	requestedGen apicore.Generation,
+	requestedGen rxp.Generation,
 ) (*Record, error) {
 	return s.dbReadByUUIDAndGeneration(ctx, kvRec, uuid, requestedGen)
 }

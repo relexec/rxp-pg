@@ -3,16 +3,15 @@ package store
 import (
 	"context"
 
-	rxpkind "github.com/relexec/rxp/api/kind"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
 )
 
-// ReadByRowID returns a rxpkind.Kind for the Kind with the supplied internal DB
+// ReadByRowID returns a rxp.Kind for the Kind with the supplied internal DB
 // row ID. This method will populate any caches with any read records.
 func (s *Store) ReadByRowID(
 	ctx context.Context,
 	rowID int64,
-) (*rxpkind.Kind, error) {
+) (*rxp.Kind, error) {
 	cacheKey := byRowIDCacheKey(rowID)
 	cached, found := s.cacheReadByRowID(ctx, cacheKey)
 	if found {
@@ -29,12 +28,12 @@ func (s *Store) ReadByRowID(
 	return record, nil
 }
 
-// ReadByUUID returns a rxpkind.Kind for the Kind with the supplied UUID. This
+// ReadByUUID returns a rxp.Kind for the Kind with the supplied UUID. This
 // method will populate any caches with any read records.
 func (s *Store) ReadByUUID(
 	ctx context.Context,
 	uuid string,
-) (*rxpkind.Kind, error) {
+) (*rxp.Kind, error) {
 	cacheKey := byUUIDCacheKey(uuid)
 	cached, found := s.cacheReadByUUID(ctx, cacheKey)
 	if found {
@@ -51,13 +50,13 @@ func (s *Store) ReadByUUID(
 	return record, nil
 }
 
-// ReadByName returns a rxpkind.Kind for the Kind with the supplied Name. This
+// ReadByName returns a rxp.Kind for the Kind with the supplied Name. This
 // method will populate any caches with any read records.
 func (s *Store) ReadByName(
 	ctx context.Context,
-	sysRec *rxpsystem.System,
-	name rxpkind.Name,
-) (*rxpkind.Kind, error) {
+	sysRec *rxp.System,
+	name rxp.KindName,
+) (*rxp.Kind, error) {
 	cacheKey := newByNameCacheKey(sysRec, name)
 	cached, found := s.cacheReadByName(ctx, cacheKey)
 	if found {

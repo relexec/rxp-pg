@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	apicore "github.com/relexec/rxp/api/core"
-	apierrors "github.com/relexec/rxp/api/errors"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxpcore "github.com/relexec/rxp/core"
+	rxperrors "github.com/relexec/rxp/errors"
 
 	storedomain "github.com/relexec/rxp-pg/internal/store/domain"
 	storekind "github.com/relexec/rxp-pg/internal/store/kind"
@@ -186,13 +186,13 @@ func (d *Driver) initHostSystemRecord(ctx context.Context) error {
 	if d.hostSystemRecord == nil {
 		rec, err := d.systemStore.ReadByUUID(ctx, d.hostSystemUUID)
 		if err != nil {
-			if err != apierrors.ErrNotFound {
+			if err != rxperrors.ErrNotFound {
 				return err
 			}
 			d.Logger.Debug("creating host system record")
-			initCaller := apicore.Caller{Identity: "rxp.system"}
-			initCtx := apicore.CallerToContext(ctx, initCaller)
-			sys := rxpsystem.System{
+			initCaller := rxpcore.Caller{Identity: "rxp.system"}
+			initCtx := rxpcore.CallerToContext(ctx, initCaller)
+			sys := rxp.System{
 				UUID: d.hostSystemUUID,
 				Tag:  d.hostSystemTag,
 			}

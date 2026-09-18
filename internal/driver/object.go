@@ -4,14 +4,10 @@ import (
 	"context"
 	"time"
 
-	apicore "github.com/relexec/rxp/api/core"
-	rxpdomain "github.com/relexec/rxp/api/domain"
-	apierrors "github.com/relexec/rxp/api/errors"
-	rxpkind "github.com/relexec/rxp/api/kind"
-	rxpkindversion "github.com/relexec/rxp/api/kindversion"
-	rxpobject "github.com/relexec/rxp/api/object"
-	rxpquery "github.com/relexec/rxp/api/query"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxperrors "github.com/relexec/rxp/errors"
+	rxpobject "github.com/relexec/rxp/object"
+	rxpquery "github.com/relexec/rxp/query"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
@@ -22,9 +18,9 @@ import (
 // ObjectRead reads a single Object from persistent storage.
 func (d *Driver) ObjectRead(
 	ctx context.Context,
-	kv rxpkindversion.Name,
+	kv rxp.KindVersionName,
 	sel rxpobject.Selector,
-) (*rxpobject.Object, error) {
+) (*rxp.Object, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -34,7 +30,7 @@ func (d *Driver) ObjectRead(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeObject),
+			metrics.AttributeType(rxp.TypeObject),
 			metrics.AttributeKindVersion(kv),
 		}
 		if err != nil {
@@ -81,8 +77,8 @@ func (d *Driver) ObjectRead(
 
 	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, kv.Kind())
 	if err != nil {
-		if err == apierrors.ErrNotFound {
-			return nil, apierrors.ErrKindUnknown
+		if err == rxp.ErrNotFound {
+			return nil, rxp.ErrKindUnknown
 		}
 		return nil, err
 	}
@@ -94,8 +90,8 @@ func (d *Driver) ObjectRead(
 
 	kvRec, err := d.kindversionStore.ReadByName(ctx, sysRec, kindRec, kv)
 	if err != nil {
-		if err == apierrors.ErrNotFound {
-			return nil, apierrors.ErrKindVersionUnknown
+		if err == rxp.ErrNotFound {
+			return nil, rxp.ErrKindVersionUnknown
 		}
 		return nil, err
 	}
@@ -138,7 +134,7 @@ func (d *Driver) ObjectRead(
 // options are not valid for reading a single Object.
 func (d *Driver) objectReadValidate(
 	ctx context.Context,
-	kv rxpkindversion.Name,
+	kv rxp.KindVersionName,
 	sel rxpobject.Selector,
 ) error {
 	err := kv.Validate()
@@ -152,15 +148,15 @@ func (d *Driver) objectReadValidate(
 // record, name and optional domain record.
 func (d *Driver) objectUUIDFromName(
 	ctx context.Context,
-	sysRec *rxpsystem.System,
-	kindRec *rxpkind.Kind,
+	sysRec *rxp.System,
+	kindRec *rxp.Kind,
 	name string,
-	domRec *rxpdomain.Domain,
+	domRec *rxp.Domain,
 ) (string, error) {
 	qualifier := storeobject.NameQualifier{
 		System: sysRec,
 	}
-	if kindRec.Scope == apicore.ScopeDomain {
+	if kindRec.Scope == rxp.ScopeDomain {
 		qualifier.Domain = domRec
 	}
 	return d.objectStore.UUIDFromName(
@@ -172,15 +168,15 @@ func (d *Driver) objectUUIDFromName(
 // record, object UUID and optional domain record.
 func (d *Driver) objectNameFromUUID(
 	ctx context.Context,
-	sysRec *rxpsystem.System,
-	kindRec *rxpkind.Kind,
+	sysRec *rxp.System,
+	kindRec *rxp.Kind,
 	uuid string,
-	domRec *rxpdomain.Domain,
+	domRec *rxp.Domain,
 ) (string, error) {
 	qualifier := storeobject.NameQualifier{
 		System: sysRec,
 	}
-	if kindRec.Scope == apicore.ScopeDomain {
+	if kindRec.Scope == rxp.ScopeDomain {
 		qualifier.Domain = domRec
 	}
 	return d.objectStore.NameFromUUID(
@@ -192,15 +188,15 @@ func (d *Driver) objectNameFromUUID(
 // domain in the selector if the scope of Kind is ScopeDomain.
 func (d *Driver) objectReadValidateScope(
 	ctx context.Context,
-	kindRec *rxpkind.Kind,
+	kindRec *rxp.Kind,
 	sel rxpobject.Selector,
 ) error {
 	scope := kindRec.Scope
 	switch scope {
-	case apicore.ScopeDomain:
+	case rxp.ScopeDomain:
 		domain := sel.Domain()
 		if domain == nil {
-			return apierrors.ErrSelectorDomainRequired
+			return rxperrors.ErrSelectorDomainRequired
 		}
 	}
 	return nil
@@ -210,8 +206,8 @@ func (d *Driver) objectReadValidateScope(
 // on successful write, the newly-created or updated Object is returned.
 func (d *Driver) ObjectWrite(
 	ctx context.Context,
-	obj rxpobject.Object,
-) (*rxpobject.Object, error) {
+	obj rxp.Object,
+) (*rxp.Object, error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -223,7 +219,7 @@ func (d *Driver) ObjectWrite(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeObject),
+			metrics.AttributeType(rxp.TypeObject),
 			metrics.AttributeKindVersion(kv),
 		}
 		if err != nil {
@@ -263,8 +259,8 @@ func (d *Driver) ObjectWrite(
 
 	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, kv.Kind())
 	if err != nil {
-		if err == apierrors.ErrNotFound {
-			return nil, apierrors.ErrKindUnknown
+		if err == rxp.ErrNotFound {
+			return nil, rxp.ErrKindUnknown
 		}
 		return nil, err
 	}
@@ -276,8 +272,8 @@ func (d *Driver) ObjectWrite(
 
 	kvRec, err := d.kindversionStore.ReadByName(ctx, sysRec, kindRec, kv)
 	if err != nil {
-		if err == apierrors.ErrNotFound {
-			return nil, apierrors.ErrKindUnknown
+		if err == rxp.ErrNotFound {
+			return nil, rxp.ErrKindUnknown
 		}
 		return nil, err
 	}
@@ -293,19 +289,19 @@ func (d *Driver) ObjectWrite(
 // options are not valid for writing a single Object.
 func (d *Driver) objectWriteValidate(
 	ctx context.Context,
-	obj rxpobject.Object,
+	obj rxp.Object,
 ) error {
 	kv := obj.KindVersionName
 	if kv == "" {
-		return apierrors.ErrObjectKindVersionRequired
+		return rxp.ErrObjectKindVersionRequired
 	}
 	uuid := obj.UUID
 	if uuid == "" {
-		return apierrors.ErrObjectUUIDRequired
+		return rxp.ErrObjectUUIDRequired
 	}
 	name := obj.Name
 	if name == "" {
-		return apierrors.ErrObjectNameRequired
+		return rxp.ErrObjectNameRequired
 	}
 	return nil
 }
@@ -314,13 +310,13 @@ func (d *Driver) objectWriteValidate(
 // required domain qualification if the scope of Kind is ScopeDomain.
 func (d *Driver) objectWriteValidateScope(
 	ctx context.Context,
-	kindRec *rxpkind.Kind,
-	obj rxpobject.Object,
+	kindRec *rxp.Kind,
+	obj rxp.Object,
 ) error {
-	if kindRec.Scope == apicore.ScopeDomain {
+	if kindRec.Scope == rxp.ScopeDomain {
 		dom := obj.Domain
 		if dom == nil {
-			return apierrors.ErrObjectDomainRequired
+			return rxp.ErrObjectDomainRequired
 		}
 		return dom.Validate()
 	}
@@ -336,10 +332,10 @@ const (
 // from persistent storage.
 func (d *Driver) ObjectQuery(
 	ctx context.Context,
-	kv rxpkindversion.Name,
+	kv rxp.KindVersionName,
 	expr rxpquery.Expression,
 	opts ...rxpquery.Option,
-) (*rxpquery.Result[*rxpobject.Object], error) {
+) (*rxpquery.Result[*rxp.Object], error) {
 	err := d.requestValidate(ctx)
 	if err != nil {
 		return nil, err
@@ -349,7 +345,7 @@ func (d *Driver) ObjectQuery(
 	defer func() {
 		elapsed := time.Since(start).Seconds()
 		attrs := []attribute.KeyValue{
-			metrics.AttributeType(apicore.TypeObject),
+			metrics.AttributeType(rxp.TypeObject),
 			metrics.AttributeKindVersion(kv),
 		}
 		if err != nil {
@@ -372,8 +368,8 @@ func (d *Driver) ObjectQuery(
 
 	kindRec, err := d.kindStore.ReadByName(ctx, sysRec, kv.Kind())
 	if err != nil {
-		if err == apierrors.ErrNotFound {
-			return nil, apierrors.ErrKindUnknown
+		if err == rxp.ErrNotFound {
+			return nil, rxp.ErrKindUnknown
 		}
 		return nil, err
 	}
@@ -386,30 +382,30 @@ func (d *Driver) ObjectQuery(
 	if err != nil {
 		return nil, err
 	}
-	objs := make([]*rxpobject.Object, 0, len(recs))
+	objs := make([]*rxp.Object, 0, len(recs))
 	for _, rec := range recs {
 		objs = append(objs, rec.Object)
 	}
-	resNewOpts := []rxpquery.ResultModifier[*rxpobject.Object]{
+	resNewOpts := []rxpquery.ResultModifier[*rxp.Object]{
 		rxpquery.ResultWithItems(objs),
-		rxpquery.ResultWithOptions[*rxpobject.Object](boundedOpts),
+		rxpquery.ResultWithOptions[*rxp.Object](boundedOpts),
 	}
 	if len(recs) == int(boundedOpts.Limit()) {
 		resNewOpts = append(
 			resNewOpts,
-			rxpquery.ResultWithMarker[*rxpobject.Object](
+			rxpquery.ResultWithMarker[*rxp.Object](
 				recs[len(recs)-1].Object.UUID,
 			),
 		)
 	}
-	return rxpquery.NewResult[*rxpobject.Object](resNewOpts...), nil
+	return rxpquery.NewResult[*rxp.Object](resNewOpts...), nil
 }
 
 // objectQueryValidate returns an error if the supplied expression and query
 // options are not valid.
 func (d *Driver) objectQueryValidate(
 	ctx context.Context,
-	kv rxpkindversion.Name,
+	kv rxp.KindVersionName,
 	expr rxpquery.Expression,
 	opts rxpquery.Options,
 ) error {

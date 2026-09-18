@@ -5,7 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
 
 	"github.com/relexec/rxp-pg/config"
 	"github.com/relexec/rxp-pg/internal/store"
@@ -51,7 +51,7 @@ func WithLogger(logger *slog.Logger) WithOption {
 
 // WithHostSystemRecord sets the Store's host system record to the supplied
 // value.
-func WithHostSystemRecord(rec rxpsystem.System) WithOption {
+func WithHostSystemRecord(rec rxp.System) WithOption {
 	return func(s *Store) {
 		s.hostSystemRecord = rec
 	}

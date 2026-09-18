@@ -3,23 +3,20 @@ package store
 import (
 	"context"
 
-	apicore "github.com/relexec/rxp/api/core"
-	rxpkind "github.com/relexec/rxp/api/kind"
-	rxpkindversion "github.com/relexec/rxp/api/kindversion"
-	rxpquery "github.com/relexec/rxp/api/query"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxpquery "github.com/relexec/rxp/query"
 )
 
 // Query queries zero or more Objects from persistent storage.
 func (s *Store) Query(
 	ctx context.Context,
-	kv rxpkindversion.Name,
-	sysRec *rxpsystem.System,
-	kindRec *rxpkind.Kind,
+	kv rxp.KindVersionName,
+	sysRec *rxp.System,
+	kindRec *rxp.Kind,
 	expr rxpquery.Expression,
 	opts rxpquery.Options,
 ) ([]*Record, error) {
-	if kindRec.Scope == apicore.ScopeDomain {
+	if kindRec.Scope == rxp.ScopeDomain {
 		return s.dbReadDomainQualifiedByExpression(
 			ctx, kv, sysRec, kindRec, expr, opts,
 		)

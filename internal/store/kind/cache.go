@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	apierrors "github.com/relexec/rxp/api/errors"
-	rxpkind "github.com/relexec/rxp/api/kind"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	"github.com/relexec/rxp"
+	rxperrors "github.com/relexec/rxp/errors"
 )
 
 type byRowIDCacheKey int64
@@ -19,24 +18,24 @@ func (k byNameCacheKey) SystemUUID() string {
 	return parts[0]
 }
 
-func (k byNameCacheKey) KindName() rxpkind.Name {
+func (k byNameCacheKey) KindName() rxp.KindName {
 	parts := strings.Split(string(k), "|")
-	return rxpkind.Name(parts[1])
+	return rxp.KindName(parts[1])
 }
 
 func newByNameCacheKey(
-	system *rxpsystem.System,
-	name rxpkind.Name,
+	system *rxp.System,
+	name rxp.KindName,
 ) byNameCacheKey {
 	return byNameCacheKey(system.UUID + "|" + string(name))
 }
 
 // cacheReadByRowID looks up a cached Kind by RowID, returning the cached
-// rxpkind.Kind and whether or not the entry was found.
+// rxp.Kind and whether or not the entry was found.
 func (s *Store) cacheReadByRowID(
 	ctx context.Context,
 	key byRowIDCacheKey,
-) (*rxpkind.Kind, bool) {
+) (*rxp.Kind, bool) {
 	if s.byRowID == nil {
 		return nil, false
 	}
@@ -52,11 +51,11 @@ func (s *Store) cacheReadByRowID(
 }
 
 // cacheReadByUUID looks up a cached Domain by UUID, returning the cached
-// rxpkind.Kind and whether or not the entry was found.
+// rxp.Kind and whether or not the entry was found.
 func (s *Store) cacheReadByUUID(
 	ctx context.Context,
 	key byUUIDCacheKey,
-) (*rxpkind.Kind, bool) {
+) (*rxp.Kind, bool) {
 	if s.byUUID == nil {
 		return nil, false
 	}
@@ -68,21 +67,21 @@ func (s *Store) cacheReadByUUID(
 }
 
 // cacheReadByUUIDNoLock looks up a cached Kind by UUID, returning the cached
-// rxpkind.Kind and whether or not the entry was found. This method assumes the cache
+// rxp.Kind and whether or not the entry was found. This method assumes the cache
 // lock is already held.
 func (s *Store) cacheReadByUUIDNoLock(
 	ctx context.Context,
 	key byUUIDCacheKey,
-) (*rxpkind.Kind, bool) {
+) (*rxp.Kind, bool) {
 	return s.byUUID.Get(key)
 }
 
-// cacheReadByName looks up a cached Kind by name, returning the cached rxpkind.Kind
+// cacheReadByName looks up a cached Kind by name, returning the cached rxp.Kind
 // and whether or not the entry was found.
 func (s *Store) cacheReadByName(
 	ctx context.Context,
 	key byNameCacheKey,
-) (*rxpkind.Kind, bool) {
+) (*rxp.Kind, bool) {
 	if s.byName == nil {
 		return nil, false
 	}
@@ -97,11 +96,11 @@ func (s *Store) cacheReadByName(
 	return s.cacheReadByUUIDNoLock(ctx, uuid)
 }
 
-// cacheWrite ensures the supplied rxpkind.Kind is written to the lookup caches if
+// cacheWrite ensures the supplied rxp.Kind is written to the lookup caches if
 // enabled.
 func (s *Store) cacheWrite(
 	ctx context.Context,
-	rec *rxpkind.Kind,
+	rec *rxp.Kind,
 ) error {
 	if s.byUUID == nil {
 		return nil
@@ -113,7 +112,7 @@ func (s *Store) cacheWrite(
 	uuidKey := byUUIDCacheKey(rec.UUID)
 	set := s.byUUID.Set(uuidKey, rec)
 	if !set {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			fmt.Sprintf("failed setting kind cache uuid key %q", uuidKey),
 		)
 	}
@@ -122,7 +121,7 @@ func (s *Store) cacheWrite(
 	uuid := rec.UUID
 	set = s.byName.Set(nameKey, byUUIDCacheKey(uuid))
 	if !set {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			fmt.Sprintf("failed setting kind cache name key %q", nameKey),
 		)
 	}
@@ -130,7 +129,7 @@ func (s *Store) cacheWrite(
 	rowIDKey := byRowIDCacheKey(rowID)
 	set = s.byRowID.Set(rowIDKey, byUUIDCacheKey(uuid))
 	if !set {
-		return apierrors.Internal(
+		return rxperrors.Internal(
 			fmt.Sprintf("failed setting kind cache rowid key %d", rowIDKey),
 		)
 	}

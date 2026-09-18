@@ -3,8 +3,8 @@ package store
 import (
 	"context"
 
-	rxpquery "github.com/relexec/rxp/api/query"
-	rxpsystem "github.com/relexec/rxp/api/system"
+	rxpquery "github.com/relexec/rxp/query"
+	rxpsystem "github.com/relexec/rxp/system"
 )
 
 // Query queries zero or more Systems from persistent storage.
